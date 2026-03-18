@@ -17,7 +17,7 @@ export const Header: React.FC = () => {
             <User size={16} />
           </div>
         </div>
-        <Link to="/app/configuracoes-dados" className="hover:text-emerald-400 transition-colors">
+        <Link to="/app/configuracoes" className="hover:text-emerald-400 transition-colors">
           <Settings size={20} />
         </Link>
       </div>

@@ -6,6 +6,9 @@ import ObraLogLogin from '../pages/obralog/ObraLogLogin';
 import ObraLogDashboard from '../pages/obralog/ObraLogDashboard';
 import SetupProfile from '../pages/obralog/SetupProfile';
 import SelectCompany from '../pages/obralog/SelectCompany';
+import NovaObra from '../pages/obralog/NovaObra';
+import ListagemObras from '../pages/obralog/ListagemObras';
+import Configuracoes from '../pages/obralog/Configuracoes';
 
 const router = createBrowserRouter([
   {
@@ -37,6 +40,18 @@ const router = createBrowserRouter([
   {
     path: '/app/dashboard',
     element: <ObraLogDashboard />,
+  },
+  {
+    path: '/app/obras/nova',
+    element: <NovaObra />,
+  },
+  {
+    path: '/app/obras',
+    element: <ListagemObras />,
+  },
+  {
+    path: '/app/configuracoes',
+    element: <Configuracoes />,
   },
 ]);
 

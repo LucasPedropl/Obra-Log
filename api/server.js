@@ -75,13 +75,22 @@ app.get('/api/admin/companies/:id/users', async (req, res) => {
 
     if (error) throw error;
     
+    // Buscar usuários no auth.admin para pegar metadados
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+    if (authError) throw authError;
+    
     // Formata o retorno
-    const users = data.map(cu => ({
-      id: cu.users.id,
-      email: cu.users.email,
-      full_name: cu.users.full_name,
-      status: cu.status
-    }));
+    const users = data.map(cu => {
+      const authUser = authData.users.find(u => u.id === cu.users.id);
+      return {
+        id: cu.users.id,
+        email: cu.users.email,
+        full_name: cu.users.full_name,
+        status: cu.status,
+        temp_password: authUser?.user_metadata?.temp_password || null,
+        require_password_change: authUser?.user_metadata?.require_password_change || false
+      };
+    });
     
     res.status(200).json(users);
   } catch (err) {
@@ -151,7 +160,7 @@ app.post('/api/admin/users', async (req, res) => {
       email,
       password: tempPassword,
       email_confirm: true,
-      user_metadata: { require_password_change: true, full_name: 'Administrador' }
+      user_metadata: { require_password_change: true, full_name: 'Administrador', temp_password: tempPassword }
     });
 
     if (authError) throw authError;
@@ -190,7 +199,7 @@ app.post('/api/admin/users/:userId/reset-password', async (req, res) => {
       userId,
       { 
         password: tempPassword,
-        user_metadata: { require_password_change: true }
+        user_metadata: { require_password_change: true, temp_password: tempPassword }
       }
     );
 
@@ -214,16 +223,39 @@ app.post('/api/admin/delete-database', async (req, res) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // 1. Apagar dados de todas as tabelas (exceto a tabela de usuários se necessário)
-    // Para simplificar, vamos apagar dados de tabelas conhecidas.
-    // O ideal seria ter uma lista de tabelas e iterar sobre elas.
-    const tables = ['company_users', 'companies', 'users']; // Adicione outras tabelas aqui
+    // 1. Apagar dados de todas as tabelas na ordem correta para evitar erros de chave estrangeira
+    const tablesToDelete = [
+      'tool_loans',
+      'site_movements',
+      'site_inventory',
+      'epi_withdrawals',
+      'rented_equipments',
+      'construction_sites',
+      'catalogs',
+      'measurement_units',
+      'categories',
+      'collaborators',
+      'company_users',
+      'access_profiles',
+      'companies',
+      'users'
+    ];
     
-    for (const table of tables) {
+    for (const table of tablesToDelete) {
       if (table === 'users') {
         await supabaseAdmin.from(table).delete().neq('id', adminUserId);
       } else {
         await supabaseAdmin.from(table).delete().neq('id', 'non-existent-id'); // Deleta tudo
+      }
+    }
+
+    // Apagar usuários no auth.users (exceto o admin)
+    const { data: users, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
+    if (usersError) throw usersError;
+
+    for (const user of users.users) {
+      if (user.id !== adminUserId) {
+        await supabaseAdmin.auth.admin.deleteUser(user.id);
       }
     }
 

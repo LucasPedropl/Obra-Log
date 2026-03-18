@@ -35,9 +35,9 @@ export default function SelectCompany() {
       if (error) throw error;
 
       // Filter out inactive companies or nulls
-      const validCompanies = data
-        ?.map(cu => cu.companies)
-        .filter(c => c && c.active) || [];
+      const validCompanies = (data
+        ?.map(cu => cu.companies as any)
+        .filter(c => c && c.active) || []) as any[];
 
       if (validCompanies.length === 0) {
         throw new Error('Você não está vinculado a nenhuma empresa ativa.');

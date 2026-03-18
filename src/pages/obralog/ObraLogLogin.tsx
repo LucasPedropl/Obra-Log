@@ -6,8 +6,8 @@ import { authService } from '../../features/auth/services/auth.service';
 import { supabase } from '../../config/supabase';
 
 export default function ObraLogLogin() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('pedro@gmail.com');
+  const [password, setPassword] = useState('plm200510');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();

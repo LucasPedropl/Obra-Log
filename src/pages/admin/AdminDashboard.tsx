@@ -308,33 +308,46 @@ export default function AdminDashboard() {
                   ) : (
                     <div className="space-y-1">
                       {companyUsers.map((cu: any) => (
-                        <div key={cu.id} className="p-4 hover:bg-slate-50 rounded-xl transition-colors flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
-                            {cu.users?.full_name?.charAt(0).toUpperCase() || cu.users?.email?.charAt(0).toUpperCase() || '?'}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-slate-900 text-sm truncate">
-                              {cu.users?.full_name || 'Pendente (Primeiro Acesso)'}
+                        <div key={cu.id} className="p-4 hover:bg-slate-50 rounded-xl transition-colors flex flex-col gap-2 border-b border-slate-100 last:border-0">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
+                              {cu.full_name?.charAt(0).toUpperCase() || cu.email?.charAt(0).toUpperCase() || '?'}
                             </div>
-                            <div className="text-xs text-slate-500 truncate">{cu.users?.email}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-slate-900 text-sm truncate flex items-center gap-2">
+                                {cu.full_name || 'Pendente (Primeiro Acesso)'}
+                                {cu.require_password_change && (
+                                  <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] rounded font-bold uppercase tracking-wider">
+                                    Pendente
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-slate-500 truncate">{cu.email}</div>
+                            </div>
+                            <div className="shrink-0 flex items-center gap-2">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                cu.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'
+                              }`}>
+                                {cu.status}
+                              </span>
+                              {cu.status === 'ACTIVE' && (
+                                <button 
+                                  onClick={() => handleResetPassword(cu.id)}
+                                  disabled={resettingUserId === cu.id}
+                                  title="Gerar nova senha temporária"
+                                  className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                  {resettingUserId === cu.id ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <div className="shrink-0 flex items-center gap-2">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                              cu.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'
-                            }`}>
-                              {cu.status}
-                            </span>
-                            {cu.status === 'ACTIVE' && (
-                              <button 
-                                onClick={() => handleResetPassword(cu.user_id)}
-                                disabled={resettingUserId === cu.user_id}
-                                title="Gerar nova senha temporária"
-                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50"
-                              >
-                                {resettingUserId === cu.user_id ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
-                              </button>
-                            )}
-                          </div>
+                          {cu.temp_password && cu.require_password_change && (
+                            <div className="ml-14 mt-1 bg-slate-100 p-2 rounded-lg text-xs font-mono text-slate-600 flex justify-between items-center">
+                              <span>Senha Temp: <strong className="text-slate-900">{cu.temp_password}</strong></span>
+                              <span className="text-[10px] text-slate-400 uppercase">Aguardando troca</span>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
