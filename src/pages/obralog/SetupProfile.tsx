@@ -1,31 +1,52 @@
-import { HardHat, Loader2 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { HardHat, Loader2 } from 'lucide-react';
 import { PasswordInput } from '../../components/ui/PasswordInput';
-import { authService } from '../../features/auth/services/auth.service';
 import { supabase } from '../../config/supabase';
 
-export default function ObraLogLogin() {
-  const [email, setEmail] = useState('');
+export default function SetupProfile() {
+  const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem');
+      return;
+    }
+    if (password.length < 6) {
+      setError('A senha deve ter no mínimo 6 caracteres');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      const { user } = await authService.login({ email, password });
-      
-      if (user.user_metadata?.require_password_change) {
-        navigate('/app/setup-profile');
-        return;
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
 
-      // Check companies
+      // Update auth user
+      const { error: updateAuthError } = await supabase.auth.updateUser({
+        password: password,
+        data: { full_name: fullName, require_password_change: false }
+      });
+
+      if (updateAuthError) throw updateAuthError;
+
+      // Update public.users
+      const { error: updateDbError } = await supabase
+        .from('users')
+        .update({ full_name: fullName })
+        .eq('id', user.id);
+
+      if (updateDbError) throw updateDbError;
+
+      // Check companies to decide where to navigate
       const { data: companyUsers, error: companyError } = await supabase
         .from('company_users')
         .select('company_id, companies(name)')
@@ -37,6 +58,7 @@ export default function ObraLogLogin() {
       if (companyUsers && companyUsers.length > 1) {
         navigate('/app/select-company');
       } else if (companyUsers && companyUsers.length === 1) {
+        // Automatically select the only company
         localStorage.setItem('selectedCompanyId', companyUsers[0].company_id);
         navigate('/app/dashboard');
       } else {
@@ -44,7 +66,7 @@ export default function ObraLogLogin() {
       }
 
     } catch (err: any) {
-      setError(err.message || 'Erro ao realizar login');
+      setError(err.message || 'Erro ao configurar perfil');
     } finally {
       setLoading(false);
     }
@@ -57,8 +79,10 @@ export default function ObraLogLogin() {
           <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
             <HardHat size={32} />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">ObraLog ERP</h1>
-          <p className="text-slate-500 text-sm mt-1">Gestão inteligente de canteiros</p>
+          <h1 className="text-2xl font-bold text-slate-900">Bem-vindo ao ObraLog</h1>
+          <p className="text-slate-500 text-sm mt-1 text-center">
+            Para continuar, por favor informe seu nome e crie uma nova senha pessoal.
+          </p>
         </div>
 
         {error && (
@@ -67,23 +91,33 @@ export default function ObraLogLogin() {
           </div>
         )}
 
-        <form className="space-y-4" onSubmit={handleLogin}>
+        <form className="space-y-4" onSubmit={handleSetup}>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">E-mail Corporativo</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo</label>
             <input 
-              type="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text" 
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               required
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-              placeholder="engenheiro@construtora.com"
+              placeholder="Ex: João Silva"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nova Senha</label>
             <PasswordInput 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
+              className="focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="••••••••"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar Nova Senha</label>
+            <PasswordInput 
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               required
               className="focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="••••••••"
@@ -93,17 +127,10 @@ export default function ObraLogLogin() {
             disabled={loading}
             className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium py-2.5 rounded-lg transition-colors mt-6 flex items-center justify-center"
           >
-            {loading ? <Loader2 className="animate-spin w-5 h-5" /> : 'Acessar ERP'}
+            {loading ? <Loader2 className="animate-spin w-5 h-5" /> : 'Salvar e Continuar'}
           </button>
         </form>
-
-        <div className="mt-6 text-center">
-          <Link to="/" className="text-sm text-emerald-600 hover:text-emerald-800 font-medium">
-            &larr; Voltar para seleção de sistema
-          </Link>
-        </div>
       </div>
     </div>
   );
 }
-

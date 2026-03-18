@@ -4,6 +4,8 @@ import AdminLogin from '../pages/admin/AdminLogin';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import ObraLogLogin from '../pages/obralog/ObraLogLogin';
 import ObraLogDashboard from '../pages/obralog/ObraLogDashboard';
+import SetupProfile from '../pages/obralog/SetupProfile';
+import SelectCompany from '../pages/obralog/SelectCompany';
 
 const router = createBrowserRouter([
   {
@@ -23,6 +25,14 @@ const router = createBrowserRouter([
   {
     path: '/app/login',
     element: <ObraLogLogin />,
+  },
+  {
+    path: '/app/setup-profile',
+    element: <SetupProfile />,
+  },
+  {
+    path: '/app/select-company',
+    element: <SelectCompany />,
   },
   {
     path: '/app/dashboard',

@@ -127,9 +127,9 @@ app.post('/api/admin/companies', async (req, res) => {
 // Rota para criar um Usuário Admin para uma Empresa
 app.post('/api/admin/users', async (req, res) => {
   try {
-    const { companyId, email, fullName } = req.body;
+    const { companyId, email } = req.body;
     
-    if (!companyId || !email || !fullName) {
+    if (!companyId || !email) {
       return res.status(400).json({ error: "Dados incompletos para criar o usuário." });
     }
 
@@ -151,7 +151,7 @@ app.post('/api/admin/users', async (req, res) => {
       email,
       password: tempPassword,
       email_confirm: true,
-      user_metadata: { full_name: fullName }
+      user_metadata: { require_password_change: true, full_name: 'Administrador' }
     });
 
     if (authError) throw authError;

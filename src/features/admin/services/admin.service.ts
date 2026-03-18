@@ -1,5 +1,5 @@
 // Permite configurar a URL da API via .env (útil se o backend estiver no Render e o front na Vercel)
-const API_URL = import.meta.env.VITE_API_URL || 'https://api-obralog.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL || 'https://obra-log.onrender.com';
 
 export const adminService = {
   /**
@@ -29,11 +29,11 @@ export const adminService = {
   /**
    * Cria um usuário Admin e vincula à empresa
    */
-  async createCompanyAdmin(companyId: string, email: string, fullName: string) {
+  async createCompanyAdmin(companyId: string, email: string) {
     const res = await fetch(`${API_URL}/api/admin/users`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ companyId, email, fullName })
+      body: JSON.stringify({ companyId, email })
     });
     
     if (!res.ok) {

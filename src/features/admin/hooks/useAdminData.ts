@@ -7,7 +7,7 @@ export interface Company {
   created_at: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api-obralog.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL || 'https://obra-log.onrender.com';
 
 export function useAdminData() {
   const [companies, setCompanies] = useState<Company[]>([]);
