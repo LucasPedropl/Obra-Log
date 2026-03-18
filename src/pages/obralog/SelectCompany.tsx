@@ -29,8 +29,7 @@ export default function SelectCompany() {
             active
           )
         `)
-        .eq('user_id', user.id)
-        .eq('status', 'ACTIVE');
+        .eq('user_id', user.id);
 
       if (error) throw error;
 

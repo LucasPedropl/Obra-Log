@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, Building2, Loader2, LogOut, Users, Key, ChevronRight, Search, Mail } from 'lucide-react';
+import { Shield, Plus, Building2, Loader2, LogOut, Users, Key, ChevronRight, Search, Mail, AlertTriangle } from 'lucide-react';
 import { adminService } from '../../features/admin/services/admin.service';
 import { authService } from '../../features/auth/services/auth.service';
 import { useAdminData, Company } from '../../features/admin/hooks/useAdminData';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../../context/ToastContext';
 
 export default function AdminDashboard() {
   const { companies, loading: loadingData, refetchCompanies } = useAdminData();
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const { showToast } = useToast();
   
   // Form states
   const [companyName, setCompanyName] = useState('');
@@ -23,6 +25,21 @@ export default function AdminDashboard() {
   const [companyUsers, setCompanyUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [resettingUserId, setResettingUserId] = useState<string | null>(null);
+
+  // Modal states
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'danger' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'warning'
+  });
 
   const navigate = useNavigate();
 
@@ -41,6 +58,7 @@ export default function AdminDashboard() {
       setCompanyUsers(users || []);
     } catch (err) {
       console.error('Erro ao buscar usuários:', err);
+      showToast('Erro ao buscar usuários da empresa', 'error');
     } finally {
       setLoadingUsers(false);
     }
@@ -54,8 +72,10 @@ export default function AdminDashboard() {
       setCompanyName('');
       await refetchCompanies();
       setSelectedCompany(newCompany);
+      showToast('Empresa criada com sucesso!', 'success');
     } catch (err: any) {
       setCompanyError(err.message);
+      showToast(err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -70,33 +90,64 @@ export default function AdminDashboard() {
       setResult({ email: res.email, tempPass: res.tempPassword });
       setAdminEmail('');
       fetchCompanyUsers(selectedCompany.id);
+      showToast('Usuário criado com sucesso!', 'success');
     } catch (err: any) {
       setUserError(err.message);
+      showToast(err.message, 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleResetPassword = async (userId: string) => {
-    if (!confirm('Tem certeza que deseja gerar uma nova senha para este usuário? A senha atual será invalidada.')) return;
-    
-    setResettingUserId(userId);
-    setUserError('');
-    setResult(null);
-    
-    try {
-      const res = await adminService.resetUserPassword(userId);
-      setResult({ email: res.email, tempPass: res.tempPassword });
-    } catch (err: any) {
-      setUserError(err.message);
-    } finally {
-      setResettingUserId(null);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Resetar Senha',
+      message: 'Tem certeza que deseja gerar uma nova senha para este usuário? A senha atual será invalidada.',
+      type: 'warning',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setResettingUserId(userId);
+        setUserError('');
+        setResult(null);
+        
+        try {
+          const res = await adminService.resetUserPassword(userId);
+          setResult({ email: res.email, tempPass: res.tempPassword });
+          showToast('Senha resetada com sucesso!', 'success');
+        } catch (err: any) {
+          setUserError(err.message);
+          showToast(err.message, 'error');
+        } finally {
+          setResettingUserId(null);
+        }
+      }
+    });
   };
 
   const handleLogout = async () => {
     await authService.logout();
     navigate('/admin/login');
+  };
+
+  const handleDeleteDatabase = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Apagar Banco de Dados',
+      message: 'TEM CERTEZA? Esta ação apagará TODOS os dados do sistema (exceto seu usuário admin) e é irreversível.',
+      type: 'danger',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          const user = await authService.getCurrentUser();
+          await adminService.deleteDatabase(user.id);
+          showToast('Banco de dados apagado com sucesso.', 'success');
+          setTimeout(() => window.location.reload(), 2000);
+        } catch (err: any) {
+          showToast('Erro ao apagar banco de dados: ' + err.message, 'error');
+        }
+      }
+    });
   };
 
   const filteredCompanies = companies.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -184,18 +235,7 @@ export default function AdminDashboard() {
             <LogOut size={16} /> Sair do Painel
           </button>
           <button 
-            onClick={async () => {
-              if (confirm('TEM CERTEZA? Esta ação apagará TODOS os dados do sistema (exceto seu usuário admin) e é irreversível.')) {
-                try {
-                  const user = await authService.getCurrentUser();
-                  await adminService.deleteDatabase(user.id);
-                  alert('Banco de dados apagado com sucesso.');
-                  window.location.reload();
-                } catch (err: any) {
-                  alert('Erro ao apagar banco de dados: ' + err.message);
-                }
-              }
-            }}
+            onClick={handleDeleteDatabase}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-colors border border-red-200"
           >
             <Shield size={16} /> Apagar Todo o Banco
@@ -368,6 +408,49 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+
+      {/* Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className={`p-6 border-b ${confirmModal.type === 'danger' ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                  confirmModal.type === 'danger' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
+                }`}>
+                  <AlertTriangle size={20} />
+                </div>
+                <h3 className={`text-lg font-bold ${confirmModal.type === 'danger' ? 'text-red-900' : 'text-amber-900'}`}>
+                  {confirmModal.title}
+                </h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-600 leading-relaxed">
+                {confirmModal.message}
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors shadow-sm ${
+                  confirmModal.type === 'danger' 
+                    ? 'bg-red-600 hover:bg-red-700' 
+                    : 'bg-amber-600 hover:bg-amber-700'
+                }`}
+              >
+                Confirmar Ação
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

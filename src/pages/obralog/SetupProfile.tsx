@@ -36,7 +36,13 @@ export default function SetupProfile() {
         data: { full_name: fullName, require_password_change: false }
       });
 
-      if (updateAuthError) throw updateAuthError;
+      if (updateAuthError) {
+        // Se o erro for porque a senha é a mesma (ex: o usuário tentou enviar novamente após um erro de rede),
+        // podemos ignorar e prosseguir com a atualização do perfil.
+        if (!updateAuthError.message.includes('different from the old password')) {
+          throw updateAuthError;
+        }
+      }
 
       // Update public.users
       const { error: updateDbError } = await supabase
@@ -50,8 +56,7 @@ export default function SetupProfile() {
       const { data: companyUsers, error: companyError } = await supabase
         .from('company_users')
         .select('company_id')
-        .eq('user_id', user.id)
-        .eq('status', 'ACTIVE');
+        .eq('user_id', user.id);
 
       if (companyError) throw companyError;
 

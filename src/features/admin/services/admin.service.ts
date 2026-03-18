@@ -1,5 +1,5 @@
 // Permite configurar a URL da API via .env (útil se o backend estiver no Render e o front na Vercel)
-const API_URL = import.meta.env.VITE_API_URL || 'https://obra-log.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const adminService = {
   /**
