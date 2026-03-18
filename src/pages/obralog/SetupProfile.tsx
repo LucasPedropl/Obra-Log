@@ -49,7 +49,7 @@ export default function SetupProfile() {
       // Check companies to decide where to navigate
       const { data: companyUsers, error: companyError } = await supabase
         .from('company_users')
-        .select('company_id, companies(name)')
+        .select('company_id')
         .eq('user_id', user.id)
         .eq('status', 'ACTIVE');
 

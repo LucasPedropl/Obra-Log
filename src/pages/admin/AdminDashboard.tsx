@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   // Users list state
   const [companyUsers, setCompanyUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [resettingUserId, setResettingUserId] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -73,6 +74,23 @@ export default function AdminDashboard() {
       setUserError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    if (!confirm('Tem certeza que deseja gerar uma nova senha para este usuário? A senha atual será invalidada.')) return;
+    
+    setResettingUserId(userId);
+    setUserError('');
+    setResult(null);
+    
+    try {
+      const res = await adminService.resetUserPassword(userId);
+      setResult({ email: res.email, tempPass: res.tempPassword });
+    } catch (err: any) {
+      setUserError(err.message);
+    } finally {
+      setResettingUserId(null);
     }
   };
 
@@ -162,8 +180,25 @@ export default function AdminDashboard() {
         </div>
         
         <div className="p-4 border-t border-slate-200">
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors mb-2">
             <LogOut size={16} /> Sair do Painel
+          </button>
+          <button 
+            onClick={async () => {
+              if (confirm('TEM CERTEZA? Esta ação apagará TODOS os dados do sistema (exceto seu usuário admin) e é irreversível.')) {
+                try {
+                  const user = await authService.getCurrentUser();
+                  await adminService.deleteDatabase(user.id);
+                  alert('Banco de dados apagado com sucesso.');
+                  window.location.reload();
+                } catch (err: any) {
+                  alert('Erro ao apagar banco de dados: ' + err.message);
+                }
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-colors border border-red-200"
+          >
+            <Shield size={16} /> Apagar Todo o Banco
           </button>
         </div>
       </aside>
@@ -283,12 +318,20 @@ export default function AdminDashboard() {
                             </div>
                             <div className="text-xs text-slate-500 truncate">{cu.users?.email}</div>
                           </div>
-                          <div className="shrink-0">
+                          <div className="shrink-0 flex items-center gap-2">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                               cu.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'
                             }`}>
                               {cu.status}
                             </span>
+                            <button 
+                              onClick={() => handleResetPassword(cu.user_id)}
+                              disabled={resettingUserId === cu.user_id}
+                              title="Gerar nova senha temporária"
+                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              {resettingUserId === cu.user_id ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
+                            </button>
                           </div>
                         </div>
                       ))}

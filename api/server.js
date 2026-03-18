@@ -174,6 +174,66 @@ app.post('/api/admin/users', async (req, res) => {
   }
 });
 
+app.post('/api/admin/users/:userId/reset-password', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
+
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { 
+        password: tempPassword,
+        user_metadata: { require_password_change: true }
+      }
+    );
+
+    if (error) throw error;
+
+    res.json({ email: data.user.email, tempPassword });
+  } catch (err) {
+    console.error("❌ Erro ao resetar senha:", err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/delete-database', async (req, res) => {
+  try {
+    const { adminUserId } = req.body;
+    if (!adminUserId) return res.status(400).json({ error: "ID do admin é obrigatório." });
+
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    // 1. Apagar dados de todas as tabelas (exceto a tabela de usuários se necessário)
+    // Para simplificar, vamos apagar dados de tabelas conhecidas.
+    // O ideal seria ter uma lista de tabelas e iterar sobre elas.
+    const tables = ['company_users', 'companies', 'users']; // Adicione outras tabelas aqui
+    
+    for (const table of tables) {
+      if (table === 'users') {
+        await supabaseAdmin.from(table).delete().neq('id', adminUserId);
+      } else {
+        await supabaseAdmin.from(table).delete().neq('id', 'non-existent-id'); // Deleta tudo
+      }
+    }
+
+    res.status(200).json({ message: "Banco de dados limpo com sucesso." });
+  } catch (err) {
+    console.error("❌ Erro ao apagar banco de dados:", err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 API do GEPLANO rodando na porta ${PORT}`);
 });
