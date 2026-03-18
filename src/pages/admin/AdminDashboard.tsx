@@ -324,14 +324,16 @@ export default function AdminDashboard() {
                             }`}>
                               {cu.status}
                             </span>
-                            <button 
-                              onClick={() => handleResetPassword(cu.user_id)}
-                              disabled={resettingUserId === cu.user_id}
-                              title="Gerar nova senha temporária"
-                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                              {resettingUserId === cu.user_id ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
-                            </button>
+                            {cu.status === 'ACTIVE' && (
+                              <button 
+                                onClick={() => handleResetPassword(cu.user_id)}
+                                disabled={resettingUserId === cu.user_id}
+                                title="Gerar nova senha temporária"
+                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                {resettingUserId === cu.user_id ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
