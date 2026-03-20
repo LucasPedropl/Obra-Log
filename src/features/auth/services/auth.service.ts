@@ -47,6 +47,15 @@ export const authService = {
     if (error) throw error;
     if (!user) throw new Error('Usuário não autenticado');
     return user;
+  },
+
+  async getUserCompanies(userId: string) {
+    const API_URL = import.meta.env.VITE_API_URL || '';
+    const res = await fetch(`${API_URL}/api/users/${userId}/companies`);
+    if (!res.ok) {
+      throw new Error('Erro ao buscar empresas do usuário');
+    }
+    return res.json();
   }
 };
 

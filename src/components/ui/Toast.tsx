@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, CheckCircle, X, AlertTriangle } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 
 export type ToastType = 'success' | 'error' | 'warning';
 
@@ -13,7 +12,15 @@ interface ToastProps {
 export const Toast: React.FC<ToastProps> = ({ message, type, onDismiss }) => {
   const [progress, setProgress] = useState(100);
   const [isPaused, setIsPaused] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Trigger entrance animation
+    requestAnimationFrame(() => {
+      setIsVisible(true);
+    });
+  }, []);
 
   useEffect(() => {
     if (isPaused) return;
@@ -22,7 +29,8 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onDismiss }) => {
       setProgress((prev) => {
         if (prev <= 0) {
           clearInterval(timerRef.current!);
-          onDismiss();
+          setIsVisible(false);
+          setTimeout(onDismiss, 300); // Wait for exit animation
           return 0;
         }
         return prev - (100 / 50); // 5 seconds / 50 steps = 100ms per step
@@ -31,6 +39,11 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onDismiss }) => {
 
     return () => clearInterval(timerRef.current!);
   }, [isPaused, onDismiss]);
+
+  const handleDismiss = () => {
+    setIsVisible(false);
+    setTimeout(onDismiss, 300);
+  };
 
   const getStyles = () => {
     switch (type) {
@@ -72,28 +85,25 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onDismiss }) => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: 100 }}
-      className={`relative w-80 p-4 rounded-lg shadow-lg border overflow-hidden ${getStyles()}`}
+    <div
+      className={`relative w-80 p-4 rounded-lg shadow-lg border overflow-hidden transition-all duration-300 ease-in-out ${getStyles()} ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      onContextMenu={(e) => { e.preventDefault(); onDismiss(); }}
+      onContextMenu={(e) => { e.preventDefault(); handleDismiss(); }}
     >
       <div className="flex items-center gap-3">
         {getIcon()}
         <p className="text-sm font-medium flex-1">{message}</p>
-        <button onClick={onDismiss} className="hover:bg-white/10 p-1 rounded">
+        <button onClick={handleDismiss} className="hover:bg-white/10 p-1 rounded transition-colors">
           <X size={16} />
         </button>
       </div>
       <div className="absolute bottom-0 left-0 h-1 bg-white/20 w-full">
-        <motion.div
-          className={`h-full ${getProgressColor()}`}
+        <div
+          className={`h-full transition-all duration-100 ease-linear ${getProgressColor()}`}
           style={{ width: `${progress}%` }}
         />
       </div>
-    </motion.div>
+    </div>
   );
 };

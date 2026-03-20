@@ -74,23 +74,61 @@ async function startServer() {
 
       if (authError) {
         if (authError.message.includes('already been registered')) {
-          // Usuário já existe, vamos buscar o ID dele na tabela public.users
+          // Usuário já existe, vamos buscar o ID dele no Auth
+          const { data: authUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+          if (listError) throw listError;
+          
+          const existingAuthUser = authUsers.users.find(u => u.email === email);
+          if (!existingAuthUser) {
+            throw new Error("Usuário já existe no Auth mas não foi possível encontrar seu ID.");
+          }
+          
+          userId = existingAuthUser.id;
+          tempPassword = 'O usuário já possui uma senha';
+
+          // Verifica se o usuário existe na tabela public.users
           const { data: existingUser, error: searchError } = await supabaseAdmin
             .from('users')
             .select('id')
-            .eq('email', email)
-            .single();
+            .eq('id', userId)
+            .maybeSingle();
             
-          if (searchError || !existingUser) {
-             throw new Error("Usuário já existe no Auth mas não foi encontrado na tabela public.users.");
+          if (!existingUser) {
+            // Se não existe em public.users, cria agora (usando upsert para evitar conflito de chaves)
+            const { error: insertUserError } = await supabaseAdmin
+              .from('users')
+              .upsert({
+                id: userId,
+                email: email,
+                full_name: fullName || '',
+                is_super_admin: false
+              }, { onConflict: 'id' });
+              
+            if (insertUserError) {
+              throw new Error("Erro ao sincronizar usuário existente no banco de dados: " + insertUserError.message);
+            }
           }
-          userId = existingUser.id;
-          tempPassword = 'O usuário já possui uma senha';
         } else {
           throw authError;
         }
       } else {
         userId = authUser.user.id;
+        
+        // Insere na tabela public.users (usando upsert para evitar conflito com triggers)
+        const { error: insertUserError } = await supabaseAdmin
+          .from('users')
+          .upsert({
+            id: userId,
+            email: email,
+            full_name: fullName || '',
+            is_super_admin: false
+          }, { onConflict: 'id' });
+          
+        if (insertUserError) {
+          // Se falhar ao inserir em public.users, apaga do Auth para manter consistência
+          await supabaseAdmin.auth.admin.deleteUser(userId);
+          throw new Error("Erro ao sincronizar usuário no banco de dados: " + insertUserError.message);
+        }
       }
 
       // 2. Vincula usuário à empresa
@@ -152,6 +190,31 @@ async function startServer() {
       res.json(users);
     } catch (err: any) {
       console.error("❌ Erro ao buscar usuários:", err);
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Rota para buscar as empresas de um usuário (Bypassa RLS)
+  app.get("/api/users/:userId/companies", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      const { data, error } = await supabaseAdmin
+        .from('company_users')
+        .select(`
+          company_id,
+          companies (
+            id,
+            name,
+            active
+          )
+        `)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      res.json(data);
+    } catch (err: any) {
+      console.error("❌ Erro ao buscar empresas do usuário:", err);
       res.status(400).json({ error: err.message });
     }
   });

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { HardHat, Loader2 } from 'lucide-react';
 import { PasswordInput } from '../../components/ui/PasswordInput';
 import { supabase } from '../../config/supabase';
+import { authService } from '../../features/auth/services/auth.service';
 
 export default function SetupProfile() {
   const [fullName, setFullName] = useState('');
@@ -53,12 +54,7 @@ export default function SetupProfile() {
       if (updateDbError) throw updateDbError;
 
       // Check companies to decide where to navigate
-      const { data: companyUsers, error: companyError } = await supabase
-        .from('company_users')
-        .select('company_id')
-        .eq('user_id', user.id);
-
-      if (companyError) throw companyError;
+      const companyUsers = await authService.getUserCompanies(user.id);
 
       if (companyUsers && companyUsers.length > 1) {
         navigate('/app/select-company');

@@ -19,24 +19,12 @@ export default function SelectCompany() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
-      const { data, error } = await supabase
-        .from('company_users')
-        .select(`
-          company_id,
-          companies (
-            id,
-            name,
-            active
-          )
-        `)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
+      const data = await authService.getUserCompanies(user.id);
 
       // Filter out inactive companies or nulls
       const validCompanies = (data
-        ?.map(cu => cu.companies as any)
-        .filter(c => c && c.active) || []) as any[];
+        ?.map((cu: any) => cu.companies)
+        .filter((c: any) => c && c.active) || []) as any[];
 
       if (validCompanies.length === 0) {
         throw new Error('Você não está vinculado a nenhuma empresa ativa.');

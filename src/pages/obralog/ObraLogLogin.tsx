@@ -26,12 +26,7 @@ export default function ObraLogLogin() {
       }
 
       // Check companies
-      const { data: companyUsers, error: companyError } = await supabase
-        .from('company_users')
-        .select('company_id, companies(name)')
-        .eq('user_id', user.id);
-
-      if (companyError) throw companyError;
+      const companyUsers = await authService.getUserCompanies(user.id);
 
       if (companyUsers && companyUsers.length > 1) {
         navigate('/app/select-company');
