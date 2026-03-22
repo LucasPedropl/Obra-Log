@@ -22,11 +22,10 @@ import EPisDisponiveis from '../pages/obralog/project/epis/Disponiveis';
 import EPisHistorico from '../pages/obralog/project/epis/Historico';
 import EquipAlugados from '../pages/obralog/project/EquipAlugados';
 import Movimentacoes from '../pages/obralog/project/Movimentacoes';
+import MobileProjectMenu from '../pages/obralog/project/MobileProjectMenu';
 
 // Novos Menus Principais
 import Insumos from '../pages/obralog/config-dados/Insumos';
-import UnidadesMedida from '../pages/obralog/config-dados/UnidadesMedida';
-import Categorias from '../pages/obralog/config-dados/Categorias';
 import MaoDeObra from '../pages/obralog/MaoDeObra';
 import Usuarios from '../pages/obralog/acesso/Usuarios';
 import PerfisAcesso from '../pages/obralog/acesso/PerfisAcesso';
@@ -114,16 +113,12 @@ const router = createBrowserRouter([
 		element: <Movimentacoes />,
 	},
 	{
+		path: '/app/obras/:id/menu',
+		element: <MobileProjectMenu />,
+	},
+	{
 		path: '/app/config-dados/insumos',
 		element: <Insumos />,
-	},
-	{
-		path: '/app/config-dados/unidades',
-		element: <UnidadesMedida />,
-	},
-	{
-		path: '/app/config-dados/categorias',
-		element: <Categorias />,
 	},
 	{
 		path: '/app/mao-de-obra',

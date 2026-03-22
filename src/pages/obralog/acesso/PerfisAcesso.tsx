@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { ERPLayout } from '../../../components/layout/ERPLayout';
+import { supabase } from '../../../config/supabase';
+import { useToast } from '../../../context/ToastContext';
 import {
 	Plus,
 	Download,
@@ -27,7 +29,7 @@ const INITIAL_PERMISSIONS = {
 	},
 	obras: {
 		access_type: 'all', // 'all' | 'specific'
-		global_pages_access: false, // Se true, dá acesso total a todas as páginas das obras
+		global_pages_access: false, // Se true, dÃ¡ acesso total a todas as pÃ¡ginas das obras
 		pages: {
 			visao_geral: { ...DEFAULT_PERMS },
 			almoxarifado: { ...DEFAULT_PERMS },
@@ -40,6 +42,7 @@ const INITIAL_PERMISSIONS = {
 };
 
 export default function PerfisAcesso() {
+	const { showToast } = useToast();
 	const [profiles, setProfiles] = useState<any[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,7 +59,7 @@ export default function PerfisAcesso() {
 
 	const [formData, setFormData] = useState({
 		name: '',
-		is_admin: false,
+		scope: 'ALL_SITES',
 		permissions: JSON.parse(JSON.stringify(INITIAL_PERMISSIONS)), // deep copy
 	});
 
@@ -69,13 +72,14 @@ export default function PerfisAcesso() {
 	const fetchProfiles = async () => {
 		try {
 			setIsLoading(true);
-			const API_URL =
-				import.meta.env.VITE_API_URL || 'http://localhost:5005';
-			const res = await fetch(
-				`${API_URL}/api/access_profiles?company_id=${companyId}`,
-			);
-			if (res.ok) {
-				const data = await res.json();
+			const { data, error } = await supabase
+				.from('access_profiles')
+				.select('*')
+				.eq('company_id', companyId);
+
+			if (error) {
+				console.error(error);
+			} else if (data) {
 				setProfiles(data);
 			}
 		} catch (err) {
@@ -189,42 +193,37 @@ export default function PerfisAcesso() {
 		setIsSubmitting(true);
 
 		try {
-			const API_URL =
-				import.meta.env.VITE_API_URL || 'http://localhost:5005';
-
 			const payload = {
 				company_id: companyId,
 				name: formData.name,
-				is_admin: formData.is_admin,
+				scope: formData.scope,
 				permissions: formData.permissions,
 			};
 
-			const res = await fetch(`${API_URL}/api/access_profiles`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload),
-			});
+			const { error } = await supabase
+				.from('access_profiles')
+				.insert(payload);
 
-			if (!res.ok) {
-				const err = await res.json();
-				throw new Error(err.error || 'Erro ao criar perfil');
+			if (error) {
+				throw new Error(error.message);
 			}
 
 			setIsModalOpen(false);
 			setFormData({
 				name: '',
-				is_admin: false,
+				scope: 'ALL_SITES',
 				permissions: JSON.parse(JSON.stringify(INITIAL_PERMISSIONS)),
 			});
+			showToast('Perfil de acesso criado com sucesso', 'success');
 			fetchProfiles();
 		} catch (err: any) {
-			alert(err.message);
+			showToast(err.message, 'error');
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
 
-	// Helper para renderizar os checkboxes padrão (view, create, edit, delete, import_export)
+	// Helper para renderizar os checkboxes padrÃ£o (view, create, edit, delete, import_export)
 	const renderPermCheckboxes = (
 		checkedState: any,
 		onChange: (action: string, val: boolean) => void,
@@ -264,14 +263,14 @@ export default function PerfisAcesso() {
 							Perfis de Acesso
 						</h1>
 						<p className="text-text-muted mt-1">
-							Gerencie níveis de acesso e permissões avançadas.
+							Gerencie nÃ­veis de acesso e permissÃµes avanÃ§adas.
 						</p>
 					</div>
 					<button
 						onClick={() => {
 							setFormData({
 								name: '',
-								is_admin: false,
+								scope: 'ALL_SITES',
 								permissions: JSON.parse(
 									JSON.stringify(INITIAL_PERMISSIONS),
 								),
@@ -324,10 +323,10 @@ export default function PerfisAcesso() {
 										</td>
 										<td className="px-6 py-4">
 											<span
-												className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${p.is_admin ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}
+												className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${p.scope === 'ALL_SITES' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}
 											>
-												{p.is_admin
-													? 'Acesso Total (Admin)'
+												{p.scope === 'ALL_SITES'
+													? 'Acesso Global'
 													: 'Restrito / Personalizado'}
 											</span>
 										</td>
@@ -349,8 +348,8 @@ export default function PerfisAcesso() {
 									Mapeamento de Acessos
 								</h2>
 								<p className="text-sm text-text-muted mt-0.5">
-									Defina as regras exatas de acesso por módulo
-									e páginas.
+									Defina as regras exatas de acesso por
+									mÃ³dulo e pÃ¡ginas.
 								</p>
 							</div>
 							<button
@@ -387,324 +386,314 @@ export default function PerfisAcesso() {
 										<input
 											type="checkbox"
 											className="w-5 h-5 rounded border-border text-primary focus:ring-primary/50 cursor-pointer"
-											checked={formData.is_admin}
+											checked={
+												formData.scope === 'ALL_SITES'
+											}
 											onChange={(e) =>
 												setFormData((pr) => ({
 													...pr,
-													is_admin: e.target.checked,
+													scope: e.target.checked
+														? 'ALL_SITES'
+														: 'SPECIFIC_SITES',
 												}))
 											}
 										/>
 										<div>
 											<span className="block font-bold text-text-main text-base">
-												Habilitar Acesso Total (Super
-												Usuário)
+												Habilitar Acesso Global (Todas
+												as Obras)
 											</span>
 											<span className="block text-sm text-text-muted mt-0.5">
-												Ignora as regras abaixo e
-												concede acesso absoluto a todo o
-												ERP.
+												Concede acesso total de escopo a
+												todas as obras da empresa.
 											</span>
 										</div>
 									</label>
 								</div>
 
-								{!formData.is_admin && (
-									<div className="space-y-4">
-										<h3 className="font-semibold text-text-main border-b border-border pb-2">
-											Matriz de Permissões
-										</h3>
-										<div className="bg-background border border-border rounded-xl divide-y divide-border text-sm">
-											{/* DASHBOARD */}
-											<div className="p-4 sm:flex items-center justify-between hover:bg-surface transition-colors">
-												<div className="font-medium text-text-main mb-2 sm:mb-0 w-48 font-semibold">
-													Dashboard
-												</div>
-												<div className="flex flex-wrap gap-4 sm:gap-6 bg-surface p-2 px-3 rounded-lg border border-border">
-													{renderPermCheckboxes(
-														formData.permissions
-															.dashboard,
-														(act, val) =>
-															handleSimplePermission(
-																'dashboard',
-																act,
-																val,
-															),
-														false, // no import export generally on dashboard
-													)}
-												</div>
+								<div className="space-y-4">
+									<h3 className="font-semibold text-text-main border-b border-border pb-2">
+										Matriz de PermissÃµes
+									</h3>
+									<div className="bg-background border border-border rounded-xl divide-y divide-border text-sm">
+										{/* DASHBOARD */}
+										<div className="p-4 sm:flex items-center justify-between hover:bg-surface transition-colors">
+											<div className="font-medium text-text-main mb-2 sm:mb-0 w-48 font-semibold">
+												Dashboard
 											</div>
-
-											{/* MÃO DE OBRA */}
-											<div className="p-4 sm:flex items-center justify-between hover:bg-surface transition-colors">
-												<div className="font-medium text-text-main mb-2 sm:mb-0 w-48 font-semibold">
-													Mão de Obra
-												</div>
-												<div className="flex flex-wrap gap-4 sm:gap-6 bg-surface p-2 px-3 rounded-lg border border-border">
-													{renderPermCheckboxes(
-														formData.permissions
-															.mao_de_obra,
-														(act, val) =>
-															handleSimplePermission(
-																'mao_de_obra',
-																act,
-																val,
-															),
-													)}
-												</div>
+											<div className="flex flex-wrap gap-4 sm:gap-6 bg-surface p-2 px-3 rounded-lg border border-border">
+												{renderPermCheckboxes(
+													formData.permissions
+														.dashboard,
+													(act, val) =>
+														handleSimplePermission(
+															'dashboard',
+															act,
+															val,
+														),
+													false, // no import export generally on dashboard
+												)}
 											</div>
+										</div>
 
-											{/* CADASTROS BÁSICOS (Configurações de Dados) */}
-											<div className="flex flex-col">
-												<div className="p-4 flex items-center justify-between hover:bg-surface transition-colors">
-													<div
-														className="flex items-center gap-2 font-semibold text-text-main cursor-pointer"
-														onClick={() =>
-															toggleExpand(
-																'config_dados',
+										{/* MÃƒO DE OBRA */}
+										<div className="p-4 sm:flex items-center justify-between hover:bg-surface transition-colors">
+											<div className="font-medium text-text-main mb-2 sm:mb-0 w-48 font-semibold">
+												MÃ£o de Obra
+											</div>
+											<div className="flex flex-wrap gap-4 sm:gap-6 bg-surface p-2 px-3 rounded-lg border border-border">
+												{renderPermCheckboxes(
+													formData.permissions
+														.mao_de_obra,
+													(act, val) =>
+														handleSimplePermission(
+															'mao_de_obra',
+															act,
+															val,
+														),
+												)}
+											</div>
+										</div>
+
+										{/* CADASTROS BÃSICOS (ConfiguraÃ§Ãµes de Dados) */}
+										<div className="flex flex-col">
+											<div className="p-4 flex items-center justify-between hover:bg-surface transition-colors">
+												<div
+													className="flex items-center gap-2 font-semibold text-text-main cursor-pointer"
+													onClick={() =>
+														toggleExpand(
+															'config_dados',
+														)
+													}
+												>
+													<button className="p-1 hover:bg-border rounded text-text-muted">
+														{expandedModules.config_dados ? (
+															<ChevronDown
+																size={16}
+															/>
+														) : (
+															<ChevronRight
+																size={16}
+															/>
+														)}
+													</button>
+													Cadastros BÃ¡sicos
+												</div>
+												<label className="flex items-center gap-2 text-xs font-medium text-primary cursor-pointer bg-primary/5 px-2 py-1 rounded border border-primary/20">
+													<input
+														type="checkbox"
+														className="w-3.5 h-3.5 rounded border-border text-primary cursor-pointer"
+														checked={
+															formData.permissions
+																.config_dados
+																.full_access
+														}
+														onChange={(e) =>
+															handleConfigDadosPermission(
+																null,
+																'full_access',
+																e.target
+																	.checked,
 															)
 														}
-													>
-														<button className="p-1 hover:bg-border rounded text-text-muted">
-															{expandedModules.config_dados ? (
-																<ChevronDown
-																	size={16}
-																/>
-															) : (
-																<ChevronRight
-																	size={16}
-																/>
-															)}
-														</button>
-														Cadastros Básicos
-													</div>
-													<label className="flex items-center gap-2 text-xs font-medium text-primary cursor-pointer bg-primary/5 px-2 py-1 rounded border border-primary/20">
+													/>
+													Acesso Total ao MÃ³dulo
+												</label>
+											</div>
+											{expandedModules.config_dados && (
+												<div className="pb-4 px-4 pl-12 space-y-3 bg-surface/30">
+													{[
+														{
+															id: 'insumos',
+															label: 'Insumos',
+														},
+														{
+															id: 'unidades',
+															label: 'Unid. de Medidas',
+														},
+														{
+															id: 'categorias',
+															label: 'Categorias',
+														},
+													].map((page) => (
+														<div
+															key={page.id}
+															className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-2 last:border-0 last:pb-0"
+														>
+															<span className="text-text-muted">
+																{page.label}
+															</span>
+															<div className="flex flex-wrap gap-3">
+																{renderPermCheckboxes(
+																	(
+																		formData
+																			.permissions
+																			.config_dados as any
+																	)[page.id],
+																	(
+																		act,
+																		val,
+																	) =>
+																		handleConfigDadosPermission(
+																			page.id,
+																			act,
+																			val,
+																		),
+																)}
+															</div>
+														</div>
+													))}
+												</div>
+											)}
+										</div>
+
+										{/* OBRAS */}
+										<div className="flex flex-col">
+											<div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-surface transition-colors gap-3">
+												<div
+													className="flex items-center gap-2 font-semibold text-text-main cursor-pointer"
+													onClick={() =>
+														toggleExpand('obras')
+													}
+												>
+													<button className="p-1 hover:bg-border rounded text-text-muted">
+														{expandedModules.obras ? (
+															<ChevronDown
+																size={16}
+															/>
+														) : (
+															<ChevronRight
+																size={16}
+															/>
+														)}
+													</button>
+													Obras (GestÃ£o Completa)
+												</div>
+
+												{/* Global configs para Obras */}
+												<div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 bg-surface p-2 px-4 rounded-lg border border-border">
+													<label className="flex items-center gap-2 text-xs font-medium text-text-main">
+														<span>
+															Visualizar Obras:
+														</span>
+														<select
+															className="bg-background border border-border rounded px-2 py-1 focus:ring-1 focus:ring-primary/50 text-xs"
+															value={
+																formData
+																	.permissions
+																	.obras
+																	.access_type
+															}
+															onChange={(e) =>
+																handleObrasPermission(
+																	'access_type',
+																	e.target
+																		.value,
+																)
+															}
+														>
+															<option value="all">
+																Todas as Obras
+																cadastradas
+															</option>
+															<option value="specific">
+																Apenas obras
+																vinculadas ao
+																usuÃ¡rio
+															</option>
+														</select>
+													</label>
+													<div className="h-4 w-px bg-border hidden sm:block"></div>
+													<label className="flex items-center gap-2 text-xs font-medium text-primary cursor-pointer">
 														<input
 															type="checkbox"
 															className="w-3.5 h-3.5 rounded border-border text-primary cursor-pointer"
 															checked={
 																formData
 																	.permissions
-																	.config_dados
-																	.full_access
+																	.obras
+																	.global_pages_access
 															}
 															onChange={(e) =>
-																handleConfigDadosPermission(
-																	null,
-																	'full_access',
+																handleObrasPermission(
+																	'global_pages_access',
 																	e.target
 																		.checked,
 																)
 															}
 														/>
-														Acesso Total ao Módulo
+														Acesso Total a PÃ¡ginas
+														Internas
 													</label>
 												</div>
-												{expandedModules.config_dados && (
-													<div className="pb-4 px-4 pl-12 space-y-3 bg-surface/30">
-														{[
-															{
-																id: 'insumos',
-																label: 'Insumos',
-															},
-															{
-																id: 'unidades',
-																label: 'Unid. de Medidas',
-															},
-															{
-																id: 'categorias',
-																label: 'Categorias',
-															},
-														].map((page) => (
-															<div
-																key={page.id}
-																className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-2 last:border-0 last:pb-0"
-															>
-																<span className="text-text-muted">
-																	{page.label}
-																</span>
-																<div className="flex flex-wrap gap-3">
-																	{renderPermCheckboxes(
-																		(
-																			formData
-																				.permissions
-																				.config_dados as any
-																		)[
-																			page
-																				.id
-																		],
-																		(
-																			act,
-																			val,
-																		) =>
-																			handleConfigDadosPermission(
-																				page.id,
-																				act,
-																				val,
-																			),
-																	)}
-																</div>
-															</div>
-														))}
-													</div>
-												)}
 											</div>
 
-											{/* OBRAS */}
-											<div className="flex flex-col">
-												<div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-surface transition-colors gap-3">
-													<div
-														className="flex items-center gap-2 font-semibold text-text-main cursor-pointer"
-														onClick={() =>
-															toggleExpand(
-																'obras',
-															)
-														}
-													>
-														<button className="p-1 hover:bg-border rounded text-text-muted">
-															{expandedModules.obras ? (
-																<ChevronDown
-																	size={16}
-																/>
-															) : (
-																<ChevronRight
-																	size={16}
-																/>
-															)}
-														</button>
-														Obras (Gestão Completa)
-													</div>
-
-													{/* Global configs para Obras */}
-													<div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 bg-surface p-2 px-4 rounded-lg border border-border">
-														<label className="flex items-center gap-2 text-xs font-medium text-text-main">
-															<span>
-																Visualizar
-																Obras:
+											{expandedModules.obras && (
+												<div className="pb-4 px-4 pl-12 space-y-3 bg-surface/30">
+													<p className="text-xs text-text-muted mb-2 font-medium uppercase tracking-widest">
+														PÃ¡ginas Internas das
+														Obras
+													</p>
+													{[
+														{
+															id: 'visao_geral',
+															label: 'VisÃ£o Geral',
+														},
+														{
+															id: 'almoxarifado',
+															label: 'Almoxarifado',
+														},
+														{
+															id: 'ferramentas',
+															label: 'Ferramentas',
+														},
+														{
+															id: 'epis',
+															label: 'EPIs',
+														},
+														{
+															id: 'equip_alugados',
+															label: 'Equip. Alugados',
+														},
+														{
+															id: 'movimentacoes',
+															label: 'MovimentaÃ§Ãµes',
+														},
+													].map((page) => (
+														<div
+															key={page.id}
+															className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-2 last:border-0 last:pb-0"
+														>
+															<span className="text-text-muted">
+																{page.label}
 															</span>
-															<select
-																className="bg-background border border-border rounded px-2 py-1 focus:ring-1 focus:ring-primary/50 text-xs"
-																value={
-																	formData
-																		.permissions
-																		.obras
-																		.access_type
-																}
-																onChange={(e) =>
-																	handleObrasPermission(
-																		'access_type',
-																		e.target
-																			.value,
-																	)
-																}
-															>
-																<option value="all">
-																	Todas as
-																	Obras
-																	cadastradas
-																</option>
-																<option value="specific">
-																	Apenas obras
-																	vinculadas
-																	ao usuário
-																</option>
-															</select>
-														</label>
-														<div className="h-4 w-px bg-border hidden sm:block"></div>
-														<label className="flex items-center gap-2 text-xs font-medium text-primary cursor-pointer">
-															<input
-																type="checkbox"
-																className="w-3.5 h-3.5 rounded border-border text-primary cursor-pointer"
-																checked={
-																	formData
-																		.permissions
-																		.obras
-																		.global_pages_access
-																}
-																onChange={(e) =>
-																	handleObrasPermission(
-																		'global_pages_access',
-																		e.target
-																			.checked,
-																	)
-																}
-															/>
-															Acesso Total a
-															Páginas Internas
-														</label>
-													</div>
-												</div>
-
-												{expandedModules.obras && (
-													<div className="pb-4 px-4 pl-12 space-y-3 bg-surface/30">
-														<p className="text-xs text-text-muted mb-2 font-medium uppercase tracking-widest">
-															Páginas Internas das
-															Obras
-														</p>
-														{[
-															{
-																id: 'visao_geral',
-																label: 'Visão Geral',
-															},
-															{
-																id: 'almoxarifado',
-																label: 'Almoxarifado',
-															},
-															{
-																id: 'ferramentas',
-																label: 'Ferramentas',
-															},
-															{
-																id: 'epis',
-																label: 'EPIs',
-															},
-															{
-																id: 'equip_alugados',
-																label: 'Equip. Alugados',
-															},
-															{
-																id: 'movimentacoes',
-																label: 'Movimentações',
-															},
-														].map((page) => (
-															<div
-																key={page.id}
-																className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-2 last:border-0 last:pb-0"
-															>
-																<span className="text-text-muted">
-																	{page.label}
-																</span>
-																<div className="flex flex-wrap gap-3">
-																	{renderPermCheckboxes(
-																		(
-																			formData
-																				.permissions
-																				.obras
-																				.pages as any
-																		)[
-																			page
-																				.id
-																		],
-																		(
-																			act,
+															<div className="flex flex-wrap gap-3">
+																{renderPermCheckboxes(
+																	(
+																		formData
+																			.permissions
+																			.obras
+																			.pages as any
+																	)[page.id],
+																	(
+																		act,
+																		val,
+																	) =>
+																		handleObrasPermission(
+																			'page_perm',
 																			val,
-																		) =>
-																			handleObrasPermission(
-																				'page_perm',
-																				val,
-																				page.id,
-																				act,
-																			),
-																	)}
-																</div>
+																			page.id,
+																			act,
+																		),
+																)}
 															</div>
-														))}
-													</div>
-												)}
-											</div>
+														</div>
+													))}
+												</div>
+											)}
 										</div>
 									</div>
-								)}
+								</div>
 							</div>
 						</div>
 

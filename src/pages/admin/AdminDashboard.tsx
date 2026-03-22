@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
 	Shield,
 	Plus,
@@ -8,6 +8,7 @@ import {
 	Users,
 	Key,
 	ChevronRight,
+	Trash2,
 	Search,
 	Mail,
 	AlertTriangle,
@@ -38,7 +39,7 @@ export default function AdminDashboard() {
 					return;
 				}
 
-				// Verifica se é super admin
+				// Verifica se Ã© super admin
 				if (session?.user) {
 					const { data: userData } = await supabase
 						.from('users')
@@ -56,7 +57,7 @@ export default function AdminDashboard() {
 							displayName:
 								userData?.full_name ||
 								session.user.email?.split('@')[0] ||
-								'Usuário',
+								'UsuÃ¡rio',
 							role: 'Super Admin',
 						});
 					}
@@ -129,7 +130,7 @@ export default function AdminDashboard() {
 		}
 	}, [selectedCompany]);
 
-	// ... (funções de fetch e handlers continuam abaixo)
+	// ... (funÃ§Ãµes de fetch e handlers continuam abaixo)
 	// Como isVerifying pode demorar alguns ms, mostramos loader
 	if (isVerifying) {
 		return (
@@ -145,8 +146,8 @@ export default function AdminDashboard() {
 			const users = await adminService.getCompanyUsers(companyId);
 			setCompanyUsers(users || []);
 		} catch (err) {
-			console.error('Erro ao buscar usuários:', err);
-			showToast('Erro ao buscar usuários da empresa', 'error');
+			console.error('Erro ao buscar usuÃ¡rios:', err);
+			showToast('Erro ao buscar usuÃ¡rios da empresa', 'error');
 		} finally {
 			setLoadingUsers(false);
 		}
@@ -184,7 +185,7 @@ export default function AdminDashboard() {
 			setResult({ email: res.email, tempPass: res.tempPassword });
 			setAdminEmail('');
 			fetchCompanyUsers(selectedCompany.id);
-			showToast('Usuário criado com sucesso!', 'success');
+			showToast('UsuÃ¡rio criado com sucesso!', 'success');
 		} catch (err: any) {
 			setUserError(err.message);
 			showToast(err.message, 'error');
@@ -198,7 +199,7 @@ export default function AdminDashboard() {
 			isOpen: true,
 			title: 'Resetar Senha',
 			message:
-				'Tem certeza que deseja gerar uma nova senha para este usuário? A senha atual será invalidada.',
+				'Tem certeza que deseja gerar uma nova senha para este usuÃ¡rio? A senha atual serÃ¡ invalidada.',
 			type: 'warning',
 			onConfirm: async () => {
 				setConfirmModal((prev) => ({ ...prev, isOpen: false }));
@@ -225,12 +226,35 @@ export default function AdminDashboard() {
 		navigate('/admin/login');
 	};
 
+	const handleDeleteCompany = (companyId: string, companyName: string) => {
+		setConfirmModal({
+			isOpen: true,
+			title: 'Deletar Empresa',
+			message: `TEM CERTEZA? Esta ação apagará TODOS os dados da empresa "${companyName}" de forma irreversível.`,
+			type: 'danger',
+			onConfirm: async () => {
+				setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+				try {
+					await adminService.deleteCompany(companyId);
+					showToast('Empresa apagada com sucesso.', 'success');
+					setSelectedCompany(null);
+					await refetchCompanies();
+				} catch (err: any) {
+					showToast(
+						'Erro ao apagar empresa: ' + err.message,
+						'error',
+					);
+				}
+			},
+		});
+	};
+
 	const handleDeleteDatabase = () => {
 		setConfirmModal({
 			isOpen: true,
 			title: 'Apagar Banco de Dados',
 			message:
-				'TEM CERTEZA? Esta ação apagará TODOS os dados do sistema (exceto seu usuário admin) e é irreversível.',
+				'TEM CERTEZA? Esta aÃ§Ã£o apagarÃ¡ TODOS os dados do sistema (exceto seu usuÃ¡rio admin) e Ã© irreversÃ­vel.',
 			type: 'danger',
 			onConfirm: async () => {
 				setConfirmModal((prev) => ({ ...prev, isOpen: false }));
@@ -267,7 +291,7 @@ export default function AdminDashboard() {
 								Super-Admin
 							</h1>
 							<p className="text-xs text-slate-500 font-medium">
-								Gestão de Tenants
+								GestÃ£o de Tenants
 							</p>
 						</div>
 					</div>
@@ -434,21 +458,35 @@ export default function AdminDashboard() {
 				<div className="flex-1 overflow-y-auto">
 					{selectedCompany ? (
 						<div className="max-w-4xl mx-auto p-8 md:p-12">
-							<div className="mb-10">
-								<div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold tracking-wide uppercase mb-4">
-									Tenant Selecionado
+							<div className="mb-10 flex items-start justify-between">
+								<div>
+									<div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold tracking-wide uppercase mb-4">
+										Tenant Selecionado
+									</div>
+									<h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">
+										{selectedCompany.name}
+									</h2>
+									<p className="text-slate-500 mt-2 text-lg">
+										Gerencie os acessos administrativos e
+										configurações desta empresa.
+									</p>
 								</div>
-								<h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">
-									{selectedCompany.name}
-								</h2>
-								<p className="text-slate-500 mt-2 text-lg">
-									Gerencie os acessos administrativos e
-									configurações desta empresa.
-								</p>
+								<button
+									onClick={() =>
+										handleDeleteCompany(
+											selectedCompany.id,
+											selectedCompany.name,
+										)
+									}
+									className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-lg text-sm font-medium transition-colors border border-red-100 shadow-sm"
+								>
+									<Trash2 size={16} />
+									Deletar Empresa
+								</button>
 							</div>
 
 							<div className="grid md:grid-cols-2 gap-8">
-								{/* Form de Criação de Admin */}
+								{/* Form de CriaÃ§Ã£o de Admin */}
 								<div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 flex flex-col">
 									<div className="flex items-center gap-3 mb-6">
 										<div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
@@ -495,7 +533,7 @@ export default function AdminDashboard() {
 													</div>
 													<div className="flex flex-col">
 														<span className="text-xs text-slate-400 uppercase tracking-wider">
-															Senha Temporária
+															Senha TemporÃ¡ria
 														</span>
 														<span className="font-medium text-slate-800">
 															{result.tempPass}
@@ -541,11 +579,11 @@ export default function AdminDashboard() {
 													/>
 												</div>
 												<p className="text-xs text-slate-500 mt-3 leading-relaxed">
-													O usuário receberá uma senha
-													temporária e será solicitado
-													a definir seu nome e uma
-													nova senha no primeiro
-													acesso.
+													O usuÃ¡rio receberÃ¡ uma
+													senha temporÃ¡ria e serÃ¡
+													solicitado a definir seu
+													nome e uma nova senha no
+													primeiro acesso.
 												</p>
 											</div>
 
@@ -564,7 +602,7 @@ export default function AdminDashboard() {
 									)}
 								</div>
 
-								{/* Lista de Usuários */}
+								{/* Lista de UsuÃ¡rios */}
 								<div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
 									<div className="p-6 border-b border-slate-200 flex items-center gap-3 bg-slate-50/50">
 										<div className="w-10 h-10 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center">
@@ -572,7 +610,7 @@ export default function AdminDashboard() {
 										</div>
 										<div>
 											<h3 className="text-lg font-bold text-slate-900">
-												Usuários Ativos
+												UsuÃ¡rios Ativos
 											</h3>
 											<p className="text-xs text-slate-500">
 												Administradores da empresa
@@ -594,7 +632,7 @@ export default function AdminDashboard() {
 													/>
 												</div>
 												<p className="text-slate-500 font-medium">
-													Nenhum usuário cadastrado
+													Nenhum usuÃ¡rio cadastrado
 												</p>
 												<p className="text-sm text-slate-400 mt-1">
 													Gere o primeiro acesso ao
@@ -657,7 +695,7 @@ export default function AdminDashboard() {
 																			resettingUserId ===
 																			cu.id
 																		}
-																		title="Gerar nova senha temporária"
+																		title="Gerar nova senha temporÃ¡ria"
 																		className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50"
 																	>
 																		{resettingUserId ===
@@ -719,7 +757,7 @@ export default function AdminDashboard() {
 							<p className="text-slate-500 max-w-md">
 								Selecione uma empresa no menu lateral para
 								gerenciar seus acessos ou crie uma nova empresa
-								para começar.
+								para comeÃ§ar.
 							</p>
 						</div>
 					)}
@@ -775,7 +813,7 @@ export default function AdminDashboard() {
 										: 'bg-amber-600 hover:bg-amber-700'
 								}`}
 							>
-								Confirmar Ação
+								Confirmar AÃ§Ã£o
 							</button>
 						</div>
 					</div>

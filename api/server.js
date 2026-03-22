@@ -1,11 +1,11 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 
-// Vamos forÃ§ar de forma HARDCODED a porta para nÃ£o usar process.env.PORT localmente,
+// Vamos forÃƒÂ§ar de forma HARDCODED a porta para nÃƒÂ£o usar process.env.PORT localmente,
 // pois o Render vai injetar isso pelo ambiente, mas localmente pode estar bugando
 const PORT = 5005;
 
@@ -13,20 +13,22 @@ const PORT = 5005;
 app.use(cors()); // Permite que o frontend (Vercel) acesse esta API
 app.use(express.json());
 
-// Rota de Healthcheck (útil para o Render saber se a API está online)
+// Rota de Healthcheck (Ãºtil para o Render saber se a API estÃ¡ online)
 app.get('/health', (req, res) => {
 	res.json({ status: 'ok', message: 'GEPLANO API is running' });
 });
 
 // ============================================================================
-// ROTAS DE APLICAÇÃO (OBRAS, ETC) - BYPASS DE RLS
+// ROTAS DE APLICAÃ‡ÃƒO (OBRAS, ETC) - BYPASS DE RLS
 // ============================================================================
 
 app.get('/api/construction_sites', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id) {
-			return res.status(400).json({ error: 'company_id é obrigatório.' });
+			return res
+				.status(400)
+				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -48,13 +50,32 @@ app.get('/api/construction_sites', async (req, res) => {
 	}
 });
 
+app.get('/api/construction_sites/:id', async (req, res) => {
+	try {
+		const { id } = req.params;
+		const supabaseAdmin = createClient(
+			process.env.SUPABASE_URL,
+			process.env.SUPABASE_SERVICE_ROLE_KEY,
+			{ auth: { autoRefreshToken: false, persistSession: false } },
+		);
+		const { data, error } = await supabaseAdmin
+			.from('construction_sites')
+			.select('*')
+			.eq('id', id)
+			.single();
+		if (error) throw error;
+		res.status(200).json(data);
+	} catch (err) {
+		res.status(400).json({ error: err.message });
+	}
+});
 app.post('/api/construction_sites', async (req, res) => {
 	try {
 		const { name, company_id, status } = req.body;
 		if (!name || !company_id) {
 			return res
 				.status(400)
-				.json({ error: 'Nome e company_id são obrigatórios.' });
+				.json({ error: 'Nome e company_id sÃ£o obrigatÃ³rios.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -77,7 +98,7 @@ app.post('/api/construction_sites', async (req, res) => {
 });
 
 // ============================================================================
-// ROTAS DE ADMINISTRAÇÃO (SUPER-ADMIN)
+// ROTAS DE ADMINISTRAÃ‡ÃƒO (SUPER-ADMIN)
 // ============================================================================
 
 // Rota para listar todas as Empresas (Tenant)
@@ -88,7 +109,7 @@ app.get('/api/admin/companies', async (req, res) => {
 			process.env.SUPABASE_URL.includes('seu-projeto')
 		) {
 			return res.status(400).json({
-				error: 'A variável SUPABASE_URL no Render está inválida ou usando o valor padrão.',
+				error: 'A variÃ¡vel SUPABASE_URL no Render estÃ¡ invÃ¡lida ou usando o valor padrÃ£o.',
 			});
 		}
 
@@ -106,7 +127,7 @@ app.get('/api/admin/companies', async (req, res) => {
 		if (error) throw error;
 		res.status(200).json(data);
 	} catch (err) {
-		console.error('❌ Erro ao listar empresas:', err);
+		console.error('âŒ Erro ao listar empresas:', err);
 		res.status(400).json({
 			error:
 				err.message || 'Erro desconhecido ao conectar com o Supabase',
@@ -114,7 +135,7 @@ app.get('/api/admin/companies', async (req, res) => {
 	}
 });
 
-// Rota para listar usuários de uma Empresa
+// Rota para listar usuÃ¡rios de uma Empresa
 app.get('/api/admin/companies/:id/users', async (req, res) => {
 	try {
 		const { id } = req.params;
@@ -123,7 +144,7 @@ app.get('/api/admin/companies/:id/users', async (req, res) => {
 			process.env.SUPABASE_URL.includes('seu-projeto')
 		) {
 			return res.status(400).json({
-				error: 'A variável SUPABASE_URL no Render está inválida ou usando o valor padrão.',
+				error: 'A variÃ¡vel SUPABASE_URL no Render estÃ¡ invÃ¡lida ou usando o valor padrÃ£o.',
 			});
 		}
 
@@ -150,7 +171,7 @@ app.get('/api/admin/companies/:id/users', async (req, res) => {
 
 		if (error) throw error;
 
-		// Buscar usuários no auth.admin para pegar metadados
+		// Buscar usuÃ¡rios no auth.admin para pegar metadados
 		const { data: authData, error: authError } =
 			await supabaseAdmin.auth.admin.listUsers();
 		if (authError) throw authError;
@@ -171,7 +192,7 @@ app.get('/api/admin/companies/:id/users', async (req, res) => {
 
 		res.status(200).json(users);
 	} catch (err) {
-		console.error('❌ Erro ao listar usuários:', err);
+		console.error('âŒ Erro ao listar usuÃ¡rios:', err);
 		res.status(400).json({
 			error:
 				err.message || 'Erro desconhecido ao conectar com o Supabase',
@@ -186,14 +207,14 @@ app.post('/api/admin/companies', async (req, res) => {
 		if (!name)
 			return res
 				.status(400)
-				.json({ error: 'O nome da empresa é obrigatório.' });
+				.json({ error: 'O nome da empresa Ã© obrigatÃ³rio.' });
 
 		if (
 			!process.env.SUPABASE_URL ||
 			process.env.SUPABASE_URL.includes('seu-projeto')
 		) {
 			return res.status(400).json({
-				error: 'A variável SUPABASE_URL no Render está inválida ou usando o valor padrão.',
+				error: 'A variÃ¡vel SUPABASE_URL no Render estÃ¡ invÃ¡lida ou usando o valor padrÃ£o.',
 			});
 		}
 
@@ -211,12 +232,12 @@ app.post('/api/admin/companies', async (req, res) => {
 			.single();
 
 		if (error) {
-			console.error('❌ Erro do Supabase:', error);
+			console.error('âŒ Erro do Supabase:', error);
 			throw error;
 		}
 		res.status(201).json(data);
 	} catch (err) {
-		console.error('❌ Erro ao criar empresa:', err);
+		console.error('âŒ Erro ao criar empresa:', err);
 		res.status(400).json({
 			error:
 				err.message || 'Erro desconhecido ao conectar com o Supabase',
@@ -224,7 +245,7 @@ app.post('/api/admin/companies', async (req, res) => {
 	}
 });
 
-// Rota para criar um Usuário Admin para uma Empresa
+// Rota para criar um UsuÃ¡rio Admin para uma Empresa
 app.post('/api/admin/users', async (req, res) => {
 	try {
 		const { companyId, email } = req.body;
@@ -232,7 +253,7 @@ app.post('/api/admin/users', async (req, res) => {
 		if (!companyId || !email) {
 			return res
 				.status(400)
-				.json({ error: 'Dados incompletos para criar o usuário.' });
+				.json({ error: 'Dados incompletos para criar o usuÃ¡rio.' });
 		}
 
 		if (
@@ -240,7 +261,7 @@ app.post('/api/admin/users', async (req, res) => {
 			process.env.SUPABASE_URL.includes('seu-projeto')
 		) {
 			return res.status(400).json({
-				error: 'A variável SUPABASE_URL no Render está inválida ou usando o valor padrão.',
+				error: 'A variÃ¡vel SUPABASE_URL no Render estÃ¡ invÃ¡lida ou usando o valor padrÃ£o.',
 			});
 		}
 
@@ -250,10 +271,10 @@ app.post('/api/admin/users', async (req, res) => {
 			{ auth: { autoRefreshToken: false, persistSession: false } },
 		);
 
-		// Gera senha temporária segura
+		// Gera senha temporÃ¡ria segura
 		const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
 
-		// 1. Cria usuário no Auth
+		// 1. Cria usuÃ¡rio no Auth
 		const { data: authUser, error: authError } =
 			await supabaseAdmin.auth.admin.createUser({
 				email,
@@ -268,7 +289,7 @@ app.post('/api/admin/users', async (req, res) => {
 
 		if (authError) throw authError;
 
-		// 2. Vincula usuário à empresa
+		// 2. Vincula usuÃ¡rio Ã  empresa
 		const { error: linkError } = await supabaseAdmin
 			.from('company_users')
 			.insert({
@@ -281,12 +302,12 @@ app.post('/api/admin/users', async (req, res) => {
 
 		res.status(201).json({ email, tempPassword, userId: authUser.user.id });
 	} catch (err) {
-		console.error('❌ Erro ao criar usuário:', err);
+		console.error('âŒ Erro ao criar usuÃ¡rio:', err);
 		res.status(400).json({ error: err.message });
 	}
 });
 
-// Rota para resetar senha de um usuário
+// Rota para resetar senha de um usuÃ¡rio
 app.post('/api/admin/users/:userId/reset-password', async (req, res) => {
 	try {
 		const { userId } = req.params;
@@ -314,12 +335,12 @@ app.post('/api/admin/users/:userId/reset-password', async (req, res) => {
 
 		res.json({ email: data.user.email, tempPassword });
 	} catch (err) {
-		console.error('❌ Erro ao resetar senha:', err);
+		console.error('âŒ Erro ao resetar senha:', err);
 		res.status(400).json({ error: err.message });
 	}
 });
 
-// Rota para buscar as empresas de um usuário (Bypassa RLS)
+// Rota para buscar as empresas de um usuÃ¡rio (Bypassa RLS)
 app.get('/api/users/:userId/companies', async (req, res) => {
 	try {
 		const { userId } = req.params;
@@ -329,7 +350,7 @@ app.get('/api/users/:userId/companies', async (req, res) => {
 			process.env.SUPABASE_URL.includes('seu-projeto')
 		) {
 			return res.status(400).json({
-				error: 'A variável SUPABASE_URL no Render está inválida ou usando o valor padrão.',
+				error: 'A variÃ¡vel SUPABASE_URL no Render estÃ¡ invÃ¡lida ou usando o valor padrÃ£o.',
 			});
 		}
 
@@ -356,18 +377,25 @@ app.get('/api/users/:userId/companies', async (req, res) => {
 		if (error) throw error;
 		res.json(data);
 	} catch (err) {
-		console.error('❌ Erro ao buscar empresas do usuário:', err);
+		console.error('âŒ Erro ao buscar empresas do usuÃ¡rio:', err);
 		res.status(400).json({ error: err.message });
 	}
 });
 
-app.post('/api/admin/delete-database', async (req, res) => {
+app.delete('/api/admin/companies/:id', async (req, res) => {
 	try {
-		const { adminUserId } = req.body;
-		if (!adminUserId)
+		const { id } = req.params;
+
+		if (
+			!process.env.SUPABASE_URL ||
+			process.env.SUPABASE_URL.includes('seu-projeto')
+		) {
 			return res
 				.status(400)
-				.json({ error: 'ID do admin é obrigatório.' });
+				.json({
+					error: 'A variável SUPABASE_URL no Render está inválida ou usando o valor padrão.',
+				});
+		}
 
 		const supabaseAdmin = createClient(
 			process.env.SUPABASE_URL,
@@ -375,7 +403,7 @@ app.post('/api/admin/delete-database', async (req, res) => {
 			{ auth: { autoRefreshToken: false, persistSession: false } },
 		);
 
-		// 1. Apagar dados de todas as tabelas na ordem correta para evitar erros de chave estrangeira
+		// Lista de tabelas em ordem inversa das dependências
 		const tablesToDelete = [
 			'tool_loans',
 			'site_movements',
@@ -388,23 +416,121 @@ app.post('/api/admin/delete-database', async (req, res) => {
 			'categories',
 			'collaborators',
 			'company_users',
-			'access_profiles',
+			// access_profiles não é vinculada diretamente à empresa, não excluímos seus dados gerais
 			'companies',
+		];
+
+		for (const table of tablesToDelete) {
+			if (table === 'company_users') {
+				// Buscar os usuários vinculados à empresa antes de removê-los
+				const { data: usersToRem } = await supabaseAdmin
+					.from('company_users')
+					.select('user_id')
+					.eq('company_id', id);
+
+				// Deletar a relação do user com a empresa
+				await supabaseAdmin.from(table).delete().eq('company_id', id);
+
+				// Só deletamos o usuário da base de auth se ele não pertencer a mais nenhuma empresa
+				if (usersToRem && usersToRem.length > 0) {
+					for (const u of usersToRem) {
+						// Verifica se ainda tem esse user noutra tenant
+						const { count } = await supabaseAdmin
+							.from('company_users')
+							.select('*', { count: 'exact', head: true })
+							.eq('user_id', u.user_id);
+						if (count === 0) {
+							// Remove da tabela public.users
+							await supabaseAdmin
+								.from('users')
+								.delete()
+								.eq('id', u.user_id);
+							// Remove de auth.users
+							await supabaseAdmin.auth.admin.deleteUser(
+								u.user_id,
+							);
+						}
+					}
+				}
+			} else if (table === 'companies') {
+				// Por fim, deleta a empresa
+				const { error } = await supabaseAdmin
+					.from(table)
+					.delete()
+					.eq('id', id);
+				if (error) throw error;
+			} else {
+				// Deleta os registros vinculados a esta empresa
+				await supabaseAdmin.from(table).delete().eq('company_id', id);
+			}
+		}
+
+		res.status(200).json({ message: 'Empresa deletada com sucesso.' });
+	} catch (err) {
+		console.error('⛔ Erro ao apagar empresa:', err);
+		res.status(400).json({ error: err.message });
+	}
+});
+
+app.post('/api/admin/delete-database', async (req, res) => {
+	try {
+		const { adminUserId } = req.body;
+		if (!adminUserId)
+			return res
+				.status(400)
+				.json({ error: 'ID do admin Ã© obrigatÃ³rio.' });
+
+		const supabaseAdmin = createClient(
+			process.env.SUPABASE_URL,
+			process.env.SUPABASE_SERVICE_ROLE_KEY,
+			{ auth: { autoRefreshToken: false, persistSession: false } },
+		);
+
+		// 1. Apagar dados de todas as tabelas na ordem correta para evitar erros de chave estrangeira
+		const tablesToDelete = [
+			// dependÃªncias mais profundas primeiro
+			'tool_loans',
+			'site_movements',
+			'site_inventory',
+			'epi_withdrawals',
+			'rented_equipments',
+
+			// tabelas filhas diretas da empresa
+			'construction_sites',
+			'catalogs',
+			'measurement_units',
+			'categories',
+
+			// relacionadas a usuÃ¡rios/perfis
+			'collaborators',
+			'company_users',
+			'access_profiles',
+
+			// tabela mÃ£e
+			'companies',
+
+			// tabela base de acesso
 			'users',
 		];
 
 		for (const table of tablesToDelete) {
 			if (table === 'users') {
 				await supabaseAdmin.from(table).delete().neq('id', adminUserId);
+			} else if (table === 'access_profiles') {
+				// nÃ£o podemos deletar o 'Super-Admin' que Ã© o prÃ³prio perfil
+				await supabaseAdmin
+					.from(table)
+					.delete()
+					.neq('id', 'non-existent-id');
 			} else {
 				await supabaseAdmin
 					.from(table)
 					.delete()
-					.neq('id', 'non-existent-id'); // Deleta tudo
+					.neq('id', '00000000-0000-0000-0000-000000000000'); // Deleta tudo
 			}
 		}
 
-		// Apagar usuários no auth.users (exceto o admin)
+		// Apagar usuÃ¡rios no auth.users (exceto o admin)
 		const { data: users, error: usersError } =
 			await supabaseAdmin.auth.admin.listUsers();
 		if (usersError) throw usersError;
@@ -417,20 +543,22 @@ app.post('/api/admin/delete-database', async (req, res) => {
 
 		res.status(200).json({ message: 'Banco de dados limpo com sucesso.' });
 	} catch (err) {
-		console.error('❌ Erro ao apagar banco de dados:', err);
+		console.error('âŒ Erro ao apagar banco de dados:', err);
 		res.status(400).json({ error: err.message });
 	}
 });
 
 // ============================================================================
-// ROTAS DE CONFIGURAÇÕES (Categorias, Unidades, Catálogo)
+// ROTAS DE CONFIGURAÃ‡Ã•ES (Categorias, Unidades, CatÃ¡logo)
 // ============================================================================
 
 app.get('/api/categories', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id) {
-			return res.status(400).json({ error: 'company_id é obrigatório.' });
+			return res
+				.status(400)
+				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -458,7 +586,7 @@ app.post('/api/categories', async (req, res) => {
 		if (!company_id || !entry_type || !primary_category) {
 			return res
 				.status(400)
-				.json({ error: 'Campos obrigatórios faltando.' });
+				.json({ error: 'Campos obrigatÃ³rios faltando.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -489,7 +617,9 @@ app.get('/api/measurement_units', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id) {
-			return res.status(400).json({ error: 'company_id é obrigatório.' });
+			return res
+				.status(400)
+				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -516,7 +646,7 @@ app.post('/api/measurement_units', async (req, res) => {
 		if (!company_id || !name || !abbreviation) {
 			return res
 				.status(400)
-				.json({ error: 'Campos obrigatórios faltando.' });
+				.json({ error: 'Campos obrigatÃ³rios faltando.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -542,7 +672,9 @@ app.get('/api/catalogs', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id) {
-			return res.status(400).json({ error: 'company_id é obrigatório.' });
+			return res
+				.status(400)
+				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -584,7 +716,7 @@ app.post('/api/catalogs', async (req, res) => {
 		if (!company_id || !name) {
 			return res
 				.status(400)
-				.json({ error: 'Campos obrigatórios faltando.' });
+				.json({ error: 'Campos obrigatÃ³rios faltando.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -622,7 +754,9 @@ app.get('/api/tenant/users', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id) {
-			return res.status(400).json({ error: 'company_id é obrigatório.' });
+			return res
+				.status(400)
+				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -677,7 +811,7 @@ app.post('/api/tenant/users', async (req, res) => {
 		if (!company_id || !email || !full_name) {
 			return res
 				.status(400)
-				.json({ error: 'Campos obrigatórios faltando.' });
+				.json({ error: 'Campos obrigatÃ³rios faltando.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -703,7 +837,7 @@ app.post('/api/tenant/users', async (req, res) => {
 			return res.status(400).json({ error: authError.message });
 		}
 
-		// Garante que existe no public.users (caso a trigger não faça ou atrase)
+		// Garante que existe no public.users (caso a trigger nÃ£o faÃ§a ou atrase)
 		await supabaseAdmin.from('users').upsert({
 			id: authUser.user.id,
 			email,
@@ -739,7 +873,9 @@ app.get('/api/access_profiles', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id)
-			return res.status(400).json({ error: 'company_id é obrigatório.' });
+			return res
+				.status(400)
+				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
 
 		const supabaseAdmin = createClient(
 			process.env.SUPABASE_URL,
@@ -766,7 +902,9 @@ app.get('/api/collaborators', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id)
-			return res.status(400).json({ error: 'company_id é obrigatório.' });
+			return res
+				.status(400)
+				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
 
 		const supabaseAdmin = createClient(
 			process.env.SUPABASE_URL,
@@ -809,7 +947,7 @@ app.post('/api/collaborators', async (req, res) => {
 		if (!company_id || !name) {
 			return res
 				.status(400)
-				.json({ error: 'Campos obrigatórios faltando.' });
+				.json({ error: 'Campos obrigatÃ³rios faltando.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -818,10 +956,10 @@ app.post('/api/collaborators', async (req, res) => {
 			{ auth: { autoRefreshToken: false, persistSession: false } },
 		);
 
-		// O banco de dados possivelmente não possui todas essas colunas por padrão
+		// O banco de dados possivelmente nÃ£o possui todas essas colunas por padrÃ£o
 		// O ideal seria que elas existissem. Como workaround passamos tudo que a tabela aceitar
-		// ou adicionamos tudo em um JSONB se não existirem as colunas.
-		// Vamos tentar inserir tudo esperando que o banco foi ou será atualizado.
+		// ou adicionamos tudo em um JSONB se nÃ£o existirem as colunas.
+		// Vamos tentar inserir tudo esperando que o banco foi ou serÃ¡ atualizado.
 		const { data, error } = await supabaseAdmin
 			.from('collaborators')
 			.insert({
@@ -848,7 +986,7 @@ app.post('/api/collaborators', async (req, res) => {
 			.single();
 
 		if (error) {
-			// Se der erro por colunas extras, vamos fazer o fallback pra inserir só o básico + um campo doc
+			// Se der erro por colunas extras, vamos fazer o fallback pra inserir sÃ³ o bÃ¡sico + um campo doc
 			if (error.code === 'PGRST204') {
 				// Column not found
 				const { data: fbData, error: fbError } = await fallbackInsert(
@@ -867,7 +1005,7 @@ app.post('/api/collaborators', async (req, res) => {
 });
 
 async function fallbackInsert(supabaseAdmin, body) {
-	// Fallback para quando o banco está desatualizado com as novas colunas
+	// Fallback para quando o banco estÃ¡ desatualizado com as novas colunas
 	return await supabaseAdmin
 		.from('collaborators')
 		.insert({
@@ -883,6 +1021,6 @@ async function fallbackInsert(supabaseAdmin, body) {
 
 app.listen(PORT, () => {
 	console.log(
-		`\x1b[32mâ GEPLANO API is running at:\x1b[0m \x1b[36mhttp://localhost:${PORT}\x1b[0m`,
+		`\x1b[32mÃ¢ÂœÂ“ GEPLANO API is running at:\x1b[0m \x1b[36mhttp://localhost:${PORT}\x1b[0m`,
 	);
 });

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark' | 'ocean' | 'monochrome';
+type Theme = 'light' | 'dark' | 'bw' | 'supabase' | 'green';
 
 interface ThemeContextType {
 	theme: Theme;
@@ -23,18 +23,23 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 		root.classList.remove(
 			'light',
 			'dark',
-			'theme-ocean',
-			'theme-monochrome',
+			'theme-bw',
+			'theme-supabase',
+			'theme-green',
 		);
 
 		// Add the new theme class
-		if (theme === 'light') {
-			root.classList.add('light'); // if needed, although tailwind default is light
-		} else if (theme === 'dark') {
+		if (theme === 'dark') {
 			root.classList.add('dark');
+		} else if (theme === 'bw') {
+			root.classList.add('theme-bw');
+		} else if (theme === 'supabase') {
+			root.classList.add('dark'); // base for dark theme
+			root.classList.add('theme-supabase');
+		} else if (theme === 'green') {
+			root.classList.add('theme-green');
 		} else {
-			root.classList.add('dark'); // base for custom themes
-			root.classList.add(`theme-${theme}`);
+			root.classList.add('light'); // if needed
 		}
 
 		localStorage.setItem('obralog-theme', theme);

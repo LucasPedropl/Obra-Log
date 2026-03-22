@@ -9,40 +9,129 @@ import {
 	History,
 	X,
 	Package,
-	ChevronDown,
 } from 'lucide-react';
 import { supabase } from '../../../config/supabase';
+import { SearchableSelect } from '../../../components/ui/SearchableSelect';
+import { useToast } from '../../../context/ToastContext';
 
 export default function Almoxarifado() {
 	const { id } = useParams();
+	const { showToast } = useToast();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [showAddModal, setShowAddModal] = useState(false);
 
 	const [catalogs, setCatalogs] = useState<any[]>([]);
+	const [inventory, setInventory] = useState<any[]>([]);
+	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	// Modal states
+	const [selectedCatalogId, setSelectedCatalogId] = useState('');
+	const [initialQuantity, setInitialQuantity] = useState<number>(0);
+	const [minThreshold, setMinThreshold] = useState<number>(0);
 
 	const companyId = localStorage.getItem('selectedCompanyId');
+
+	const fetchInventory = async () => {
+		if (!id) return;
+		try {
+			const { data, error } = await supabase
+				.from('site_inventory')
+				.select(
+					`
+					id, 
+					quantity, 
+					min_threshold,
+					catalogs (id, name, code, measurement_units(abbreviation))
+				`,
+				)
+				.eq('site_id', id);
+
+			if (error) throw error;
+			setInventory(data || []);
+		} catch (error) {
+			console.error('Error fetching inventory:', error);
+		}
+	};
+
+	useEffect(() => {
+		fetchInventory();
+	}, [id]);
 
 	useEffect(() => {
 		async function fetchCatalogs() {
 			if (!showAddModal || !companyId) return;
 			try {
-				const { data, error } = await supabase
+				// Don't show catalogs that are already in inventory
+				const existingCatalogIds = inventory
+					.map((item) => item.catalogs?.id)
+					.filter(Boolean);
+
+				let query = supabase
 					.from('catalogs')
 					.select('id, name, code')
 					.eq('company_id', companyId)
 					.eq('is_tool', false);
 
+				const { data, error } = await query;
+
 				if (error) throw error;
-				setCatalogs(data || []);
+
+				// Filter out already added items manually if not possible directly in query easily
+				const filteredData = (data || []).filter(
+					(cat) => !existingCatalogIds.includes(cat.id),
+				);
+
+				setCatalogs(filteredData);
 			} catch (error) {
 				console.error('Error fetching catalogs:', error);
 			}
 		}
-		fetchCatalogs();
-	}, [showAddModal, companyId]);
+		if (showAddModal) {
+			fetchCatalogs();
+		}
+	}, [showAddModal, companyId, inventory]);
 
-	// Removido mock data - tabela inicia zerada
-	const mockEstoque: any[] = [];
+	const handleAddInsumo = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!selectedCatalogId) {
+			showToast('Selecione um insumo', 'error');
+			return;
+		}
+
+		setIsSubmitting(true);
+		try {
+			const { error } = await supabase.from('site_inventory').insert({
+				site_id: id,
+				catalog_id: selectedCatalogId,
+				quantity: initialQuantity || 0,
+				min_threshold: minThreshold || 0,
+			});
+
+			if (error) throw error;
+
+			showToast('Insumo adicionado ao estoque!', 'success');
+			setShowAddModal(false);
+
+			// Reset form
+			setSelectedCatalogId('');
+			setInitialQuantity(0);
+			setMinThreshold(0);
+
+			fetchInventory();
+		} catch (err: any) {
+			console.error(err);
+			showToast('Erro ao adicionar insumo', 'error');
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	const filteredInventory = inventory.filter((item) => {
+		const searchLower = searchTerm.toLowerCase();
+		const name = item.catalogs?.name?.toLowerCase() || '';
+		const code = item.catalogs?.code?.toLowerCase() || '';
+		return name.includes(searchLower) || code.includes(searchLower);
+	});
 
 	return (
 		<ERPLayout>
@@ -107,7 +196,7 @@ export default function Almoxarifado() {
 								</tr>
 							</thead>
 							<tbody>
-								{mockEstoque.length === 0 ? (
+								{filteredInventory.length === 0 ? (
 									<tr>
 										<td
 											colSpan={4}
@@ -126,23 +215,28 @@ export default function Almoxarifado() {
 										</td>
 									</tr>
 								) : (
-									mockEstoque.map((item) => (
+									filteredInventory.map((item) => (
 										<tr
 											key={item.id}
 											className="border-b border-border hover:bg-background/50 transition-colors group"
 										>
 											<td className="py-3 px-4">
 												<div className="font-medium text-text-main">
-													{item.insumo}
+													{item.catalogs?.code
+														? `[${item.catalogs.code}] `
+														: ''}
+													{item.catalogs?.name}
 												</div>
 											</td>
 											<td className="py-3 px-4 text-text-muted">
-												{item.origem}
+												Global
 											</td>
 											<td className="py-3 px-4 text-center">
 												<span className="inline-flex items-center justify-center bg-primary/10 text-primary font-bold px-3 py-1 rounded-full text-sm">
-													{item.qtdObra}{' '}
-													{item.unidade}
+													{item.quantity}{' '}
+													{item.catalogs
+														?.measurement_units
+														?.abbreviation || ''}
 												</span>
 											</td>
 											<td className="py-3 px-4 text-right">
@@ -202,36 +296,23 @@ export default function Almoxarifado() {
 
 						<form
 							className="p-5 space-y-5"
-							onSubmit={(e) => e.preventDefault()}
+							onSubmit={handleAddInsumo}
 						>
 							<div>
 								<label className="block text-sm font-medium text-text-main mb-1">
 									Selecione o Insumo *
 								</label>
-								<div className="relative">
-									<select
-										className="w-full pl-3 pr-10 py-2.5 bg-background border border-border text-text-main rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all appearance-none"
-										required
-									>
-										<option value="">
-											Selecione um insumo...
-										</option>
-										{catalogs.map((cat) => (
-											<option key={cat.id} value={cat.id}>
-												{cat.code
-													? `[${cat.code}] `
-													: ''}
-												{cat.name}
-											</option>
-										))}
-									</select>
-									<div className="absolute right-3 top-3 pointer-events-none">
-										<ChevronDown
-											size={18}
-											className="text-text-muted"
-										/>
-									</div>
-								</div>
+								<SearchableSelect
+									options={catalogs.map((cat) => ({
+										value: cat.id,
+										label: cat.code
+											? `[${cat.code}] ${cat.name}`
+											: cat.name,
+									}))}
+									value={selectedCatalogId}
+									onChange={setSelectedCatalogId}
+									placeholder="Selecione um insumo..."
+								/>
 							</div>
 
 							<div>
@@ -240,7 +321,14 @@ export default function Almoxarifado() {
 								</label>
 								<input
 									type="number"
-									defaultValue="0"
+									value={initialQuantity}
+									onChange={(e) =>
+										setInitialQuantity(
+											Number(e.target.value),
+										)
+									}
+									min="0"
+									step="0.01"
 									className="w-full px-4 py-2.5 bg-background border border-border text-text-main rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
 								/>
 							</div>
@@ -263,7 +351,14 @@ export default function Almoxarifado() {
 									</label>
 									<input
 										type="number"
-										defaultValue="0"
+										value={minThreshold}
+										onChange={(e) =>
+											setMinThreshold(
+												Number(e.target.value),
+											)
+										}
+										min="0"
+										step="0.01"
 										className="w-full px-4 py-2.5 bg-background border border-border text-text-main rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
 									/>
 								</div>
@@ -279,9 +374,12 @@ export default function Almoxarifado() {
 								</button>
 								<button
 									type="submit"
-									className="bg-primary hover:bg-primary-hover text-white font-medium py-2 px-6 rounded-lg transition-colors shadow-sm"
+									disabled={isSubmitting}
+									className="bg-primary hover:bg-primary-hover text-white font-medium py-2 px-6 rounded-lg transition-colors shadow-sm disabled:opacity-50"
 								>
-									Adicionar ao Estoque
+									{isSubmitting
+										? 'Adicionando...'
+										: 'Adicionar ao Estoque'}
 								</button>
 							</div>
 						</form>

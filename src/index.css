@@ -6,52 +6,86 @@
 	--color-border: var(--border);
 	--color-primary: var(--primary);
 	--color-primary-hover: var(--primary-hover);
+	--color-primary-foreground: var(--primary-foreground);
 	--color-text-main: var(--text-main);
 	--color-text-muted: var(--text-muted);
 }
 
 @layer base {
 	:root {
-		/* Light Theme (Default) */
-		--background: var(--color-slate-50);
-		--surface: var(--color-white);
-		--border: var(--color-slate-200);
-		--primary: var(--color-emerald-600);
-		--primary-hover: var(--color-emerald-700);
-		--text-main: var(--color-slate-900);
-		--text-muted: var(--color-slate-500);
+		/* Light Theme (Moderno/Cal.com - Padrão) */
+		--background: #f9fafb; /* Cinza bem clarinho / off-white */
+		--surface: #ffffff; /* Painéis e cards branco puro */
+		--border: #e5e7eb; /* Bordas sutis */
+		--primary: #18181b; /* Preto/escuro fosco para os botões e destaques primários */
+		--primary-hover: #27272a;
+		--primary-foreground: #ffffff;
+		--text-main: #09090b; /* Texto principal bem escuro (alto contraste) */
+		--text-muted: #71717a; /* Texto secundário cinza suave */
 	}
 
 	.dark {
-		/* Dark Theme (Cosmic/Default Dark) */
-		--background: var(--color-slate-950);
-		--surface: var(--color-slate-900);
-		--border: var(--color-slate-800);
-		--primary: var(--color-emerald-500);
-		--primary-hover: var(--color-emerald-400);
-		--text-main: var(--color-white);
+		/* Dark Theme: Fundo mais escuro, componentes mais claros (dentro do esquema dark, o inverso do comum para manter cards escuros e fundo mais escuro ainda, mas o usuário pediu componentes mais escuros que o fundo). 
+		   Vamos seguir estritamente a regra do usuário: Componentes mais ESCUROS que o fundo. */
+		--background: var(--color-slate-800);
+		--surface: var(--color-slate-950);
+		--border: var(--color-slate-700);
+		--primary: #006b54;
+		--primary-hover: #008f70;
+		--primary-foreground: #ffffff;
+		--text-main: var(--color-slate-50);
 		--text-muted: var(--color-slate-400);
 	}
 
-	.theme-ocean {
-		--background: #0f172a;
-		--surface: #1e293b;
-		--border: #334155;
-		--primary: #0ea5e9; /* sky-500 */
-		--primary-hover: #38bdf8; /* sky-400 */
-		--text-main: #f8fafc;
-		--text-muted: #94a3b8;
+	.theme-green {
+		/* Fresh Green Theme */
+		--background: #f1f5f9;
+		--surface: #ffffff;
+		--border: #e2e8f0;
+		--primary: #13836c;
+		--primary-hover: #0e6b57;
+		--primary-foreground: #ffffff;
+		--text-main: #0f172a;
+		--text-muted: #64748b;
 	}
 
-	.theme-monochrome {
-		--background: #000000;
-		--surface: #111111;
+	.theme-bw {
+		/* Black and White: Fundo branco, componentes pretos conforme regra do usuário */
+		--background: #ffffff;
+		--surface: #000000;
 		--border: #333333;
-		--primary: #ffffff;
-		--primary-hover: #cccccc;
-		--text-main: #ffffff;
-		--text-muted: #888888;
+		--primary: #000000;
+		--primary-hover: #333333;
+		--primary-foreground: #ffffff;
+		--text-main: #000000;
+		--text-muted: #666666;
+
+		/* No tema BW, se a surface é preta, o texto dentro dela precisa ser branco. 
+		   Como o Tailwind usa variáveis, componentes que usam text-main dentro de surface 
+		   podem precisar de ajustes, mas aqui definimos as cores base. */
 	}
+
+	.theme-supabase {
+		/* Supabase Style: Deep dark background with slightly lighter surfaces */
+		--background: #171717; /* Slate-950 approx */
+		--surface: #1c1c1c; /* Lighter grey surface */
+		--border: #2e2e2e;
+		--primary: #3ecf8e; /* Supabase Green */
+		--primary-hover: #32b57a;
+		--primary-foreground: #171717;
+		--text-main: #ededed;
+		--text-muted: #a0a0a0;
+	}
+
+	/* Ajuste de cursor pointer global para botões */
+	button,
+	[role='button'],
+	input[type='button'],
+	input[type='submit'],
+	input[type='reset'] {
+		cursor: pointer;
+	}
+
 	/* Safe area padding para o Mobile footer quando instalado como PWA no celular */
 	.safe-area-bottom {
 		padding-bottom: env(safe-area-inset-bottom);

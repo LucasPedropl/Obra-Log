@@ -111,6 +111,24 @@ CREATE TABLE public.rented_equipments (
   CONSTRAINT rented_equipments_pkey PRIMARY KEY (id),
   CONSTRAINT rented_equipments_site_id_fkey FOREIGN KEY (site_id) REFERENCES public.construction_sites(id)
 );
+CREATE TABLE public.site_collaborators (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  site_id uuid NOT NULL,
+  collaborator_id uuid NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT site_collaborators_pkey PRIMARY KEY (id),
+  CONSTRAINT site_collaborators_site_id_fkey FOREIGN KEY (site_id) REFERENCES public.construction_sites(id),
+  CONSTRAINT site_collaborators_collaborator_id_fkey FOREIGN KEY (collaborator_id) REFERENCES public.collaborators(id)
+);
+CREATE TABLE public.site_epis (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  site_id uuid NOT NULL,
+  inventory_id uuid NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT site_epis_pkey PRIMARY KEY (id),
+  CONSTRAINT site_epis_site_id_fkey FOREIGN KEY (site_id) REFERENCES public.construction_sites(id),
+  CONSTRAINT site_epis_inventory_id_fkey FOREIGN KEY (inventory_id) REFERENCES public.site_inventory(id)
+);
 CREATE TABLE public.site_inventory (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   site_id uuid NOT NULL,
@@ -134,6 +152,15 @@ CREATE TABLE public.site_movements (
   CONSTRAINT site_movements_site_id_fkey FOREIGN KEY (site_id) REFERENCES public.construction_sites(id),
   CONSTRAINT site_movements_inventory_id_fkey FOREIGN KEY (inventory_id) REFERENCES public.site_inventory(id),
   CONSTRAINT site_movements_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.site_tools (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  site_id uuid NOT NULL,
+  inventory_id uuid NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT site_tools_pkey PRIMARY KEY (id),
+  CONSTRAINT site_tools_site_id_fkey FOREIGN KEY (site_id) REFERENCES public.construction_sites(id),
+  CONSTRAINT site_tools_inventory_id_fkey FOREIGN KEY (inventory_id) REFERENCES public.site_inventory(id)
 );
 CREATE TABLE public.tool_loans (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

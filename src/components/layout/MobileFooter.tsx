@@ -47,7 +47,11 @@ export const MobileFooter: React.FC = () => {
 			label: 'EPIs',
 			icon: HardHat,
 		},
-		{ path: '/app/menu', label: 'Menu', icon: Menu },
+		{
+			path: `/app/obras/${currentProject}/menu`,
+			label: 'Menu',
+			icon: Menu,
+		},
 	];
 
 	const navItems = isProjectRoute ? projectNavItems : globalNavItems;
