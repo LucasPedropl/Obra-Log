@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ERPLayout } from '../../../components/layout/ERPLayout';
 import { useParams } from 'react-router-dom';
 import {
@@ -9,12 +9,37 @@ import {
 	History,
 	X,
 	Package,
+	ChevronDown,
 } from 'lucide-react';
+import { supabase } from '../../../config/supabase';
 
 export default function Almoxarifado() {
 	const { id } = useParams();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [showAddModal, setShowAddModal] = useState(false);
+
+	const [catalogs, setCatalogs] = useState<any[]>([]);
+
+	const companyId = localStorage.getItem('selectedCompanyId');
+
+	useEffect(() => {
+		async function fetchCatalogs() {
+			if (!showAddModal || !companyId) return;
+			try {
+				const { data, error } = await supabase
+					.from('catalogs')
+					.select('id, name, code')
+					.eq('company_id', companyId)
+					.eq('is_tool', false);
+
+				if (error) throw error;
+				setCatalogs(data || []);
+			} catch (error) {
+				console.error('Error fetching catalogs:', error);
+			}
+		}
+		fetchCatalogs();
+	}, [showAddModal, companyId]);
 
 	// Removido mock data - tabela inicia zerada
 	const mockEstoque: any[] = [];
@@ -184,15 +209,28 @@ export default function Almoxarifado() {
 									Selecione o Insumo *
 								</label>
 								<div className="relative">
-									<input
-										type="text"
-										className="w-full pl-3 pr-10 py-2.5 bg-background border border-border text-text-main rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-text-muted"
-										placeholder="Digite para buscar insumo..."
-									/>
-									<Search
-										size={18}
-										className="absolute right-3 top-3 text-text-muted pointer-events-none"
-									/>
+									<select
+										className="w-full pl-3 pr-10 py-2.5 bg-background border border-border text-text-main rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all appearance-none"
+										required
+									>
+										<option value="">
+											Selecione um insumo...
+										</option>
+										{catalogs.map((cat) => (
+											<option key={cat.id} value={cat.id}>
+												{cat.code
+													? `[${cat.code}] `
+													: ''}
+												{cat.name}
+											</option>
+										))}
+									</select>
+									<div className="absolute right-3 top-3 pointer-events-none">
+										<ChevronDown
+											size={18}
+											className="text-text-muted"
+										/>
+									</div>
 								</div>
 							</div>
 

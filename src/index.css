@@ -52,6 +52,10 @@
 		--text-main: #ffffff;
 		--text-muted: #888888;
 	}
+	/* Safe area padding para o Mobile footer quando instalado como PWA no celular */
+	.safe-area-bottom {
+		padding-bottom: env(safe-area-inset-bottom);
+	}
 }
 
 body {

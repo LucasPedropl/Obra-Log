@@ -203,7 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
 	return (
 		<aside
-			className={`bg-surface border-r border-border h-full transition-all duration-300 flex flex-col relative z-20 ${isOpen ? 'w-64' : 'w-20'}`}
+			className={`bg-surface border-r border-border h-full transition-all duration-300 flex flex-col relative z-20 hidden md:flex ${isOpen ? 'w-64' : 'w-20'}`}
 		>
 			<div className="h-16 flex items-center justify-center border-b border-border select-none shrink-0 p-4">
 				{isOpen ? (

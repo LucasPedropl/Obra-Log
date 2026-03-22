@@ -1,4 +1,8 @@
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import {
+	createBrowserRouter,
+	RouterProvider,
+	Navigate,
+} from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import AdminLogin from '../pages/admin/AdminLogin';
 import AdminDashboard from '../pages/admin/AdminDashboard';
@@ -26,6 +30,9 @@ import Categorias from '../pages/obralog/config-dados/Categorias';
 import MaoDeObra from '../pages/obralog/MaoDeObra';
 import Usuarios from '../pages/obralog/acesso/Usuarios';
 import PerfisAcesso from '../pages/obralog/acesso/PerfisAcesso';
+import NotFoundERP from '../pages/obralog/NotFoundERP';
+import NotFoundAdmin from '../pages/admin/NotFoundAdmin';
+import MobileMenu from '../pages/obralog/MobileMenu';
 
 const router = createBrowserRouter([
 	{
@@ -40,6 +47,10 @@ const router = createBrowserRouter([
 	{
 		path: '/admin/dashboard',
 		element: <AdminDashboard />,
+	},
+	{
+		path: '/admin/*',
+		element: <NotFoundAdmin />,
 	},
 	// ROTAS ERP (ObraLog)
 	{
@@ -129,6 +140,18 @@ const router = createBrowserRouter([
 	{
 		path: '/app/configuracoes',
 		element: <Configuracoes />,
+	},
+	{
+		path: '/app/menu',
+		element: <MobileMenu />,
+	},
+	{
+		path: '/app/*',
+		element: <NotFoundERP />,
+	},
+	{
+		path: '*',
+		element: <NotFoundERP />,
 	},
 ]);
 

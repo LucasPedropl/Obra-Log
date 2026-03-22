@@ -29,6 +29,10 @@ export const Header: React.FC = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const [projectName, setProjectName] = useState<string | null>(null);
+	const [userProfile, setUserProfile] = useState<{
+		displayName: string;
+		role: string;
+	} | null>(null);
 
 	const isProjectRoute =
 		location.pathname.includes('/app/obras/') &&
@@ -40,17 +44,14 @@ export const Header: React.FC = () => {
 	const fetchProjectsList = async () => {
 		if (!companyId) return;
 		try {
-			const res = await fetch(
-				`${env.VITE_API_URL}/api/construction_sites?company_id=${companyId}`,
-				{
-					headers: {
-						Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-					},
-				},
-			);
-			if (res.ok) {
-				const listData = await res.json();
-				setProjects(listData);
+			const { data, error } = await supabase
+				.from('construction_sites')
+				.select('id, name')
+				.eq('company_id', companyId);
+
+			if (error) throw error;
+			if (data) {
+				setProjects(data);
 			}
 		} catch (error) {
 			console.error('Error fetching projects list:', error);
@@ -61,20 +62,17 @@ export const Header: React.FC = () => {
 		async function fetchCurrentProject() {
 			if (projectId && isProjectRoute) {
 				try {
-					const projRes = await fetch(
-						`${env.VITE_API_URL}/api/construction_sites/${projectId}`,
-						{
-							headers: {
-								Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-							},
-						},
-					);
+					const { data, error } = await supabase
+						.from('construction_sites')
+						.select('name')
+						.eq('id', projectId)
+						.maybeSingle();
 
-					if (projRes.ok) {
-						const data = await projRes.json();
+					if (error) throw error;
+
+					if (data) {
 						setProjectName(data.name);
 					} else {
-						// Fallback quietly if project not found
 						setProjectName(null);
 					}
 				} catch (error) {
@@ -100,6 +98,33 @@ export const Header: React.FC = () => {
 			}
 		}
 		document.addEventListener('mousedown', handleClickOutside);
+
+		async function fetchUserProfile() {
+			try {
+				const {
+					data: { user },
+				} = await supabase.auth.getUser();
+				if (!user) return;
+
+				// Buscando no banco para ver o nome e o perfil do usuário
+				const { data } = await supabase
+					.from('users')
+					.select('full_name, is_super_admin')
+					.eq('id', user.id)
+					.maybeSingle();
+
+				let displayName =
+					data?.full_name || user.email?.split('@')[0] || 'Usuário';
+				let role = data?.is_super_admin ? 'Super Admin' : 'Admin'; // Todo: Adjust based on your role rules later
+
+				setUserProfile({ displayName, role });
+			} catch (error) {
+				console.error('Error fetching user profile:', error);
+			}
+		}
+
+		fetchUserProfile();
+
 		return () =>
 			document.removeEventListener('mousedown', handleClickOutside);
 	}, []);
@@ -151,9 +176,9 @@ export const Header: React.FC = () => {
 
 	return (
 		<>
-			<header className="h-16 bg-surface border-b border-border flex items-center justify-between px-6 z-40 relative">
-				<div className="flex items-center gap-4">
-					{companyId && (
+			<header className="h-16 bg-surface border-b border-border flex items-center justify-between px-4 md:px-6 z-40 relative shrink-0">
+				<div className="flex items-center gap-2 md:gap-4">
+					{companyId && location.pathname.includes('/app/obras/') && (
 						<div className="relative" ref={projectMenuRef}>
 							<button
 								onClick={() =>
@@ -244,17 +269,20 @@ export const Header: React.FC = () => {
 					)}
 				</div>
 
-				<div className="flex items-center gap-4 text-text-muted">
+				<div className="flex items-center gap-2 md:gap-4 text-text-muted">
 					<div className="relative">
 						<button
 							onClick={() => setShowDropdown(!showDropdown)}
-							className="flex items-center gap-3 hover:bg-background p-2 rounded-lg transition-colors text-text-main"
+							className="flex items-center gap-2 md:gap-3 hover:bg-background p-2 rounded-lg transition-colors text-text-main"
 						>
-							<div className="text-right">
-								<div className="text-sm font-medium">
-									Usuário
+							<div className="text-right hidden sm:block">
+								<div className="text-sm font-medium capitalize">
+									{userProfile?.displayName ||
+										'Carregando...'}
 								</div>
-								<div className="text-xs opacity-70">Admin</div>
+								<div className="text-xs opacity-70">
+									{userProfile?.role || ''}
+								</div>
 							</div>
 							<div className="w-8 h-8 rounded-full bg-border flex items-center justify-center">
 								<User size={16} />
