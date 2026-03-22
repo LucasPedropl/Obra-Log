@@ -1,1 +1,60 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+@theme {
+	--color-background: var(--background);
+	--color-surface: var(--surface);
+	--color-border: var(--border);
+	--color-primary: var(--primary);
+	--color-primary-hover: var(--primary-hover);
+	--color-text-main: var(--text-main);
+	--color-text-muted: var(--text-muted);
+}
+
+@layer base {
+	:root {
+		/* Light Theme (Default) */
+		--background: var(--color-slate-50);
+		--surface: var(--color-white);
+		--border: var(--color-slate-200);
+		--primary: var(--color-emerald-600);
+		--primary-hover: var(--color-emerald-700);
+		--text-main: var(--color-slate-900);
+		--text-muted: var(--color-slate-500);
+	}
+
+	.dark {
+		/* Dark Theme (Cosmic/Default Dark) */
+		--background: var(--color-slate-950);
+		--surface: var(--color-slate-900);
+		--border: var(--color-slate-800);
+		--primary: var(--color-emerald-500);
+		--primary-hover: var(--color-emerald-400);
+		--text-main: var(--color-white);
+		--text-muted: var(--color-slate-400);
+	}
+
+	.theme-ocean {
+		--background: #0f172a;
+		--surface: #1e293b;
+		--border: #334155;
+		--primary: #0ea5e9; /* sky-500 */
+		--primary-hover: #38bdf8; /* sky-400 */
+		--text-main: #f8fafc;
+		--text-muted: #94a3b8;
+	}
+
+	.theme-monochrome {
+		--background: #000000;
+		--surface: #111111;
+		--border: #333333;
+		--primary: #ffffff;
+		--primary-hover: #cccccc;
+		--text-main: #ffffff;
+		--text-muted: #888888;
+	}
+}
+
+body {
+	background-color: var(--background);
+	color: var(--text-main);
+}

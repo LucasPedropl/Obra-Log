@@ -6,132 +6,170 @@ import { supabase } from '../../config/supabase';
 import { authService } from '../../features/auth/services/auth.service';
 
 export default function SetupProfile() {
-  const [fullName, setFullName] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
+	const [fullName, setFullName] = useState('');
+	const [password, setPassword] = useState('');
+	const [confirmPassword, setConfirmPassword] = useState('');
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState('');
+	const navigate = useNavigate();
 
-  const handleSetup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password !== confirmPassword) {
-      setError('As senhas não coincidem');
-      return;
-    }
-    if (password.length < 6) {
-      setError('A senha deve ter no mínimo 6 caracteres');
-      return;
-    }
+	const handleSetup = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (password !== confirmPassword) {
+			setError('As senhas não coincidem');
+			return;
+		}
+		if (password.length < 6) {
+			setError('A senha deve ter no mínimo 6 caracteres');
+			return;
+		}
 
-    setLoading(true);
-    setError('');
+		setLoading(true);
+		setError('');
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
+		try {
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			if (!user) throw new Error('Usuário não autenticado');
 
-      // Update auth user
-      const { error: updateAuthError } = await supabase.auth.updateUser({
-        password: password,
-        data: { full_name: fullName, require_password_change: false }
-      });
+			// Update auth user data first
+			const { error: updateDataError } = await supabase.auth.updateUser({
+				data: { full_name: fullName, require_password_change: false },
+			});
 
-      if (updateAuthError) {
-        // Se o erro for porque a senha é a mesma (ex: o usuário tentou enviar novamente após um erro de rede),
-        // podemos ignorar e prosseguir com a atualização do perfil.
-        if (!updateAuthError.message.includes('different from the old password')) {
-          throw updateAuthError;
-        }
-      }
+			if (updateDataError) {
+				console.error(
+					'Erro ao atualizar dados do ucuário:',
+					updateDataError,
+				);
+				throw new Error(
+					`Erro ao atualizar perfil: ${updateDataError.message}`,
+				);
+			}
 
-      // Update public.users
-      const { error: updateDbError } = await supabase
-        .from('users')
-        .update({ full_name: fullName })
-        .eq('id', user.id);
+			// Update auth password separately
+			const { error: updatePassError } = await supabase.auth.updateUser({
+				password: password,
+			});
 
-      if (updateDbError) throw updateDbError;
+			if (updatePassError) {
+				console.error('Erro ao atualizar senha:', updatePassError);
+				// Se o erro for porque a senha é a mesma, podemos ignorar e prosseguir
+				if (
+					!updatePassError.message.includes(
+						'different from the old password',
+					) &&
+					!updatePassError.message.includes('should be different')
+				) {
+					throw new Error(
+						`Erro de senha (Supabase): ${updatePassError.message}`,
+					);
+				}
+			}
 
-      // Check companies to decide where to navigate
-      const companyUsers = await authService.getUserCompanies(user.id);
+			// Update public.users
+			const { error: updateDbError } = await supabase
+				.from('users')
+				.update({ full_name: fullName })
+				.eq('id', user.id);
 
-      if (companyUsers && companyUsers.length > 1) {
-        navigate('/app/select-company');
-      } else if (companyUsers && companyUsers.length === 1) {
-        // Automatically select the only company
-        localStorage.setItem('selectedCompanyId', companyUsers[0].company_id);
-        navigate('/app/dashboard');
-      } else {
-        throw new Error('Você não está vinculado a nenhuma empresa.');
-      }
+			if (updateDbError) throw updateDbError;
 
-    } catch (err: any) {
-      setError(err.message || 'Erro ao configurar perfil');
-    } finally {
-      setLoading(false);
-    }
-  };
+			// Check companies to decide where to navigate
+			const companyUsers = await authService.getUserCompanies(user.id);
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
-            <HardHat size={32} />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">Bem-vindo ao ObraLog</h1>
-          <p className="text-slate-500 text-sm mt-1 text-center">
-            Para continuar, por favor informe seu nome e crie uma nova senha pessoal.
-          </p>
-        </div>
+			if (companyUsers && companyUsers.length > 1) {
+				navigate('/app/select-company');
+			} else if (companyUsers && companyUsers.length === 1) {
+				// Automatically select the only company
+				localStorage.setItem(
+					'selectedCompanyId',
+					companyUsers[0].company_id,
+				);
+				navigate('/app/dashboard');
+			} else {
+				throw new Error('Você não está vinculado a nenhuma empresa.');
+			}
+		} catch (err: any) {
+			setError(err.message || 'Erro ao configurar perfil');
+		} finally {
+			setLoading(false);
+		}
+	};
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
-            {error}
-          </div>
-        )}
+	return (
+		<div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+			<div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+				<div className="flex flex-col items-center mb-8">
+					<div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
+						<HardHat size={32} />
+					</div>
+					<h1 className="text-2xl font-bold text-slate-900">
+						Bem-vindo ao ObraLog
+					</h1>
+					<p className="text-slate-500 text-sm mt-1 text-center">
+						Para continuar, por favor informe seu nome e crie uma
+						nova senha pessoal.
+					</p>
+				</div>
 
-        <form className="space-y-4" onSubmit={handleSetup}>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo</label>
-            <input 
-              type="text" 
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-              placeholder="Ex: João Silva"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nova Senha</label>
-            <PasswordInput 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="••••••••"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar Nova Senha</label>
-            <PasswordInput 
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              className="focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="••••••••"
-            />
-          </div>
-          <button 
-            disabled={loading}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium py-2.5 rounded-lg transition-colors mt-6 flex items-center justify-center"
-          >
-            {loading ? <Loader2 className="animate-spin w-5 h-5" /> : 'Salvar e Continuar'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+				{error && (
+					<div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
+						{error}
+					</div>
+				)}
+
+				<form className="space-y-4" onSubmit={handleSetup}>
+					<div>
+						<label className="block text-sm font-medium text-slate-700 mb-1">
+							Nome Completo
+						</label>
+						<input
+							type="text"
+							value={fullName}
+							onChange={(e) => setFullName(e.target.value)}
+							required
+							className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+							placeholder="Ex: João Silva"
+						/>
+					</div>
+					<div>
+						<label className="block text-sm font-medium text-slate-700 mb-1">
+							Nova Senha
+						</label>
+						<PasswordInput
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+							required
+							className="focus:ring-emerald-500 focus:border-emerald-500"
+							placeholder="••••••••"
+						/>
+					</div>
+					<div>
+						<label className="block text-sm font-medium text-slate-700 mb-1">
+							Confirmar Nova Senha
+						</label>
+						<PasswordInput
+							value={confirmPassword}
+							onChange={(e) => setConfirmPassword(e.target.value)}
+							required
+							className="focus:ring-emerald-500 focus:border-emerald-500"
+							placeholder="••••••••"
+						/>
+					</div>
+					<button
+						disabled={loading}
+						className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium py-2.5 rounded-lg transition-colors mt-6 flex items-center justify-center"
+					>
+						{loading ? (
+							<Loader2 className="animate-spin w-5 h-5" />
+						) : (
+							'Salvar e Continuar'
+						)}
+					</button>
+				</form>
+			</div>
+		</div>
+	);
 }
