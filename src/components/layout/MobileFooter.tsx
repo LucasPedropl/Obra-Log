@@ -16,7 +16,9 @@ export const MobileFooter: React.FC = () => {
 	const location = useLocation();
 	const { projectId } = useParams();
 
-	const isProjectRoute = location.pathname.includes('/app/obras/');
+	const isProjectRoute =
+		location.pathname.includes('/app/obras/') &&
+		!location.pathname.includes('/app/obras/nova');
 	const currentProject = projectId || localStorage.getItem('lastProjectId');
 
 	const globalNavItems = [
