@@ -28,7 +28,7 @@ CREATE TABLE public.catalogs (
 );
 CREATE TABLE public.categories (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  company_id uuid,
+  company_id uuid NOT NULL,
   entry_type character varying NOT NULL CHECK (entry_type::text = ANY (ARRAY['PRODUTO'::character varying, 'SERVICO'::character varying]::text[])),
   primary_category character varying NOT NULL,
   secondary_category character varying,
@@ -89,7 +89,7 @@ CREATE TABLE public.epi_withdrawals (
 );
 CREATE TABLE public.measurement_units (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  company_id uuid,
+  company_id uuid NOT NULL,
   name character varying NOT NULL,
   abbreviation character varying NOT NULL,
   CONSTRAINT measurement_units_pkey PRIMARY KEY (id),
