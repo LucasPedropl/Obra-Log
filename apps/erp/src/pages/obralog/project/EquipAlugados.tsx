@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ERPLayout } from '../../../../components/layout/ERPLayout';
-import { supabase } from '../../../../config/supabase';
+import { ERPLayout } from '../../../components/layout/ERPLayout';
+import { supabase } from '../../../config/supabase';
 import {
 	Search,
 	Plus,
@@ -13,7 +13,7 @@ import {
 	Image as ImageIcon,
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
-import { useToast } from '../../../../context/ToastContext';
+import { useToast } from '../../../context/ToastContext';
 
 const normalizeString = (str: string) =>
 	str
@@ -21,7 +21,7 @@ const normalizeString = (str: string) =>
 		.replace(/[\u0300-\u036f]/g, '')
 		.toLowerCase();
 
-export default function EquipAlugadosAtivos() {
+export default function EquipAlugados() {
 	const { id: siteId } = useParams();
 	const { showToast } = useToast();
 
@@ -128,7 +128,6 @@ export default function EquipAlugadosAtivos() {
 					.from('rented_equipments')
 					.select(`*, site_inventory!inner(*, catalogs(*))`)
 					.eq('site_id', siteId)
-					.is('exit_date', null)
 					.order('entry_date', { ascending: false }),
 			]);
 

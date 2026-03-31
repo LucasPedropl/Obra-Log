@@ -41,13 +41,15 @@ export default function Movimentacoes() {
 			// Fetch 1: Insumos (site_movements)
 			const { data: moveData, error: moveError } = await supabase
 				.from('site_movements')
-				.select(`
+				.select(
+					`
 					id, type, quantity_delta, action_date, reason,
 					created_by:users ( full_name ),
 					inventory:site_inventory (
 						catalog:catalogs ( name )
 					)
-				`)
+				`,
+				)
 				.eq('site_id', siteId);
 
 			if (moveError) throw moveError;
@@ -55,13 +57,15 @@ export default function Movimentacoes() {
 			// Fetch 2: Ferramentas (tool_loans)
 			const { data: toolData, error: toolError } = await supabase
 				.from('tool_loans')
-				.select(`
+				.select(
+					`
 					id, quantity, loan_date, returned_date, status, notes_on_loan, notes_on_return,
 					collaborator:collaborators ( name ),
 					inventory:site_inventory (
 						catalog:catalogs ( name )
 					)
-				`)
+				`,
+				)
 				.eq('site_id', siteId);
 
 			if (toolError) throw toolError;
@@ -69,11 +73,13 @@ export default function Movimentacoes() {
 			// Fetch 3: EPIs (epi_withdrawals)
 			const { data: epiData, error: epiError } = await supabase
 				.from('epi_withdrawals')
-				.select(`
+				.select(
+					`
 					id, quantity, withdrawal_date, notes,
 					collaborator:collaborators ( name ),
 					catalog:catalogs ( name )
-				`)
+				`,
+				)
 				.eq('site_id', siteId);
 
 			if (epiError) throw epiError;
@@ -81,12 +87,14 @@ export default function Movimentacoes() {
 			// Fetch 4: Equipamentos Alugados (rented_equipments)
 			const { data: rentData, error: rentError } = await supabase
 				.from('rented_equipments')
-				.select(`
+				.select(
+					`
 					id, quantity, entry_date, exit_date, status, description, supplier,
 					inventory:site_inventory (
 						catalog:catalogs ( name )
 					)
-				`)
+				`,
+				)
 				.eq('site_id', siteId);
 
 			if (rentError) throw rentError;
@@ -96,9 +104,15 @@ export default function Movimentacoes() {
 			// Parse movements
 			moveData?.forEach((m: any) => {
 				const isEntrada = m.type === 'IN';
-				const tipoLabel = isEntrada ? 'Entrada (Insumo)' : 'Saída (Insumo)';
-				const responsavel = Array.isArray(m.created_by) ? m.created_by[0]?.full_name : m.created_by?.full_name;
-				const itemName = Array.isArray(m.inventory) ? m.inventory[0]?.catalog?.name : m.inventory?.catalog?.name;
+				const tipoLabel = isEntrada
+					? 'Entrada (Insumo)'
+					: 'Saída (Insumo)';
+				const responsavel = Array.isArray(m.created_by)
+					? m.created_by[0]?.full_name
+					: m.created_by?.full_name;
+				const itemName = Array.isArray(m.inventory)
+					? m.inventory[0]?.catalog?.name
+					: m.inventory?.catalog?.name;
 
 				feed.push({
 					id: `mov-${m.id}`,
@@ -107,15 +121,19 @@ export default function Movimentacoes() {
 					item: itemName || 'Item desconhecido',
 					qtd: Math.abs(m.quantity_delta),
 					responsavel: responsavel || 'Usuário',
-					origemDestino: `Motivo: ${m.reason || 'N/A'}`
+					origemDestino: `Motivo: ${m.reason || 'N/A'}`,
 				});
 			});
 
 			// Parse tools
 			toolData?.forEach((t: any) => {
-				const itemName = Array.isArray(t.inventory) ? t.inventory[0]?.catalog?.name : t.inventory?.catalog?.name;
-				const colaborador = Array.isArray(t.collaborator) ? t.collaborator[0]?.name : t.collaborator?.name;
-				
+				const itemName = Array.isArray(t.inventory)
+					? t.inventory[0]?.catalog?.name
+					: t.inventory?.catalog?.name;
+				const colaborador = Array.isArray(t.collaborator)
+					? t.collaborator[0]?.name
+					: t.collaborator?.name;
+
 				feed.push({
 					id: `tool-loan-${t.id}`,
 					data: t.loan_date,
@@ -123,7 +141,7 @@ export default function Movimentacoes() {
 					item: itemName || 'Ferramenta',
 					qtd: t.quantity,
 					responsavel: colaborador || 'Desconhecido',
-					origemDestino: `Retirada${t.notes_on_loan ? ' - ' + t.notes_on_loan : ''}`
+					origemDestino: `Retirada${t.notes_on_loan ? ' - ' + t.notes_on_loan : ''}`,
 				});
 
 				if (t.status === 'RETURNED' && t.returned_date) {
@@ -134,15 +152,19 @@ export default function Movimentacoes() {
 						item: itemName || 'Ferramenta',
 						qtd: t.quantity,
 						responsavel: colaborador || 'Desconhecido',
-						origemDestino: `Devolução${t.notes_on_return ? ' - ' + t.notes_on_return : ''}`
+						origemDestino: `Devolução${t.notes_on_return ? ' - ' + t.notes_on_return : ''}`,
 					});
 				}
 			});
 
 			// Parse EPIs
 			epiData?.forEach((e: any) => {
-				const itemName = Array.isArray(e.catalog) ? e.catalog[0]?.name : e.catalog?.name;
-				const colaborador = Array.isArray(e.collaborator) ? e.collaborator[0]?.name : e.collaborator?.name;
+				const itemName = Array.isArray(e.catalog)
+					? e.catalog[0]?.name
+					: e.catalog?.name;
+				const colaborador = Array.isArray(e.collaborator)
+					? e.collaborator[0]?.name
+					: e.collaborator?.name;
 
 				feed.push({
 					id: `epi-${e.id}`,
@@ -151,15 +173,17 @@ export default function Movimentacoes() {
 					item: itemName || 'EPI',
 					qtd: e.quantity,
 					responsavel: colaborador || 'Desconhecido',
-					origemDestino: e.notes ? `Obs: ${e.notes}` : 'Entrega'
+					origemDestino: e.notes ? `Obs: ${e.notes}` : 'Entrega',
 				});
 			});
 
 			// Parse rented equipments
 			rentData?.forEach((r: any) => {
-				const itemName = Array.isArray(r.inventory) 
-					? r.inventory[0]?.catalog?.name 
-					: r.inventory?.catalog?.name || r.name || 'Equipamento desconhecido';
+				const itemName = Array.isArray(r.inventory)
+					? r.inventory[0]?.catalog?.name
+					: r.inventory?.catalog?.name ||
+						r.name ||
+						'Equipamento desconhecido';
 				const fornecedor = r.supplier || 'Fornecedor';
 
 				feed.push({
@@ -169,7 +193,9 @@ export default function Movimentacoes() {
 					item: itemName || 'Equipamento',
 					qtd: r.quantity,
 					responsavel: fornecedor,
-					origemDestino: r.description ? `Locação - ${r.description}` : 'Início Locação'
+					origemDestino: r.description
+						? `Locação - ${r.description}`
+						: 'Início Locação',
 				});
 
 				if (r.status === 'RETURNED' && r.exit_date) {
@@ -180,14 +206,16 @@ export default function Movimentacoes() {
 						item: itemName || 'Equipamento',
 						qtd: r.quantity,
 						responsavel: fornecedor,
-						origemDestino: 'Fim Locação'
+						origemDestino: 'Fim Locação',
 					});
 				}
 			});
 
-			feed.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+			feed.sort(
+				(a, b) =>
+					new Date(b.data).getTime() - new Date(a.data).getTime(),
+			);
 			setMovimentacoes(feed);
-
 		} catch (error: any) {
 			console.error('Error fetching movements:', error);
 			showToast(error.message || 'Erro ao buscar movimentações', 'error');
@@ -311,13 +339,19 @@ export default function Movimentacoes() {
 							<tbody>
 								{isLoading ? (
 									<tr>
-										<td colSpan={6} className="py-8 text-center text-text-muted">
+										<td
+											colSpan={6}
+											className="py-8 text-center text-text-muted"
+										>
 											Carregando movimentações...
 										</td>
 									</tr>
 								) : filteredMovimentacoes.length === 0 ? (
 									<tr>
-										<td colSpan={6} className="py-8 text-center text-text-muted">
+										<td
+											colSpan={6}
+											className="py-8 text-center text-text-muted"
+										>
 											Nenhuma movimentação encontrada.
 										</td>
 									</tr>
@@ -328,7 +362,13 @@ export default function Movimentacoes() {
 											className="border-b border-border hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
 										>
 											<td className="py-3 px-4 text-text-main whitespace-nowrap">
-												{mov.data ? format(new Date(mov.data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '-'}
+												{mov.data
+													? format(
+															new Date(mov.data),
+															"dd/MM/yyyy 'às' HH:mm",
+															{ locale: ptBR },
+														)
+													: '-'}
 											</td>
 											<td className="py-3 px-4">
 												<span
@@ -346,7 +386,10 @@ export default function Movimentacoes() {
 											<td className="py-3 px-4 text-text-main">
 												{mov.responsavel}
 											</td>
-											<td className="py-3 px-4 text-text-muted text-sm max-w-xs truncate" title={mov.origemDestino}>
+											<td
+												className="py-3 px-4 text-text-muted text-sm max-w-xs truncate"
+												title={mov.origemDestino}
+											>
 												{mov.origemDestino}
 											</td>
 										</tr>

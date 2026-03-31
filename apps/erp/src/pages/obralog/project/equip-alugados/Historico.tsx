@@ -424,7 +424,8 @@ export default function EquipAlugadosHistorico() {
 				<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 					<div>
 						<h1 className="text-2xl font-bold text-text-main flex items-center gap-2">
-							<Truck className="text-primary" /> Histórico de Locações
+							<Truck className="text-primary" /> Histórico de
+							Locações
 						</h1>
 						<p className="text-text-muted mt-1">
 							Histórico completo de equipamentos alugados da obra
@@ -676,11 +677,24 @@ export default function EquipAlugadosHistorico() {
 										onClick={() => setCatOpen(!catOpen)}
 									>
 										<span className="truncate">
-											{formData.category_id ? (() => { 
-    const cat = categorias.find(c => c.id === formData.category_id);
-    if (!cat) return 'Selecione...';
-    return cat.secondary_category ? cat.primary_category + ' (' + cat.secondary_category + ')' : cat.primary_category;
-})() : 'Selecione...'}
+											{formData.category_id
+												? (() => {
+														const cat =
+															categorias.find(
+																(c) =>
+																	c.id ===
+																	formData.category_id,
+															);
+														if (!cat)
+															return 'Selecione...';
+														return cat.secondary_category
+															? cat.primary_category +
+																	' (' +
+																	cat.secondary_category +
+																	')'
+															: cat.primary_category;
+													})()
+												: 'Selecione...'}
 										</span>
 										<ChevronDown size={16} />
 									</div>
@@ -723,7 +737,16 @@ export default function EquipAlugadosHistorico() {
 														className={`w-full flex items-start px-3 py-2 text-left rounded-md hover:bg-primary/5 \${formData.category_id === c.id ? 'bg-primary/10 text-primary' : ''}`}
 													>
 														<div className="text-sm font-medium truncate">
-															{c.primary_category}{c.secondary_category && <span className="text-text-muted text-xs ml-1">({c.secondary_category})</span>}
+															{c.primary_category}
+															{c.secondary_category && (
+																<span className="text-text-muted text-xs ml-1">
+																	(
+																	{
+																		c.secondary_category
+																	}
+																	)
+																</span>
+															)}
 														</div>
 													</button>
 												))}
@@ -746,7 +769,16 @@ export default function EquipAlugadosHistorico() {
 														className={`w-full flex items-start px-3 py-2 text-left rounded-md hover:bg-primary/5 \${formData.category_id === c.id ? 'bg-primary/10 text-primary' : ''}`}
 													>
 														<div className="text-sm font-medium truncate">
-															{c.primary_category}{c.secondary_category && <span className="text-text-muted text-xs ml-1">({c.secondary_category})</span>}
+															{c.primary_category}
+															{c.secondary_category && (
+																<span className="text-text-muted text-xs ml-1">
+																	(
+																	{
+																		c.secondary_category
+																	}
+																	)
+																</span>
+															)}
 														</div>
 													</button>
 												))}
@@ -1220,7 +1252,23 @@ export default function EquipAlugadosHistorico() {
 									}
 									className="w-full px-3 py-2 bg-background border border-border rounded-md"
 								/>
-							</div><div><label className="block text-sm font-medium mb-1">Subcategoria (Opcional)</label><input type="text" value={newCatData.secondary_category} onChange={(e) => setNewCatData({...newCatData, secondary_category: e.target.value})} className="w-full px-3 py-2 bg-background border border-border rounded-md" /></div>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1">
+									Subcategoria (Opcional)
+								</label>
+								<input
+									type="text"
+									value={newCatData.secondary_category}
+									onChange={(e) =>
+										setNewCatData({
+											...newCatData,
+											secondary_category: e.target.value,
+										})
+									}
+									className="w-full px-3 py-2 bg-background border border-border rounded-md"
+								/>
+							</div>
 						</div>
 						<div className="p-6 border-t border-border flex justify-end gap-3">
 							<button
