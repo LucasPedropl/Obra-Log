@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../../context/ToastContext';
 import { ERPLayout } from '../../components/layout/ERPLayout';
 import {
 	Plus,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 
 export default function MaoDeObra() {
+	const { showToast } = useToast();
 	const [collaborators, setCollaborators] = useState<any[]>([]);
 	const [profiles, setProfiles] = useState<any[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -91,8 +93,10 @@ export default function MaoDeObra() {
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!formData.name || !formData.phone) {
-			alert('Por favor, preencha os campos obrigatórios (*).');
-			return;
+			showToast(
+				'Por favor, preencha os campos obrigatórios (*).',
+				'error',
+			);
 		}
 
 		setIsSubmitting(true);
@@ -147,7 +151,7 @@ export default function MaoDeObra() {
 			setActiveTab('dados');
 			fetchCollaborators();
 		} catch (err: any) {
-			alert(err.message);
+			showToast(err.message, 'error');
 		} finally {
 			setIsSubmitting(false);
 		}

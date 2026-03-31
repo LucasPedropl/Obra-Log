@@ -97,12 +97,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 	const globalNavItems = [
 		{ name: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard },
 		{ name: 'Obras', path: '/app/obras/nova', icon: HardHat },
-		{ name: 'Mão de Obra', path: '/app/mao-de-obra', icon: Users },
 		{
 			name: 'Insumos',
 			path: '/app/config-dados/insumos',
 			icon: Package,
 		},
+		{ name: 'Colaboradores', path: '/app/mao-de-obra', icon: Users },
 		{
 			id: 'acesso',
 			name: 'Acesso ao sistema',
@@ -178,9 +178,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
 			],
 		},
 		{
+			id: 'equip-alugados',
 			name: 'Equip. Alugados',
-			path: `/app/obras/${projectId}/equip-alugados`,
 			icon: Truck,
+			subItems: [
+				{
+					name: 'Ativos',
+					path: `/app/obras/${projectId}/equip-alugados/ativos`,
+					icon: ClipboardList,
+				},
+				{
+					name: 'Histórico',
+					path: `/app/obras/${projectId}/equip-alugados/historico`,
+					icon: Clock,
+				},
+			],
 		},
 		{
 			name: 'Movimentações',
@@ -269,7 +281,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 										}
 										className={`relative flex items-center justify-between p-3 rounded-lg transition-colors w-full ${
 											isGroupActive
-												? 'bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-8 before:bg-primary before:rounded-r-full'
+												? 'bg-secondary text-white font-medium'
 												: 'text-text-muted hover:text-text-main hover:bg-background'
 										} ${!isOpen && 'justify-center'}`}
 									>
@@ -322,7 +334,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 																}) =>
 																	`flex items-center gap-2 px-3 py-2 rounded-md hover:bg-background transition-colors relative ${
 																		isActive
-																			? 'bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-2/3 before:bg-primary before:rounded-r-full'
+																			? 'bg-secondary/50 text-white font-medium'
 																			: 'text-text-muted hover:text-text-main'
 																	}`
 																}
@@ -365,7 +377,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 															}) =>
 																`flex items-center gap-3 py-2 px-3 text-sm rounded-md transition-colors relative ${
 																	isActive
-																		? 'bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-2/3 before:bg-primary before:rounded-r-full'
+																		? 'bg-secondary/50 text-white font-medium'
 																		: 'text-text-muted hover:text-text-main hover:bg-background'
 																}`
 															}
@@ -395,7 +407,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 											isActive ||
 											(item.path &&
 												location.pathname === item.path)
-												? 'bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-8 before:bg-primary before:rounded-r-full'
+												? 'bg-secondary text-white font-medium'
 												: 'text-text-muted hover:text-text-main hover:bg-background'
 										} ${!isOpen && 'justify-center'}`
 									}
@@ -428,7 +440,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 					className={({ isActive }) =>
 						`group relative flex items-center gap-3 p-3 rounded-lg transition-colors w-full ${
 							isActive
-								? 'bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-8 before:bg-primary before:rounded-r-full'
+								? 'bg-secondary text-white font-medium'
 								: 'text-text-muted hover:text-text-main hover:bg-background'
 						} ${!isOpen && 'justify-center'}`
 					}

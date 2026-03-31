@@ -7,9 +7,10 @@ import { supabase } from '../../config/supabase';
 
 export type SidebarMode = 'open' | 'closed' | 'hover';
 
-export const ERPLayout: React.FC<{ children: React.ReactNode }> = ({
-	children,
-}) => {
+export const ERPLayout: React.FC<{
+	children: React.ReactNode;
+	title?: string;
+}> = ({ children, title }) => {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const [isLoading, setIsLoading] = useState(true);
@@ -104,7 +105,7 @@ export const ERPLayout: React.FC<{ children: React.ReactNode }> = ({
 				/>
 			</div>
 			<div className="flex-1 flex flex-col min-w-0 h-full pb-[60px] md:pb-0">
-				<Header />
+				<Header title={title} />
 				<main className="flex-1 p-4 md:p-6 overflow-y-auto">
 					{children}
 				</main>

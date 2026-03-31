@@ -1,7 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ERPLayout } from '../../../../components/layout/ERPLayout';
 import { useParams } from 'react-router-dom';
-import { Search, Plus, Filter, Wrench, X, ChevronDown } from 'lucide-react';
+import {
+	Search,
+	Plus,
+	Filter,
+	Settings2,
+	Wrench,
+	X,
+	ChevronDown,
+	Camera,
+	Calendar,
+	Clock,
+	Upload,
+} from 'lucide-react';
 import { supabase } from '../../../../config/supabase';
 import { SearchableSelect } from '../../../../components/ui/SearchableSelect';
 import { useToast } from '../../../../context/ToastContext';
@@ -24,13 +36,17 @@ export default function FerramentasDisponiveis() {
 		useState('');
 
 	// Novos Estados: Empréstimo
+	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [showLendModal, setShowLendModal] = useState(false);
 	const [selectedToolForLoan, setSelectedToolForLoan] = useState<any>(null);
 	const [collaborators, setCollaborators] = useState<any[]>([]);
 	const [loanData, setLoanData] = useState({
 		collaborator_id: '',
 		quantity: 1,
-		expected_return_date: '',
+		loan_date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`,
+		loan_time: `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`,
+		photos: [] as File[],
+		notes: '',
 	});
 
 	// Filtros da página
@@ -68,14 +84,40 @@ export default function FerramentasDisponiveis() {
 	const fetchFerramentas = async () => {
 		if (!id) return;
 		try {
-			const { data, error } = await supabase
+			const { data: toolsData, error: toolsError } = await supabase
 				.from('site_tools')
 				.select(
 					'id, inventory_id, site_inventory(quantity, catalogs(name, code))',
 				)
 				.eq('site_id', id);
-			if (error) throw error;
-			setFerramentas(data || []);
+			if (toolsError) throw toolsError;
+
+			const { data: loansData, error: loansError } = await supabase
+				.from('tool_loans')
+				.select('inventory_id, quantity')
+				.eq('site_id', id)
+				.eq('status', 'OPEN');
+			if (loansError) throw loansError;
+
+			const loansCountMap = (loansData || []).reduce(
+				(acc: any, loan: any) => {
+					acc[loan.inventory_id] =
+						(acc[loan.inventory_id] || 0) + loan.quantity;
+					return acc;
+				},
+				{},
+			);
+
+			const toolsWithAvailability = (toolsData || []).map((tool: any) => {
+				const total = tool.site_inventory?.quantity || 0;
+				const loaned = loansCountMap[tool.inventory_id] || 0;
+				return {
+					...tool,
+					available_quantity: Math.max(0, total - loaned),
+				};
+			});
+
+			setFerramentas(toolsWithAvailability);
 		} catch (err) {
 			console.error(err);
 		}
@@ -217,53 +259,50 @@ export default function FerramentasDisponiveis() {
 								className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-text-main focus:outline-none focus:border-primary transition-colors"
 							/>
 						</div>
-						<div className="flex gap-2">
-							<button className="flex items-center gap-2 bg-background border border-border text-text-main px-4 py-2 rounded-lg hover:border-primary transition-colors">
-								<Filter size={20} />
+						<div className="relative flex gap-2">
+							<button
+								onClick={() => setShowFilters(!showFilters)}
+								className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+									showFilters
+										? 'bg-primary/10 border-primary text-primary'
+										: 'bg-background border-border text-text-main hover:border-primary/50'
+								}`}
+							>
+								<Settings2 size={20} />
 								<span>Filtros</span>
-								<ChevronDown
-									size={16}
-									className="text-text-muted ml-1"
-								/>
 							</button>
+
+							{showFilters && (
+								<div className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-xl z-50 p-4 animate-in fade-in slide-in-from-top-2 text-left">
+									<h3 className="text-sm font-medium mb-3 text-text-main border-b border-border pb-2">
+										Filtros
+									</h3>
+									<div className="space-y-4">
+										<div>
+											<label className="block text-xs font-medium text-text-muted mb-1">
+												Categoria
+											</label>
+											<select className="w-full px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:border-primary text-text-main">
+												<option>Todas</option>
+											</select>
+										</div>
+										<div>
+											<label className="block text-xs font-medium text-text-muted mb-1">
+												Status de Empréstimo
+											</label>
+											<select className="w-full px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:border-primary text-text-main">
+												<option>Todos</option>
+												<option>Disponível</option>
+												<option>
+													Emprestado (Alguns)
+												</option>
+											</select>
+										</div>
+									</div>
+								</div>
+							)}
 						</div>
 					</div>
-
-					{showFilters && (
-						<div className="p-4 mb-4 bg-background border border-border rounded-lg">
-							<h3 className="text-sm font-medium mb-3">
-								Filtros
-							</h3>
-							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-								<div>
-									<label className="block text-xs text-text-muted mb-1">
-										Categoria
-									</label>
-									<select className="w-full px-3 py-2 text-sm bg-surface border border-border rounded-md focus:outline-none focus:border-primary">
-										<option>Todas</option>
-									</select>
-								</div>
-								<div>
-									<label className="block text-xs text-text-muted mb-1">
-										Tamanho/Porte
-									</label>
-									<select className="w-full px-3 py-2 text-sm bg-surface border border-border rounded-md focus:outline-none focus:border-primary">
-										<option>Todos</option>
-									</select>
-								</div>
-								<div>
-									<label className="block text-xs text-text-muted mb-1">
-										Status de Empréstimo
-									</label>
-									<select className="w-full px-3 py-2 text-sm bg-surface border border-border rounded-md focus:outline-none focus:border-primary">
-										<option>Todos</option>
-										<option>Disponível</option>
-										<option>Emprestado (Alguns)</option>
-									</select>
-								</div>
-							</div>
-						</div>
-					)}
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto max-h-[500px]">
 						{ferramentas.length === 0 ? (
 							<div className="col-span-full py-8 text-center text-text-muted">
@@ -277,8 +316,10 @@ export default function FerramentasDisponiveis() {
 								const codigo =
 									ferramenta.site_inventory?.catalogs?.code ||
 									'';
-								const qtd =
+								const totalQtd =
 									ferramenta.site_inventory?.quantity || 0;
+								const dispQtd =
+									ferramenta.available_quantity ?? totalQtd;
 								return (
 									<div
 										key={ferramenta.id}
@@ -294,26 +335,44 @@ export default function FerramentasDisponiveis() {
 												</p>
 											</div>
 											<div
-												className={`px-2 py-1 rounded-md text-sm font-bold flex items-center bg-green-500/10 text-green-500`}
+												className={`px-2 py-1 rounded-md text-sm font-bold flex items-center ${getRatioColor(dispQtd, totalQtd)}`}
 											>
-												{qtd} Disponíveis
+												{totalQtd}/{dispQtd} Disponíveis
 											</div>
 										</div>
 										<div className="flex gap-2 mt-4">
 											<button
 												className="flex-1 text-center py-2 text-sm font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-												disabled={qtd === 0}
+												disabled={dispQtd === 0}
 												onClick={() => {
 													setSelectedToolForLoan({
 														id: ferramenta.id,
+														inventory_id:
+															ferramenta.inventory_id,
 														name: nome,
-														available: qtd,
+														available: dispQtd,
 													});
 													setLoanData({
 														...loanData,
 														quantity: 1,
-														expected_return_date:
-															'',
+														loan_date: `${new Date().getFullYear()}-${String(
+															new Date().getMonth() +
+																1,
+														).padStart(
+															2,
+															'0',
+														)}-${String(
+															new Date().getDate(),
+														).padStart(2, '0')}`,
+														loan_time: `${String(
+															new Date().getHours(),
+														).padStart(
+															2,
+															'0',
+														)}:${String(
+															new Date().getMinutes(),
+														).padStart(2, '0')}`,
+														photos: [],
 													});
 													setShowLendModal(true);
 												}}
@@ -663,18 +722,45 @@ export default function FerramentasDisponiveis() {
 									return;
 								setIsSubmitting(true);
 								try {
+									let photoUrl = null;
+									if (
+										loanData.photos &&
+										loanData.photos.length > 0
+									) {
+										const urls = [];
+										for (const file of loanData.photos) {
+											const ext = file.name
+												.split('.')
+												.pop();
+											const filename = `emprestimos/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+											const {
+												data: uploadData,
+												error: uploadErr,
+											} = await supabase.storage
+												.from('ferramentas-fotos')
+												.upload(filename, file);
+											if (uploadErr) throw uploadErr;
+											const { data: publicUrlData } =
+												supabase.storage
+													.from('ferramentas-fotos')
+													.getPublicUrl(filename);
+											urls.push(publicUrlData.publicUrl);
+										}
+										photoUrl = urls.join(',');
+									}
 									const { error } = await supabase
 										.from('tool_loans')
 										.insert({
 											site_id: id,
-											tool_id: selectedToolForLoan.id,
+											inventory_id:
+												selectedToolForLoan.inventory_id,
 											collaborator_id:
 												loanData.collaborator_id,
 											quantity: loanData.quantity,
-											expected_return_date:
-												loanData.expected_return_date ||
-												null,
-											status: 'active',
+											loan_date: `${loanData.loan_date}T${loanData.loan_time}:00`,
+											notes_on_loan: loanData.notes,
+											photo_url: photoUrl,
+											status: 'OPEN',
 										});
 									if (error) throw error;
 									showToast(
@@ -682,6 +768,7 @@ export default function FerramentasDisponiveis() {
 										'success',
 									);
 									setShowLendModal(false);
+									fetchFerramentas();
 								} catch (err) {
 									console.error(err);
 									showToast(
@@ -693,41 +780,76 @@ export default function FerramentasDisponiveis() {
 								}
 							}}
 						>
-							<div>
-								<label className="block text-sm font-medium text-text-main mb-2">
-									Colaborador
-								</label>
-								<select
-									value={loanData.collaborator_id}
-									onChange={(e) =>
-										setLoanData({
-											...loanData,
-											collaborator_id: e.target.value,
-										})
-									}
-									className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-text-main focus:outline-none focus:border-primary"
-									required
-								>
-									<option value="" disabled>
-										Selecione um colaborador
-									</option>
-									{collaborators.map((c) => (
-										<option key={c.id} value={c.id}>
-											{c.name} -{' '}
-											{c.role_title || c.document}
-										</option>
-									))}
-								</select>
-							</div>
-							<div className="flex gap-4">
-								<div className="flex-1">
-									<label className="block text-sm font-medium text-text-main mb-2">
+							<div className="space-y-4">
+								<div>
+									<label className="block text-sm font-medium text-text-main mb-1">
+										Colaborador
+									</label>
+									<SearchableSelect
+										options={collaborators.map((c) => ({
+											value: c.id,
+											label: `${c.name} - ${c.role_title || c.document}`,
+											searchValue: `${c.name} ${c.role_title} ${c.document}`,
+										}))}
+										value={loanData.collaborator_id}
+										onChange={(val) =>
+											setLoanData({
+												...loanData,
+												collaborator_id: val,
+											})
+										}
+										placeholder="Selecione um colaborador"
+										required
+									/>
+								</div>
+
+								<div className="grid grid-cols-2 gap-4">
+									<div>
+										<label className="block text-sm font-medium text-text-main mb-1">
+											Data
+										</label>
+										<input
+											type="date"
+											value={loanData.loan_date}
+											onChange={(e) =>
+												setLoanData({
+													...loanData,
+													loan_date: e.target.value,
+												})
+											}
+											className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-text-main focus:outline-none focus:border-primary"
+											required
+										/>
+									</div>
+									<div>
+										<label className="block text-sm font-medium text-text-main mb-1">
+											Hora
+										</label>
+										<input
+											type="time"
+											value={loanData.loan_time}
+											onChange={(e) =>
+												setLoanData({
+													...loanData,
+													loan_time: e.target.value,
+												})
+											}
+											className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-text-main focus:outline-none focus:border-primary"
+											required
+										/>
+									</div>
+								</div>
+
+								<div>
+									<label className="block text-sm font-medium text-text-main mb-1">
 										Quantidade
 									</label>
 									<input
 										type="number"
 										min="1"
-										max={selectedToolForLoan?.available}
+										max={
+											selectedToolForLoan?.available || 1
+										}
 										value={loanData.quantity}
 										onChange={(e) =>
 											setLoanData({
@@ -741,25 +863,158 @@ export default function FerramentasDisponiveis() {
 										required
 									/>
 								</div>
-								<div className="flex-1">
-									<label className="block text-sm font-medium text-text-main mb-2">
-										Data de Devolução
+
+								<div>
+									<label className="block text-sm font-medium text-text-main mb-1">
+										Observações
 									</label>
-									<input
-										type="date"
-										value={loanData.expected_return_date}
+									<textarea
+										value={loanData.notes}
 										onChange={(e) =>
 											setLoanData({
 												...loanData,
-												expected_return_date:
-													e.target.value,
+												notes: e.target.value,
 											})
 										}
-										className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-text-main focus:outline-none focus:border-primary"
+										placeholder="Detalhes do estado da ferramenta..."
+										className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-text-main focus:outline-none focus:border-primary resize-none"
+										rows={2}
+									></textarea>
+								</div>
+
+								<div>
+									<label className="block text-sm font-medium text-text-main mb-1">
+										Fotos
+									</label>
+									<input
+										type="file"
+										accept="image/*"
+										multiple
+										ref={fileInputRef}
+										onChange={(e) => {
+											if (e.target.files?.length) {
+												setLoanData({
+													...loanData,
+													photos: [
+														...loanData.photos,
+														...Array.from(
+															e.target.files,
+														),
+													],
+												});
+											}
+											// clear input so same file can be selected again if needed
+											if (fileInputRef.current)
+												fileInputRef.current.value = '';
+										}}
+										className="hidden"
 									/>
+									{/* Camera input that forces mobile device to open camera */}
+									<input
+										type="file"
+										accept="image/*"
+										capture="environment"
+										id="cameraInput"
+										onChange={(e) => {
+											if (e.target.files?.length) {
+												setLoanData({
+													...loanData,
+													photos: [
+														...loanData.photos,
+														...Array.from(
+															e.target.files,
+														),
+													],
+												});
+											}
+											const cameraInput =
+												document.getElementById(
+													'cameraInput',
+												) as HTMLInputElement | null;
+											if (cameraInput)
+												cameraInput.value = '';
+										}}
+										className="hidden"
+									/>
+
+									<div className="flex gap-2 w-full mb-3">
+										<button
+											type="button"
+											onClick={() => {
+												const cameraInput =
+													document.getElementById(
+														'cameraInput',
+													);
+												if (cameraInput)
+													cameraInput.click();
+											}}
+											className="flex-1 flex flex-col items-center justify-center gap-2 py-4 border-2 border-dashed border-border rounded-lg text-text-muted hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors"
+										>
+											<Camera size={24} />
+											<span className="text-sm font-medium">
+												Tirar Foto
+											</span>
+										</button>
+										<button
+											type="button"
+											onClick={() =>
+												fileInputRef.current?.click()
+											}
+											className="flex-1 flex flex-col items-center justify-center gap-2 py-4 border-2 border-dashed border-border rounded-lg text-text-muted hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors"
+										>
+											<Upload size={24} />
+											<span className="text-sm font-medium">
+												Anexar Arquivos
+											</span>
+										</button>
+									</div>
+
+									{loanData.photos.length > 0 && (
+										<div className="space-y-2 mt-2">
+											{loanData.photos.map(
+												(file, index) => (
+													<div
+														key={`${file.name}-${index}`}
+														className="flex items-center justify-between p-3 border border-border rounded-lg bg-background"
+													>
+														<div className="flex items-center gap-2 overflow-hidden">
+															<Camera
+																size={16}
+																className="text-primary shrink-0"
+															/>
+															<span className="text-sm text-text-main truncate">
+																{file.name}
+															</span>
+														</div>
+														<button
+															type="button"
+															onClick={() => {
+																const newPhotos =
+																	[
+																		...loanData.photos,
+																	];
+																newPhotos.splice(
+																	index,
+																	1,
+																);
+																setLoanData({
+																	...loanData,
+																	photos: newPhotos,
+																});
+															}}
+															className="text-text-muted hover:text-red-500 p-1"
+														>
+															<X size={16} />
+														</button>
+													</div>
+												),
+											)}
+										</div>
+									)}
 								</div>
 							</div>
-							<div className="flex justify-end pt-4 gap-3 border-t border-border">
+
+							<div className="flex justify-end pt-4 gap-3 border-t border-border mt-5">
 								<button
 									type="button"
 									onClick={() => setShowLendModal(false)}

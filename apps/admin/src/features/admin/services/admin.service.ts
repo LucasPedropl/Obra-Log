@@ -27,6 +27,30 @@ export const adminService = {
 	},
 
 	/**
+	 * Atualiza o nome de uma empresa
+	 */
+	async updateCompany(companyId: string, name: string) {
+		const res = await fetch(`${API_URL}/api/admin/companies/${companyId}`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ name }),
+		});
+
+		if (!res.ok) {
+			let errMessage = 'Erro ao atualizar empresa';
+			try {
+				const err = await res.json();
+				errMessage = err.error || errMessage;
+			} catch (e) {
+				errMessage = `Erro no servidor (${res.status}). A API pode estar offline.`;
+			}
+			throw new Error(errMessage);
+		}
+
+		return res.json();
+	},
+
+	/**
 	 * Cria um usuário Admin e vincula à empresa
 	 */
 	async createCompanyAdmin(companyId: string, email: string) {

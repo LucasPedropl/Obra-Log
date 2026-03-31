@@ -21,7 +21,7 @@ import { supabase } from '../../config/supabase';
 import { env } from '../../config/env';
 import { useToast } from '../../context/ToastContext';
 
-export const Header: React.FC = () => {
+export const Header: React.FC<{ title?: string }> = ({ title }) => {
 	const [showDropdown, setShowDropdown] = useState(false);
 	const [showProjectMenu, setShowProjectMenu] = useState(false);
 	const [projects, setProjects] = useState<any[]>([]);
@@ -184,6 +184,11 @@ export const Header: React.FC = () => {
 		<>
 			<header className="h-16 bg-surface border-b border-border flex items-center justify-between px-4 md:px-6 z-40 relative shrink-0">
 				<div className="flex items-center gap-2 md:gap-4">
+					{title && (
+						<h1 className="text-xl font-bold text-slate-800 mr-2">
+							{title}
+						</h1>
+					)}
 					{companyId && location.pathname.includes('/app/obras/') && (
 						<>
 							<button

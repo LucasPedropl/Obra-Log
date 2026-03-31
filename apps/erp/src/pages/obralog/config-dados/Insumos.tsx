@@ -108,7 +108,8 @@ export default function Insumos() {
 				supabase
 					.from('catalogs')
 					.select('*, categories(*)')
-					.eq('company_id', companyId),
+					.eq('company_id', companyId)
+					.not('is_rented_equipment', 'eq', true),
 			]);
 
 			if (!catRes.error && catRes.data) {
@@ -150,7 +151,8 @@ export default function Insumos() {
 			const { data, error } = await supabase
 				.from('catalogs')
 				.select('*, categories(*)')
-				.eq('company_id', companyId);
+				.eq('company_id', companyId)
+				.not('is_rented_equipment', 'eq', true);
 			if (!error && data) setInsumos(data);
 		} catch (err) {
 			console.error(err);

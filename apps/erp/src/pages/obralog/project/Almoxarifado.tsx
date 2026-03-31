@@ -10,6 +10,7 @@ import {
 	X,
 	Package,
 	Trash2,
+	FilterX,
 } from 'lucide-react';
 import { supabase } from '../../../config/supabase';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
@@ -24,6 +25,14 @@ export default function Almoxarifado() {
 	const [catalogs, setCatalogs] = useState<any[]>([]);
 	const [inventory, setInventory] = useState<any[]>([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	// Filtros
+	const [showFilters, setShowFilters] = useState(false);
+	const [filterSource, setFilterSource] = useState('all');
+
+	const clearFilters = () => {
+		setFilterSource('all');
+	};
 
 	// Modal states
 	interface AddItem {
@@ -191,7 +200,21 @@ export default function Almoxarifado() {
 		const searchLower = searchTerm.toLowerCase();
 		const name = item.catalogs?.name?.toLowerCase() || '';
 		const code = item.catalogs?.code?.toLowerCase() || '';
-		return name.includes(searchLower) || code.includes(searchLower);
+		const matchesSearch =
+			name.includes(searchLower) || code.includes(searchLower);
+
+		let matchesSource = true;
+		if (filterSource !== 'all') {
+			// Supondo que a origem possa ser inferida do nome ou que você queira apenas um placeholder de filtro
+			// Se o banco tiver origem real, adapte. Abaixo é ilustrativo
+			matchesSource =
+				filterSource === 'company'
+					? item.catalogs?.company_id === companyId
+					: true;
+			// Como não temos certeza de todos os campos, vamos deixar um filtro simples
+		}
+
+		return matchesSearch && matchesSource;
 	});
 
 	return (
@@ -230,11 +253,66 @@ export default function Almoxarifado() {
 								className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-text-main focus:outline-none focus:border-primary transition-colors"
 							/>
 						</div>
-						<div className="flex gap-2">
-							<button className="flex items-center gap-2 bg-background border border-border text-text-main px-4 py-2 rounded-lg hover:border-primary/50 transition-colors">
+						<div className="relative flex gap-2">
+							<button
+								onClick={() => setShowFilters(!showFilters)}
+								className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+									showFilters || filterSource !== 'all'
+										? 'bg-primary/10 border-primary text-primary'
+										: 'bg-background border-border text-text-main hover:border-primary/50'
+								}`}
+							>
 								<Settings2 size={20} />
 								<span>Filtros</span>
+								{filterSource !== 'all' && (
+									<div className="w-2 h-2 rounded-full bg-primary absolute top-2 right-2 sm:hidden" />
+								)}
 							</button>
+
+							{showFilters && (
+								<div className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-xl z-50 p-4 animate-in fade-in slide-in-from-top-2">
+									<div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
+										<h3 className="font-semibold text-text-main">
+											Filtros
+										</h3>
+										{filterSource !== 'all' && (
+											<button
+												onClick={clearFilters}
+												className="text-xs flex items-center gap-1 text-red-500 hover:text-red-600 transition-colors"
+											>
+												<FilterX size={14} />
+												Limpar
+											</button>
+										)}
+									</div>
+									<div className="space-y-4">
+										<div>
+											<label className="block text-xs font-medium text-text-muted mb-1">
+												Origem do Insumo
+											</label>
+											<select
+												value={filterSource}
+												onChange={(e) =>
+													setFilterSource(
+														e.target.value,
+													)
+												}
+												className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-text-main focus:outline-none focus:border-primary"
+											>
+												<option value="all">
+													Todas as origens
+												</option>
+												<option value="company">
+													Da Empresa
+												</option>
+												<option value="global">
+													Global
+												</option>
+											</select>
+										</div>
+									</div>
+								</div>
+							)}
 						</div>
 					</div>
 

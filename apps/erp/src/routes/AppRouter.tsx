@@ -14,7 +14,8 @@ import FerramentasHistorico from "../pages/obralog/project/ferramentas/Historico
 import ColaboradoresProjeto from "../pages/obralog/project/Colaboradores";
 import EPisDisponiveis from "../pages/obralog/project/epis/Disponiveis";
 import EPisHistorico from "../pages/obralog/project/epis/Historico";
-import EquipAlugados from "../pages/obralog/project/EquipAlugados";
+import EquipAlugadosAtivos from "../pages/obralog/project/equip-alugados/Ativos";
+import EquipAlugadosHistorico from "../pages/obralog/project/equip-alugados/Historico";
 import Movimentacoes from "../pages/obralog/project/Movimentacoes";
 import MobileProjectMenu from "../pages/obralog/project/MobileProjectMenu";
 import Insumos from "../pages/obralog/config-dados/Insumos";
@@ -39,7 +40,9 @@ const router = createBrowserRouter([
 	{ path: "/app/obras/:id/colaboradores", element: <ColaboradoresProjeto /> },
 	{ path: "/app/obras/:id/epis/disponiveis", element: <EPisDisponiveis /> },
 	{ path: "/app/obras/:id/epis/historico", element: <EPisHistorico /> },
-	{ path: "/app/obras/:id/equip-alugados", element: <EquipAlugados /> },
+	{ path: '/app/obras/:id/equip-alugados', element: <Navigate to="ativos" replace /> },
+	{ path: '/app/obras/:id/equip-alugados/ativos', element: <EquipAlugadosAtivos /> },
+	{ path: '/app/obras/:id/equip-alugados/historico', element: <EquipAlugadosHistorico /> },
 	{ path: "/app/obras/:id/movimentacoes", element: <Movimentacoes /> },
 	{ path: "/app/obras/:id/menu", element: <MobileProjectMenu /> },
 	{ path: "/app/config-dados/insumos", element: <Insumos /> },
