@@ -84,3 +84,4 @@ Organize o projeto por features dentro de `src/features/<modulo>/`:
 # Exigências:
 
 1. **Inputs Select**: todos os inputs selects do sistema devem ser do tipo de pesquisa, o usuario deve poder conseguir pesquisar dentro dele, os que você perceber que não é desse tipo, refaça-os, pode até criar um componente universal pra isso se quiser
+2. **Arquivos Temporarios e Scripts**: Todos os arquivos que você criar para modificar arquivos do projeto, como scripts JS ou outros tipos de arquvos, devem ficar dentro da pasta "trash", para que possam ser apagagados mais facilmente no futuro
