@@ -277,7 +277,9 @@ export default function Usuarios() {
 									filteredUsers.map((user, idx) => (
 										<tr
 											key={idx}
-											onClick={() => setUserDetailsModal(user)}
+											onClick={() =>
+												setUserDetailsModal(user)
+											}
 											className="hover:bg-black/5 dark:hover:bg-white/5 even:bg-black/[0.02] dark:even:bg-white/[0.02] transition-colors cursor-pointer"
 										>
 											<td className="px-6 py-4 font-medium text-text-main">
@@ -341,7 +343,9 @@ export default function Usuarios() {
 															<button
 																className="p-2 text-text-muted hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-lg transition-colors"
 																title="Ver Senha Temporária"
-																onClick={(e) => {
+																onClick={(
+																	e,
+																) => {
 																	e.stopPropagation();
 																	setTempPasswordModal(
 																		{
@@ -597,7 +601,10 @@ export default function Usuarios() {
 						<div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background/50 rounded-t-2xl">
 							<h2 className="text-lg font-bold text-text-main flex items-center gap-2">
 								<div className="p-2 bg-primary/10 rounded-lg">
-									<Search size={20} className="text-primary" />
+									<Search
+										size={20}
+										className="text-primary"
+									/>
 								</div>
 								Detalhes do Usuário
 							</h2>
@@ -646,37 +653,55 @@ export default function Usuarios() {
 											Pendente
 										</span>
 									) : (
-										<span className={`inline-flex items-center justify-end px-2.5 py-1 rounded-full text-xs font-medium ${
-											userDetailsModal.status === 'ACTIVE'
-												? 'bg-green-100 text-green-700'
-												: 'bg-red-100 text-red-700'
-										}`}>
-											{userDetailsModal.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+										<span
+											className={`inline-flex items-center justify-end px-2.5 py-1 rounded-full text-xs font-medium ${
+												userDetailsModal.status ===
+												'ACTIVE'
+													? 'bg-green-100 text-green-700'
+													: 'bg-red-100 text-red-700'
+											}`}
+										>
+											{userDetailsModal.status ===
+											'ACTIVE'
+												? 'Ativo'
+												: 'Inativo'}
 										</span>
 									)}
 								</div>
 							</div>
 
-							{userDetailsModal.require_password_change && userDetailsModal.temp_password && (
-								<div className="pt-2">
-									<label className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-2">
-										<Key size={14} className="text-orange-500" />
-										Senha Temporária (Não alterada)
-									</label>
-									<div className="flex items-center gap-2">
-										<div className="bg-orange-50 dark:bg-orange-500/5 border border-orange-200 dark:border-orange-500/20 rounded-lg px-4 py-3 font-mono text-lg text-orange-700 dark:text-orange-400 tracking-wider w-full select-all">
-											{userDetailsModal.temp_password}
+							{userDetailsModal.require_password_change &&
+								userDetailsModal.temp_password && (
+									<div className="pt-2">
+										<label className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-2">
+											<Key
+												size={14}
+												className="text-orange-500"
+											/>
+											Senha Temporária (Não alterada)
+										</label>
+										<div className="flex items-center gap-2">
+											<div className="bg-orange-50 dark:bg-orange-500/5 border border-orange-200 dark:border-orange-500/20 rounded-lg px-4 py-3 font-mono text-lg text-orange-700 dark:text-orange-400 tracking-wider w-full select-all">
+												{userDetailsModal.temp_password}
+											</div>
+											<button
+												onClick={() =>
+													copyToClipboard(
+														userDetailsModal.temp_password,
+													)
+												}
+												className="h-12 w-12 flex items-center justify-center bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20 rounded-lg transition-colors shrink-0"
+												title="Copiar senha"
+											>
+												{copied ? (
+													<CheckCircle2 size={20} />
+												) : (
+													<Copy size={20} />
+												)}
+											</button>
 										</div>
-										<button
-											onClick={() => copyToClipboard(userDetailsModal.temp_password)}
-											className="h-12 w-12 flex items-center justify-center bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20 rounded-lg transition-colors shrink-0"
-											title="Copiar senha"
-										>
-											{copied ? <CheckCircle2 size={20} /> : <Copy size={20} />}
-										</button>
 									</div>
-								</div>
-							)}
+								)}
 						</div>
 					</div>
 				</div>

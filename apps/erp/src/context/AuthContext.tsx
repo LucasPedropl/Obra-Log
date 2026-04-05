@@ -334,15 +334,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					break;
 				}
 			}
-			
-			if (current && typeof current === 'object' && current[action] === true) {
+
+			if (
+				current &&
+				typeof current === 'object' &&
+				current[action] === true
+			) {
 				return true;
 			}
 			return false;
 		}
 
 		// Faz busca profunda em todo o objeto permissions procurando pelo 'resource' e validando se tem a 'action' === true.
-		const checkPermission = (obj: any, resKey: string, act: string): boolean => {
+		const checkPermission = (
+			obj: any,
+			resKey: string,
+			act: string,
+		): boolean => {
 			if (!obj || typeof obj !== 'object') return false;
 
 			if (resKey in obj) {
@@ -350,7 +358,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 				// Permitir que target seja true flat
 				if (target === true) return true;
 				if (target[act] === true) return true;
-				
+
 				const checkAnyTrue = (node: any): boolean => {
 					if (!node || typeof node !== 'object') return false;
 					if (node[act] === true) return true;

@@ -19,6 +19,41 @@ app.get('/health', (req, res) => {
 });
 
 // ============================================================================
+// MIDDLEWARE DE AUTENTICAÇÃO (BLINDAGEM)
+// ============================================================================
+const authMiddleware = async (req, res, next) => {
+	try {
+		const authHeader = req.headers.authorization;
+		if (!authHeader || !authHeader.startsWith('Bearer ')) {
+			return res.status(401).json({ error: 'Acesso negado. Token Ausente.' });
+		}
+		
+		const token = authHeader.split(' ')[1];
+		const supabaseAdmin = createClient(
+			process.env.SUPABASE_URL,
+			process.env.SUPABASE_SERVICE_ROLE_KEY,
+			{ auth: { autoRefreshToken: false, persistSession: false } },
+		);
+
+		// Valida o JWT do usuário logado
+		const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+		
+		if (error || !user) {
+			return res.status(401).json({ error: 'Acesso negado. Token Inválido ou Expirado.' });
+		}
+
+		req.user = user; // Instancia o usuário validado na requisição para uso futuro
+		next();
+	} catch (err) {
+		console.error('Erro no AuthMiddleware:', err);
+		res.status(500).json({ error: 'Erro interno ao validar autenticação.' });
+	}
+};
+
+// Aplica o middleware a todas as rotas sob /api/
+app.use('/api', authMiddleware);
+
+// ============================================================================
 // ROTAS DE APLICAÇÃO (OBRAS, ETC) - BYPASS DE RLS
 // ============================================================================
 

@@ -24,8 +24,16 @@ export default function NovaObra() {
 			const companyId = localStorage.getItem('selectedCompanyId');
 			if (!companyId) return;
 
+			const { data: sessionData } = await supabase.auth.getSession();
+			const token = sessionData?.session?.access_token;
+
 			const res = await fetch(
 				`${env.VITE_API_URL}/api/construction_sites?company_id=${companyId}`,
+				{
+					headers: {
+						Authorization: `Bearer ${token}`,
+					},
+				}
 			);
 			if (!res.ok) throw new Error('Erro ao buscar obras');
 			const data = await res.json();
@@ -53,11 +61,17 @@ export default function NovaObra() {
 
 		setLoading(true);
 		try {
+			const { data: sessionData } = await supabase.auth.getSession();
+			const token = sessionData?.session?.access_token;
+
 			const res = await fetch(
 				`${env.VITE_API_URL}/api/construction_sites`,
 				{
 					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${token}`
+					},
 					body: JSON.stringify({
 						name: obraname.trim(),
 						company_id: companyId,

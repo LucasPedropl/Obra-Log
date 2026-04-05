@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../../../config/supabase';
 
 export interface Company {
 	id: string;
@@ -16,7 +17,13 @@ export function useAdminData() {
 	const fetchCompanies = async () => {
 		setLoading(true);
 		try {
-			const res = await fetch(`${API_URL}/api/admin/companies`);
+			const { data: sessionData } = await supabase.auth.getSession();
+			const token = sessionData?.session?.access_token;
+			const res = await fetch(`${API_URL}/api/admin/companies`, {
+				headers: {
+					'Authorization': `Bearer ${token}`
+				}
+			});
 			if (!res.ok) throw new Error('Falha ao buscar empresas');
 			const data = await res.json();
 			setCompanies(data);
