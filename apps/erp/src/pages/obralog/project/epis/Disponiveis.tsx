@@ -16,6 +16,7 @@ import {
 import { supabase } from '../../../../config/supabase';
 import { SearchableSelect } from '../../../../components/ui/SearchableSelect';
 import { useToast } from '../../../../context/ToastContext';
+import { useEscape } from '../../../../hooks/useEscape';
 
 export default function EPisDisponiveis() {
 	const { id } = useParams();
@@ -23,6 +24,8 @@ export default function EPisDisponiveis() {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [showAddModal, setShowAddModal] = useState(false);
 	const [showFilters, setShowFilters] = useState(false);
+
+	useEscape(() => setShowAddModal(false));
 
 	const [epis, setEpis] = useState<any[]>([]);
 	const [inventoryEpis, setInventoryEpis] = useState<any[]>([]);

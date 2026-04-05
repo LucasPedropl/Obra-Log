@@ -26,9 +26,7 @@ app.get('/api/construction_sites', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id) {
-			return res
-				.status(400)
-				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
+			return res.status(400).json({ error: 'company_id Ã© obrigatÃ³rio.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -289,12 +287,98 @@ app.post('/api/admin/users', async (req, res) => {
 
 		if (authError) throw authError;
 
-		// 2. Vincula usuÃ¡rio Ã  empresa
+		// 2. Busca ou cria o perfil Administrador para esta empresa
+		let profileId = null;
+		const { data: existingProfile } = await supabaseAdmin
+			.from('access_profiles')
+			.select('id')
+			.eq('company_id', companyId)
+			.eq('name', 'Administrador PadrÃ£o')
+			.single();
+
+		if (existingProfile) {
+			profileId = existingProfile.id;
+		} else {
+			const fullPerms = {
+				obras: {
+					view: true,
+					create: true,
+					edit: true,
+					delete: true,
+					access_type: 'all',
+				},
+				colaboradores: {
+					view: true,
+					create: true,
+					edit: true,
+					delete: true,
+				},
+				ferramentas: {
+					view: true,
+					create: true,
+					edit: true,
+					delete: true,
+				},
+				epis: { view: true, create: true, edit: true, delete: true },
+				equip_alugados: {
+					view: true,
+					create: true,
+					edit: true,
+					delete: true,
+				},
+				movimentacoes: {
+					view: true,
+					create: true,
+					edit: true,
+					delete: true,
+				},
+				insumos: { view: true, create: true, edit: true, delete: true },
+				mao_de_obra: {
+					view: true,
+					create: true,
+					edit: true,
+					delete: true,
+				},
+				relatorios: {
+					view: true,
+					create: true,
+					edit: true,
+					delete: true,
+				},
+				usuarios: {
+					view: true,
+					create: true,
+					edit: true,
+					delete: true,
+				},
+				perfis: { view: true, create: true, edit: true, delete: true },
+			};
+
+			const { data: newProfile, error: profileError } =
+				await supabaseAdmin
+					.from('access_profiles')
+					.insert({
+						company_id: companyId,
+						name: 'Administrador PadrÃ£o',
+						scope: 'ALL_SITES',
+						permissions: fullPerms,
+						allowed_sites: [],
+					})
+					.select()
+					.single();
+
+			if (!profileError && newProfile) {
+				profileId = newProfile.id;
+			}
+		}
+
+		// 3. Vincula usuÃ¡rio Ã  empresa
 		const { error: linkError } = await supabaseAdmin
 			.from('company_users')
 			.insert({
 				company_id: companyId,
 				user_id: authUser.user.id,
+				profile_id: profileId,
 				status: 'ACTIVE',
 			});
 
@@ -390,11 +474,9 @@ app.delete('/api/admin/companies/:id', async (req, res) => {
 			!process.env.SUPABASE_URL ||
 			process.env.SUPABASE_URL.includes('seu-projeto')
 		) {
-			return res
-				.status(400)
-				.json({
-					error: 'A variável SUPABASE_URL no Render está inválida ou usando o valor padrão.',
-				});
+			return res.status(400).json({
+				error: 'A variï¿½vel SUPABASE_URL no Render estï¿½ invï¿½lida ou usando o valor padrï¿½o.',
+			});
 		}
 
 		const supabaseAdmin = createClient(
@@ -403,7 +485,7 @@ app.delete('/api/admin/companies/:id', async (req, res) => {
 			{ auth: { autoRefreshToken: false, persistSession: false } },
 		);
 
-		// Lista de tabelas em ordem inversa das dependências
+		// Lista de tabelas em ordem inversa das dependï¿½ncias
 		const tablesToDelete = [
 			'tool_loans',
 			'site_movements',
@@ -416,22 +498,22 @@ app.delete('/api/admin/companies/:id', async (req, res) => {
 			'categories',
 			'collaborators',
 			'company_users',
-			// access_profiles não é vinculada diretamente à empresa, não excluímos seus dados gerais
+			// access_profiles nï¿½o ï¿½ vinculada diretamente ï¿½ empresa, nï¿½o excluï¿½mos seus dados gerais
 			'companies',
 		];
 
 		for (const table of tablesToDelete) {
 			if (table === 'company_users') {
-				// Buscar os usuários vinculados à empresa antes de removê-los
+				// Buscar os usuï¿½rios vinculados ï¿½ empresa antes de removï¿½-los
 				const { data: usersToRem } = await supabaseAdmin
 					.from('company_users')
 					.select('user_id')
 					.eq('company_id', id);
 
-				// Deletar a relação do user com a empresa
+				// Deletar a relaï¿½ï¿½o do user com a empresa
 				await supabaseAdmin.from(table).delete().eq('company_id', id);
 
-				// Só deletamos o usuário da base de auth se ele não pertencer a mais nenhuma empresa
+				// Sï¿½ deletamos o usuï¿½rio da base de auth se ele nï¿½o pertencer a mais nenhuma empresa
 				if (usersToRem && usersToRem.length > 0) {
 					for (const u of usersToRem) {
 						// Verifica se ainda tem esse user noutra tenant
@@ -556,9 +638,7 @@ app.get('/api/categories', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id) {
-			return res
-				.status(400)
-				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
+			return res.status(400).json({ error: 'company_id Ã© obrigatÃ³rio.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -617,9 +697,7 @@ app.get('/api/measurement_units', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id) {
-			return res
-				.status(400)
-				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
+			return res.status(400).json({ error: 'company_id Ã© obrigatÃ³rio.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -672,9 +750,7 @@ app.get('/api/catalogs', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id) {
-			return res
-				.status(400)
-				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
+			return res.status(400).json({ error: 'company_id Ã© obrigatÃ³rio.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -754,9 +830,7 @@ app.get('/api/tenant/users', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id) {
-			return res
-				.status(400)
-				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
+			return res.status(400).json({ error: 'company_id Ã© obrigatÃ³rio.' });
 		}
 
 		const supabaseAdmin = createClient(
@@ -796,6 +870,8 @@ app.get('/api/tenant/users', async (req, res) => {
 				profile_id: cu.profile_id,
 				profile_name: cu.access_profiles?.name || 'Sem perfil',
 				temp_password: authUser?.user_metadata?.temp_password || null,
+				require_password_change:
+					authUser?.user_metadata?.require_password_change || false,
 			};
 		});
 
@@ -873,9 +949,7 @@ app.get('/api/access_profiles', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id)
-			return res
-				.status(400)
-				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
+			return res.status(400).json({ error: 'company_id Ã© obrigatÃ³rio.' });
 
 		const supabaseAdmin = createClient(
 			process.env.SUPABASE_URL,
@@ -902,9 +976,7 @@ app.get('/api/collaborators', async (req, res) => {
 	try {
 		const { company_id } = req.query;
 		if (!company_id)
-			return res
-				.status(400)
-				.json({ error: 'company_id Ã© obrigatÃ³rio.' });
+			return res.status(400).json({ error: 'company_id Ã© obrigatÃ³rio.' });
 
 		const supabaseAdmin = createClient(
 			process.env.SUPABASE_URL,
@@ -978,8 +1050,8 @@ app.post('/api/collaborators', async (req, res) => {
 				complement,
 				state,
 				city,
-                                profile_id: profile_id || null,
-                                role_title: req.body.role_title || 'Colaborador',
+				profile_id: profile_id || null,
+				role_title: req.body.role_title || 'Colaborador',
 				status: 'ACTIVE',
 			})
 			.select()

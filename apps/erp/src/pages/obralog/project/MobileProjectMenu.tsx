@@ -1,6 +1,7 @@
 import React from 'react';
 import { ERPLayout } from '../../../components/layout/ERPLayout';
 import { Link, useParams } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 import {
 	LayoutDashboard,
 	Package,
@@ -17,8 +18,9 @@ import {
 
 export default function MobileProjectMenu() {
 	const { id } = useParams();
+	const { isAllowed } = useAuth();
 
-	const menuGroups = [
+	const menuGroupsRaw = [
 		{
 			title: 'Visão Geral',
 			items: [
@@ -26,6 +28,7 @@ export default function MobileProjectMenu() {
 					name: 'Dashboard da Obra',
 					path: `/app/obras/${id}/visao-geral`,
 					icon: LayoutDashboard,
+					alwaysShow: true,
 				},
 			],
 		},
@@ -36,16 +39,19 @@ export default function MobileProjectMenu() {
 					name: 'Almoxarifado',
 					path: `/app/obras/${id}/almoxarifado`,
 					icon: Package,
+					alwaysShow: true,
 				},
 				{
 					name: 'Colaboradores',
 					path: `/app/obras/${id}/colaboradores`,
 					icon: Users,
+					resource: 'colaboradores' as const,
 				},
 				{
 					name: 'Movimentações',
 					path: `/app/obras/${id}/movimentacoes`,
 					icon: ArrowRightLeft,
+					resource: 'movimentacoes' as const,
 				},
 			],
 		},
@@ -56,11 +62,13 @@ export default function MobileProjectMenu() {
 					name: 'EPIs Disponíveis',
 					path: `/app/obras/${id}/epis/disponiveis`,
 					icon: HardHat,
+					resource: 'epis' as const,
 				},
 				{
 					name: 'Histórico de EPIs',
 					path: `/app/obras/${id}/epis/historico`,
 					icon: History,
+					resource: 'epis' as const,
 				},
 			],
 		},
@@ -71,16 +79,19 @@ export default function MobileProjectMenu() {
 					name: 'Disponíveis',
 					path: `/app/obras/${id}/ferramentas/disponiveis`,
 					icon: ClipboardList,
+					resource: 'ferramentas' as const,
 				},
 				{
 					name: 'Empréstimos',
 					path: `/app/obras/${id}/ferramentas/emprestimos`,
 					icon: ArrowLeft,
+					resource: 'ferramentas' as const,
 				},
 				{
 					name: 'Histórico',
 					path: `/app/obras/${id}/ferramentas/historico`,
 					icon: History,
+					resource: 'ferramentas' as const,
 				},
 			],
 		},
@@ -91,10 +102,23 @@ export default function MobileProjectMenu() {
 					name: 'Alugados',
 					path: `/app/obras/${id}/equip-alugados`,
 					icon: Truck,
+					resource: 'equip_alugados' as const,
 				},
 			],
 		},
 	];
+
+	const menuGroups = menuGroupsRaw
+		.map((group) => {
+			const visibleItems = group.items.filter((item) => {
+				if (item.alwaysShow) return true;
+				if (item.resource && isAllowed(item.resource as any, 'view'))
+					return true;
+				return false;
+			});
+			return { ...group, items: visibleItems };
+		})
+		.filter((group) => group.items.length > 0);
 
 	return (
 		<ERPLayout>

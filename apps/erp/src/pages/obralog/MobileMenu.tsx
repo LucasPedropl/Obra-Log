@@ -1,6 +1,7 @@
 import React from 'react';
 import { ERPLayout } from '../../components/layout/ERPLayout';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
 	Database,
 	FileText,
@@ -14,7 +15,9 @@ import {
 } from 'lucide-react';
 
 export default function MobileMenu() {
-	const menuGroups = [
+	const { isAllowed } = useAuth();
+
+	const menuGroupsRaw = [
 		{
 			title: 'Cadastros Básicos',
 			items: [
@@ -22,16 +25,19 @@ export default function MobileMenu() {
 					name: 'Insumos',
 					path: '/app/config-dados/insumos',
 					icon: FileText,
+					resource: 'insumos' as const,
 				},
 				{
 					name: 'Unid. de Medidas',
 					path: '/app/config-dados/unidades',
 					icon: Ruler,
+					alwaysShow: true,
 				},
 				{
 					name: 'Categorias',
 					path: '/app/config-dados/categorias',
 					icon: Tags,
+					alwaysShow: true,
 				},
 			],
 		},
@@ -42,11 +48,13 @@ export default function MobileMenu() {
 					name: 'Usuários',
 					path: '/app/acesso/usuarios',
 					icon: UserCheck,
+					resource: 'usuarios' as const,
 				},
 				{
 					name: 'Perfis de acesso',
 					path: '/app/acesso/perfis',
 					icon: ShieldCheck,
+					resource: 'perfis' as const,
 				},
 			],
 		},
@@ -57,10 +65,23 @@ export default function MobileMenu() {
 					name: 'Configurações Gerais',
 					path: '/app/configuracoes',
 					icon: Settings,
+					alwaysShow: true,
 				},
 			],
 		},
 	];
+
+	const menuGroups = menuGroupsRaw
+		.map((group) => {
+			const visibleItems = group.items.filter((item) => {
+				if (item.alwaysShow) return true;
+				if (item.resource && isAllowed(item.resource as any, 'view'))
+					return true;
+				return false;
+			});
+			return { ...group, items: visibleItems };
+		})
+		.filter((group) => group.items.length > 0);
 
 	return (
 		<ERPLayout>

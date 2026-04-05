@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currículo - Pedro Lucas Mota</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* bg-gray-100 */
+        }
+        .resume-container {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            margin: 2rem auto;
+            padding: 3rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .section-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            border-bottom: 2px solid #000;
+            padding-bottom: 0.25rem;
+            margin-bottom: 1.25rem;
+            color: #111827;
+        }
+        .skill-item {
+            display: inline-block;
+            border-bottom: 1px solid #d1d5db; /* gray-300 */
+            padding-bottom: 0.25rem;
+            margin-right: 0.75rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem; /* text-sm */
+            color: #374151; /* gray-700 */
+            font-weight: 500;
+        }
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+        .dot-filled {
+            background-color: #0ea5e9; /* sky-500 */
+        }
+        .dot-empty {
+            background-color: #e5e7eb; /* gray-200 */
+        }
+        .dotted-divider {
+            border-top: 2px dotted #d1d5db; /* gray-300 */
+            margin: 1.25rem 0;
+        }
+        
+        /* Oculta estilos de sombra e margem na hora de imprimir como PDF */
+        @media print {
+            body {
+                background-color: white;
+            }
+            .resume-container {
+                width: 100%;
+                min-height: auto;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+            }
+            /* Força a impressão das cores de fundo (bolinhas azuis, etc) */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="resume-container">
+        
+        <!-- HEADER -->
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 uppercase tracking-wide">PEDRO LUCAS MOTA</h1>
+            <h2 class="text-xl font-semibold text-sky-500 mt-1 mb-4">Desenvolvedor Full Stack</h2>
+            
+            <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600 font-medium">
+                <div class="flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-sky-500"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    <span>+55 (27) 99517-6920</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-sky-500"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                    <span>pedrolucasmota2005@gmail.com</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-sky-500"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    <span>linkedin.com/in/pedro-lucas-mota</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-sky-500"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                    <span>github.com/pedrolucasmota</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN GRID -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-10">
+            
+            <!-- LEFT COLUMN (Experiência e Educação) -->
+            <div class="md:col-span-7">
+                
+                <!-- EXPERIÊNCIA -->
+                <section>
+                    <h3 class="section-title">EXPERIÊNCIA</h3>
+                    
+                    <!-- Job 1 -->
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900">Desenvolvedor Full Stack</h4>
+                        <div class="text-sky-500 font-semibold mb-1">UAI - Pdv</div>
+                        <div class="flex items-center text-sm text-gray-500 mb-2 gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                            <span>07/2025 - Atual</span>
+                        </div>
+                        <ul class="list-none text-sm text-gray-700 space-y-1.5 mt-2">
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Desenvolvimento e manutenção de aplicações completas (Back-end e Front-end), garantindo alta performance e usabilidade.</li>
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Criação de interfaces de usuário modernas e responsivas utilizando Next.js e Tailwind CSS.</li>
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Desenvolvimento e integração de rotas e regras de negócio no back-end utilizando C#, conectando serviços e bancos de dados.</li>
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Criação de fluxos de automação de processos utilizando N8N, reduzindo o tempo de tarefas manuais da equipe.</li>
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Atuação colaborativa com outros desenvolvedores, aplicando boas práticas de código limpo, revisão de código (Code Review) e versionamento com Git.</li>
+                        </ul>
+                    </div>
+
+                    <div class="dotted-divider"></div>
+
+                    <!-- Job 2 -->
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900">Estagiário de TI</h4>
+                        <div class="text-sky-500 font-semibold mb-1">UENP (Universidade Estadual do Norte do Paraná)</div>
+                        <div class="flex items-center text-sm text-gray-500 mb-2 gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                            <span>11/2024 - 07/2025</span>
+                        </div>
+                        <ul class="list-none text-sm text-gray-700 space-y-1.5 mt-2">
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Desenvolvimento de aplicativos e ferramentas internas para apoiar e otimizar as atividades acadêmicas e administrativas da instituição.</li>
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Auxílio na criação de documentação técnica para sistemas internos, facilitando o onboarding de novos usuários.</li>
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Suporte técnico de Nível 1 e 2 a usuários (remoto e presencial), garantindo a resolução ágil de problemas em softwares e hardwares.</li>
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Configuração e manutenção preventiva da infraestrutura de TI, incluindo redes lógicas e equipamentos.</li>
+                        </ul>
+                    </div>
+
+                    <div class="dotted-divider"></div>
+
+                    <!-- Job 3 -->
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900">Desenvolvedor Freelancer</h4>
+                        <div class="text-sky-500 font-semibold mb-1">Autônomo</div>
+                        <div class="flex items-center text-sm text-gray-500 mb-2 gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                            <span>07/2023 - Atual</span>
+                        </div>
+                        <ul class="list-none text-sm text-gray-700 space-y-1.5 mt-2">
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Atuação ponta a ponta na entrega de projetos web para clientes diversos, desde o levantamento de requisitos até o deploy em produção.</li>
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Desenvolvimento de APIs escaláveis utilizando Node.js e NestJS, garantindo a segurança e eficiência no tráfego de dados.</li>
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Construção de Landing Pages e Sistemas Web interativos com React e Next.js, focando na experiência do usuário (UX) e performance.</li>
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Estruturação de bancos de dados modelados de acordo com a regra de negócio de cada cliente.</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- EDUCAÇÃO -->
+                <section class="mt-8">
+                    <h3 class="section-title">EDUCAÇÃO</h3>
+                    
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900">Bacharelado em Engenharia de Software</h4>
+                        <div class="text-sky-500 font-semibold mb-1">UTFPR (Universidade Tecnológica Federal do Paraná)</div>
+                        <div class="flex items-center text-sm text-gray-500 mb-2 gap-4">
+                            <div class="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                                <span>03/2023 - 07/2027</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                                <span>Paraná, Brasil</span>
+                            </div>
+                        </div>
+                        <ul class="list-none text-sm text-gray-700 space-y-1.5 mt-2">
+                            <li class="relative pl-4 before:content-['•'] before:absolute before:left-0 before:text-gray-400">Foco: Análise de sistemas, arquitetura de software, programação orientada a objetos e metodologias ágeis (Scrum/Kanban).</li>
+                        </ul>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- RIGHT COLUMN (Resumo, Idiomas e Habilidades) -->
+            <div class="md:col-span-5">
+                
+                <!-- RESUMO PROFISSIONAL -->
+                <section class="mb-8">
+                    <h3 class="section-title">RESUMO</h3>
+                    <p class="text-sm text-gray-700 leading-relaxed text-justify">
+                        Desenvolvedor Full Stack em constante evolução, graduando em Engenharia de Software pela UTFPR. Possuo experiência prática no desenvolvimento de aplicações web modernas, atuando desde a criação de interfaces responsivas até a construção de APIs robustas. Sou proativo, movido a desafios tecnológicos e busco sempre entregar soluções eficientes e escaláveis. Facilidade de adaptação, trabalho em equipe e comunicação clara são meus pilares para resolver problemas de negócios através de código.
+                    </p>
+                </section>
+
+                <!-- IDIOMAS -->
+                <section class="mb-8">
+                    <h3 class="section-title">IDIOMAS</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="font-bold text-gray-900 text-sm">Inglês</div>
+                                <div class="text-xs text-gray-500">Intermediário</div>
+                            </div>
+                            <div class="flex">
+                                <span class="dot dot-filled"></span>
+                                <span class="dot dot-filled"></span>
+                                <span class="dot dot-filled"></span>
+                                <span class="dot dot-empty"></span>
+                                <span class="dot dot-empty"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="font-bold text-gray-900 text-sm">Espanhol</div>
+                                <div class="text-xs text-gray-500">Básico</div>
+                            </div>
+                            <div class="flex">
+                                <span class="dot dot-filled"></span>
+                                <span class="dot dot-filled"></span>
+                                <span class="dot dot-empty"></span>
+                                <span class="dot dot-empty"></span>
+                                <span class="dot dot-empty"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="font-bold text-gray-900 text-sm">Português</div>
+                                <div class="text-xs text-gray-500">Nativo</div>
+                            </div>
+                            <div class="flex">
+                                <span class="dot dot-filled"></span>
+                                <span class="dot dot-filled"></span>
+                                <span class="dot dot-filled"></span>
+                                <span class="dot dot-filled"></span>
+                                <span class="dot dot-filled"></span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- HABILIDADES TÉCNICAS -->
+                <section>
+                    <h3 class="section-title">HABILIDADES</h3>
+                    
+                    <div class="mb-5">
+                        <h4 class="text-sky-500 font-bold text-sm mb-3">Front-end</h4>
+                        <div class="flex flex-wrap">
+                            <span class="skill-item">JavaScript</span>
+                            <span class="skill-item">TypeScript</span>
+                            <span class="skill-item">React</span>
+                            <span class="skill-item">Next.js</span>
+                            <span class="skill-item">Tailwind CSS</span>
+                            <span class="skill-item">HTML5</span>
+                            <span class="skill-item">CSS3</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <h4 class="text-sky-500 font-bold text-sm mb-3">Back-end</h4>
+                        <div class="flex flex-wrap">
+                            <span class="skill-item">Node.js</span>
+                            <span class="skill-item">NestJS</span>
+                            <span class="skill-item">C#</span>
+                            <span class="skill-item">APIs RESTful</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <h4 class="text-sky-500 font-bold text-sm mb-3">Ferramentas & DevOps</h4>
+                        <div class="flex flex-wrap">
+                            <span class="skill-item">Git</span>
+                            <span class="skill-item">GitHub</span>
+                            <span class="skill-item">N8N (Automação)</span>
+                            <span class="skill-item">SQL</span>
+                            <span class="skill-item">NoSQL</span>
+                            <span class="skill-item">PostgreSQL</span>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

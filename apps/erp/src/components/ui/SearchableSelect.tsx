@@ -1,5 +1,6 @@
 ﻿import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Search, X } from 'lucide-react';
+import { useEscape } from '../../hooks/useEscape';
 
 interface Option {
 	value?: string;
@@ -32,6 +33,8 @@ export function SearchableSelect({
 	const [isOpen, setIsOpen] = useState(false);
 	const [search, setSearch] = useState('');
 	const wrapperRef = useRef<HTMLDivElement>(null);
+
+	useEscape(() => setIsOpen(false));
 
 	const selectedOption = options.find(
 		(opt) => (opt.value || opt.id) === value,

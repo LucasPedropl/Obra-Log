@@ -17,12 +17,15 @@ import {
 import { supabase } from '../../../../config/supabase';
 import { SearchableSelect } from '../../../../components/ui/SearchableSelect';
 import { useToast } from '../../../../context/ToastContext';
+import { useEscape } from '../../../../hooks/useEscape';
 
 export default function FerramentasDisponiveis() {
 	const { id } = useParams();
 	const { showToast } = useToast();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [showAddModal, setShowAddModal] = useState(false);
+
+	useEscape(() => setShowAddModal(false));
 
 	const [ferramentas, setFerramentas] = useState<any[]>([]);
 	const [inventoryTools, setInventoryTools] = useState<any[]>([]);

@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { Search, UserPlus, Users, ChevronDown, X } from 'lucide-react';
 import { supabase } from '../../../config/supabase';
 import { useToast } from '../../../context/ToastContext';
+import { useEscape } from '../../../hooks/useEscape';
 
 export default function ColaboradoresProjeto() {
 	const { id } = useParams();
@@ -11,6 +12,8 @@ export default function ColaboradoresProjeto() {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [modalSearchTerm, setModalSearchTerm] = useState('');
 	const [showAddModal, setShowAddModal] = useState(false);
+
+	useEscape(() => setShowAddModal(false));
 
 	const [colaboradoresProjeto, setColaboradoresProjeto] = useState<any[]>([]);
 	const [allColaboradores, setAllColaboradores] = useState<any[]>([]);

@@ -79,9 +79,24 @@ Organize o projeto por features dentro de `src/features/<modulo>/`:
     complexos.
 3.  **Segurança**: Confie estritamente em RLS no Supabase e Auth JWT via client
     isolado em `config/supabase.js`.
-4.  **Migrações do banco de dados**: Não existe necessidade de se preocuopar com isso, o sistema ainda esta em desenvolvimento e a todo momento, o banco de dados sera resetado caso necessário, para que seja possível testar novas funcionalidades e mudanças na estrutura do banco de dados.
+4.  **Migrações do banco de dados**: Não existe necessidade de se preocuopar com
+    isso, o sistema ainda esta em desenvolvimento e a todo momento, o banco de
+    dados sera resetado caso necessário, para que seja possível testar novas
+    funcionalidades e mudanças na estrutura do banco de dados.
 
 # Exigências:
 
-1. **Inputs Select**: todos os inputs selects do sistema devem ser do tipo de pesquisa, o usuario deve poder conseguir pesquisar dentro dele, os que você perceber que não é desse tipo, refaça-os, pode até criar um componente universal pra isso se quiser
-2. **Arquivos Temporarios e Scripts**: Todos os arquivos que você criar para modificar arquivos do projeto, como scripts JS ou outros tipos de arquvos, devem ficar dentro da pasta "trash", para que possam ser apagagados mais facilmente no futuro
+1. **Inputs Select**: todos os inputs selects do sistema devem ser do tipo de
+   pesquisa, o usuario deve poder conseguir pesquisar dentro dele, os que você
+   perceber que não é desse tipo, refaça-os, pode até criar um componente
+   universal pra isso se quiser
+2. **Arquivos Temporarios e Scripts**: Todos os arquivos que você criar para
+   modificar arquivos do projeto, como scripts JS ou outros tipos de arquvos,
+   devem ficar dentro da pasta "trash", para que possam ser apagagados mais
+   facilmente no futuro, e ao final, sempre que possível, devem ser apagados, para evitar acúmulo de arquivos
+3. **Regra de Sistema de Arquivos (Windows)**: Nunca utilize comandos de
+   terminal estilo Unix (como cat << EOF, echo ou redirection >) para escrever
+   ou modificar blocos de código multiplinhas, pois o ambiente é Windows e isso
+   causará a criação de garbage files acidentais. Use sempre e exclusivamente as
+   ferramentas nativas do seu contexto (como create_file, replace_string_in_file
+   ou edit_file) para injetar, criar ou modificar código."

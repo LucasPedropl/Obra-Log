@@ -28,51 +28,195 @@ import Usuarios from '../pages/obralog/acesso/Usuarios';
 import PerfisAcesso from '../pages/obralog/acesso/PerfisAcesso';
 import NotFoundERP from '../pages/obralog/NotFoundERP';
 import MobileMenu from '../pages/obralog/MobileMenu';
+import { ProtectedRoute } from './ProtectedRoute';
 
 const router = createBrowserRouter([
 	{ path: '/', element: <Navigate to="/app/login" replace /> },
 	{ path: '/app/login', element: <ObraLogLogin /> },
-	{ path: '/app/setup-profile', element: <SetupProfile /> },
-	{ path: '/app/select-company', element: <SelectCompany /> },
-	{ path: '/app/dashboard', element: <ObraLogDashboard /> },
-	{ path: '/app/obras/nova', element: <NovaObra /> },
-	{ path: '/app/obras/:id/visao-geral', element: <VisaoGeral /> },
-	{ path: '/app/obras/:id/almoxarifado', element: <Almoxarifado /> },
+	{
+		path: '/app/setup-profile',
+		element: (
+			<ProtectedRoute>
+				<SetupProfile />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/select-company',
+		element: (
+			<ProtectedRoute>
+				<SelectCompany />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/dashboard',
+		element: (
+			<ProtectedRoute>
+				<ObraLogDashboard />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/obras/nova',
+		element: (
+			<ProtectedRoute resourceName="obras" requiredAction="create">
+				<NovaObra />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/obras/:id/visao-geral',
+		element: (
+			<ProtectedRoute resourceName="obras" requiredAction="view">
+				<VisaoGeral />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/obras/:id/almoxarifado',
+		element: (
+			<ProtectedRoute resourceName="obras" requiredAction="view">
+				<Almoxarifado />
+			</ProtectedRoute>
+		),
+	},
 	{
 		path: '/app/obras/:id/ferramentas/disponiveis',
-		element: <FerramentasDisponiveis />,
+		element: (
+			<ProtectedRoute resourceName="ferramentas" requiredAction="view">
+				<FerramentasDisponiveis />
+			</ProtectedRoute>
+		),
 	},
 	{
 		path: '/app/obras/:id/ferramentas/emprestimos',
-		element: <FerramentasEmprestimos />,
+		element: (
+			<ProtectedRoute resourceName="ferramentas" requiredAction="view">
+				<FerramentasEmprestimos />
+			</ProtectedRoute>
+		),
 	},
 	{
 		path: '/app/obras/:id/ferramentas/historico',
-		element: <FerramentasHistorico />,
+		element: (
+			<ProtectedRoute resourceName="ferramentas" requiredAction="view">
+				<FerramentasHistorico />
+			</ProtectedRoute>
+		),
 	},
-	{ path: '/app/obras/:id/colaboradores', element: <ColaboradoresProjeto /> },
-	{ path: '/app/obras/:id/epis/disponiveis', element: <EPisDisponiveis /> },
-	{ path: '/app/obras/:id/epis/historico', element: <EPisHistorico /> },
+	{
+		path: '/app/obras/:id/colaboradores',
+		element: (
+			<ProtectedRoute resourceName="colaboradores" requiredAction="view">
+				<ColaboradoresProjeto />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/obras/:id/epis/disponiveis',
+		element: (
+			<ProtectedRoute resourceName="epis" requiredAction="view">
+				<EPisDisponiveis />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/obras/:id/epis/historico',
+		element: (
+			<ProtectedRoute resourceName="epis" requiredAction="view">
+				<EPisHistorico />
+			</ProtectedRoute>
+		),
+	},
 	{
 		path: '/app/obras/:id/equip-alugados',
-		element: <Navigate to="ativos" replace />,
+		element: (
+			<ProtectedRoute resourceName="equip_alugados" requiredAction="view">
+				<Navigate to="ativos" replace />
+			</ProtectedRoute>
+		),
 	},
 	{
 		path: '/app/obras/:id/equip-alugados/ativos',
-		element: <EquipAlugadosAtivos />,
+		element: (
+			<ProtectedRoute resourceName="equip_alugados" requiredAction="view">
+				<EquipAlugadosAtivos />
+			</ProtectedRoute>
+		),
 	},
 	{
 		path: '/app/obras/:id/equip-alugados/historico',
-		element: <EquipAlugadosHistorico />,
+		element: (
+			<ProtectedRoute resourceName="equip_alugados" requiredAction="view">
+				<EquipAlugadosHistorico />
+			</ProtectedRoute>
+		),
 	},
-	{ path: '/app/obras/:id/movimentacoes', element: <Movimentacoes /> },
-	{ path: '/app/obras/:id/menu', element: <MobileProjectMenu /> },
-	{ path: '/app/config-dados/insumos', element: <Insumos /> },
-	{ path: '/app/mao-de-obra', element: <MaoDeObra /> },
-	{ path: '/app/acesso/usuarios', element: <Usuarios /> },
-	{ path: '/app/acesso/perfis', element: <PerfisAcesso /> },
-	{ path: '/app/configuracoes', element: <Configuracoes /> },
-	{ path: '/app/menu', element: <MobileMenu /> },
+	{
+		path: '/app/obras/:id/movimentacoes',
+		element: (
+			<ProtectedRoute resourceName="movimentacoes" requiredAction="view">
+				<Movimentacoes />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/obras/:id/menu',
+		element: (
+			<ProtectedRoute resourceName="obras" requiredAction="view">
+				<MobileProjectMenu />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/config-dados/insumos',
+		element: (
+			<ProtectedRoute resourceName="insumos" requiredAction="view">
+				<Insumos />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/mao-de-obra',
+		element: (
+			<ProtectedRoute resourceName="mao_de_obra" requiredAction="view">
+				<MaoDeObra />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/acesso/usuarios',
+		element: (
+			<ProtectedRoute resourceName="usuarios" requiredAction="view">
+				<Usuarios />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/acesso/perfis',
+		element: (
+			<ProtectedRoute resourceName="perfis" requiredAction="view">
+				<PerfisAcesso />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/configuracoes',
+		element: (
+			<ProtectedRoute>
+				<Configuracoes />
+			</ProtectedRoute>
+		),
+	},
+	{
+		path: '/app/menu',
+		element: (
+			<ProtectedRoute>
+				<MobileMenu />
+			</ProtectedRoute>
+		),
+	},
 	{ path: '*', element: <NotFoundERP /> },
 ]);
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
+import { useEscape } from '../../hooks/useEscape';
 import { ERPLayout } from '../../components/layout/ERPLayout';
 import {
 	Plus,
@@ -10,16 +12,22 @@ import {
 	UserCircle,
 	Search,
 	ChevronDown,
+	Pencil,
+	Trash,
 } from 'lucide-react';
 
 export default function MaoDeObra() {
 	const { showToast } = useToast();
+	const { isAllowed } = useAuth();
 	const [collaborators, setCollaborators] = useState<any[]>([]);
 	const [profiles, setProfiles] = useState<any[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [editingId, setEditingId] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState<'dados' | 'anexos'>('dados');
+
+	useEscape(() => setIsModalOpen(false));
 
 	const [formData, setFormData] = useState({
 		name: '',
@@ -207,13 +215,36 @@ export default function MaoDeObra() {
 							Gestão de colaboradores.
 						</p>
 					</div>
-					<button
-						onClick={() => setIsModalOpen(true)}
-						className="bg-primary hover:bg-primary-hover text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
-					>
-						<Plus size={18} />
-						Novo Colaborador
-					</button>
+					{isAllowed('mao_de_obra', 'create') && (
+						<button
+							onClick={() => {
+								setEditingId(null);
+								setFormData({
+									name: '',
+									cpf: '',
+									rg: '',
+									birth_date: '',
+									phone: '',
+									cellphone: '',
+									email: '',
+									cep: '',
+									street: '',
+									number: '',
+									neighborhood: '',
+									complement: '',
+									state: '',
+									city: '',
+									profile_id: '',
+								});
+								setActiveTab('dados');
+								setIsModalOpen(true);
+							}}
+							className="bg-primary hover:bg-primary-hover text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
+						>
+							<Plus size={18} />
+							Novo Colaborador
+						</button>
+					)}
 				</div>
 
 				<div className="bg-surface border border-border rounded-sm p-4 sm:p-6 shadow-sm overflow-hidden">
@@ -254,13 +285,16 @@ export default function MaoDeObra() {
 									<th className="px-6 py-4 text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">
 										Status
 									</th>
+									<th className="px-6 py-4 text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap text-right">
+										Ações
+									</th>
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-border">
 								{isLoading ? (
 									<tr>
 										<td
-											colSpan={4}
+											colSpan={5}
 											className="px-6 py-8 text-center text-text-muted"
 										>
 											Carregando...
@@ -269,7 +303,7 @@ export default function MaoDeObra() {
 								) : filteredCollaborators.length === 0 ? (
 									<tr>
 										<td
-											colSpan={4}
+											colSpan={5}
 											className="px-6 py-8 text-center text-text-muted"
 										>
 											Nenhum colaborador encontrado.
@@ -299,6 +333,100 @@ export default function MaoDeObra() {
 														: 'Desligado'}
 												</span>
 											</td>
+											<td className="px-6 py-4 text-right">
+												<div className="flex items-center justify-end gap-2">
+													{isAllowed(
+														'mao_de_obra',
+														'edit',
+													) && (
+														<button
+															className="p-2 text-text-muted hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
+															title="Editar"
+															onClick={() => {
+																setEditingId(
+																	c.id,
+																);
+																setFormData({
+																	name:
+																		c.name ||
+																		'',
+																	cpf:
+																		c.cpf ||
+																		'',
+																	rg:
+																		c.rg ||
+																		'',
+																	birth_date:
+																		c.birth_date ||
+																		'',
+																	phone:
+																		c.phone ||
+																		'',
+																	cellphone:
+																		c.cellphone ||
+																		'',
+																	email:
+																		c.email ||
+																		'',
+																	cep:
+																		c.cep ||
+																		'',
+																	street:
+																		c.street ||
+																		'',
+																	number:
+																		c.number ||
+																		'',
+																	neighborhood:
+																		c.neighborhood ||
+																		'',
+																	complement:
+																		c.complement ||
+																		'',
+																	state:
+																		c.state ||
+																		'',
+																	city:
+																		c.city ||
+																		'',
+																	profile_id:
+																		c.profile_id ||
+																		'',
+																});
+																setIsModalOpen(
+																	true,
+																);
+															}}
+														>
+															<Pencil size={18} />
+														</button>
+													)}
+													{isAllowed(
+														'mao_de_obra',
+														'delete',
+													) && (
+														<button
+															className="p-2 text-text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+															title="Excluir"
+															onClick={() => {
+																if (
+																	window.confirm(
+																		'Tem certeza que deseja excluir ' +
+																			c.name +
+																			'?',
+																	)
+																) {
+																	handleDelete(
+																		c.id,
+																	);
+																}
+															}}
+														>
+															<Trash size={18} />
+														</button>
+													)}
+												</div>
+											</td>
 										</tr>
 									))
 								)}
@@ -314,7 +442,9 @@ export default function MaoDeObra() {
 						{/* Cabeçalho do Modal */}
 						<div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background">
 							<h2 className="text-xl font-bold text-text-main">
-								Novo Colaborador
+								{editingId
+									? 'Editar Colaborador'
+									: 'Novo Colaborador'}
 							</h2>
 							<button
 								onClick={() => setIsModalOpen(false)}

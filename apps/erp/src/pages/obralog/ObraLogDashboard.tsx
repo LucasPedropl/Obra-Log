@@ -1,6 +1,7 @@
 import React from 'react';
 import { ERPLayout } from '../../components/layout/ERPLayout';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { Building2, MapPin, Calendar, ArrowRight, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -37,6 +38,7 @@ const mockObras = [
 
 export default function ObraLogDashboard() {
 	const { showToast } = useToast();
+	const { isAllowed } = useAuth();
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
@@ -63,13 +65,15 @@ export default function ObraLogDashboard() {
 							Visão geral das suas obras e projetos.
 						</p>
 					</div>
-					<Link
-						to="/app/obras/nova"
-						className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg font-medium transition-colors"
-					>
-						<Plus size={20} />
-						Nova Obra
-					</Link>
+					{isAllowed('obras', 'create') && (
+						<Link
+							to="/app/obras/nova"
+							className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg font-medium transition-colors"
+						>
+							<Plus size={20} />
+							Nova Obra
+						</Link>
+					)}
 				</div>
 
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-6">

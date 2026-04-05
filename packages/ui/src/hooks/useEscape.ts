@@ -1,0 +1,1 @@
+import { useEffect } from 'react';`n`nexport const useEscape = (callback: () => void) => {`n`tuseEffect(() => {`n`t`tconst handleEsc = (event: KeyboardEvent) => {`n`t`t`tif (event.key === 'Escape') {`n`t`t`t`tcallback();`n`t`t`t}`n`t`t};`n`t`twindow.addEventListener('keydown', handleEsc);`n`t`treturn () => window.removeEventListener('keydown', handleEsc);`n`t}, [callback]);`n};

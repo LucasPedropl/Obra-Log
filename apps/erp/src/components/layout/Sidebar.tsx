@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { NavLink, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { SidebarMode } from './ERPLayout';
+import { useAuth } from '../../context/AuthContext';
 import {
 	LayoutDashboard,
 	HardHat,
@@ -85,6 +86,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 		setContextMenuPos({ x: e.clientX, y: e.clientY });
 	};
 
+	const { isAllowed } = useAuth();
+
+	console.log('[Sidebar] isAllowed obras?', isAllowed('obras', 'view'));
+	console.log('[Sidebar] isAllowed usuarios?', isAllowed('usuarios', 'view'));
+
 	// Determine if we are in a project route
 	const isProjectRoute =
 		location.pathname.includes('/app/obras/') &&
@@ -94,15 +100,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
 	const match = location.pathname.match(/\/app\/obras\/([^\/]+)/);
 	const projectId = match ? match[1] : null;
 
-	const globalNavItems = [
-		{ name: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard },
-		{ name: 'Obras', path: '/app/obras/nova', icon: HardHat },
+	const globalNavItemsRaw = [
+		{
+			name: 'Dashboard',
+			path: '/app/dashboard',
+			icon: LayoutDashboard,
+			alwaysShow: true,
+		},
+		{
+			name: 'Obras',
+			path: '/app/obras/nova',
+			icon: HardHat,
+			resource: 'obras' as const,
+		},
 		{
 			name: 'Insumos',
 			path: '/app/config-dados/insumos',
 			icon: Package,
+			resource: 'insumos' as const,
 		},
-		{ name: 'Colaboradores', path: '/app/mao-de-obra', icon: Users },
+		{
+			name: 'Colaboradores',
+			path: '/app/mao-de-obra',
+			icon: Users,
+			resource: 'mao_de_obra' as const,
+		},
 		{
 			id: 'acesso',
 			name: 'Acesso ao sistema',
@@ -112,31 +134,53 @@ export const Sidebar: React.FC<SidebarProps> = ({
 					name: 'Usuários',
 					path: '/app/acesso/usuarios',
 					icon: UserCheck,
+					resource: 'usuarios' as const,
 				},
 				{
 					name: 'Perfis de acesso',
 					path: '/app/acesso/perfis',
 					icon: ShieldCheck,
+					resource: 'perfis' as const,
 				},
 			],
 		},
 	];
 
-	const projectNavItems = [
+	const globalNavItems = globalNavItemsRaw
+		.map((item) => {
+			if (item.alwaysShow) return item;
+			if (item.subItems) {
+				const filSubItems = item.subItems.filter((s) =>
+					s.resource ? isAllowed(s.resource, 'view') : true,
+				);
+				if (filSubItems.length > 0) {
+					return { ...item, subItems: filSubItems };
+				}
+				return null;
+			}
+			if (item.resource && isAllowed(item.resource, 'view')) return item;
+			return null;
+		})
+		.filter(Boolean) as any[];
+
+	const projectNavItemsRaw = [
 		{
 			name: 'Visão Geral',
 			path: `/app/obras/${projectId}/visao-geral`,
 			icon: LayoutDashboard,
+			alwaysShow: true,
 		},
 		{
 			name: 'Almoxarifado',
 			path: `/app/obras/${projectId}/almoxarifado`,
 			icon: Package,
+			alwaysShow: true,
 		},
 		{
 			id: 'ferramentas',
 			name: 'Ferramentas',
 			icon: Wrench,
+			resource: 'ferramentas' as const,
 			subItems: [
 				{
 					name: 'Disponíveis',
@@ -159,11 +203,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 			name: 'Colaboradores',
 			path: `/app/obras/${projectId}/colaboradores`,
 			icon: Users,
+			resource: 'colaboradores' as const,
 		},
 		{
 			id: 'epis',
 			name: 'EPIs',
 			icon: Shield,
+			resource: 'epis' as const,
 			subItems: [
 				{
 					name: 'Disponíveis',
@@ -181,6 +227,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 			id: 'equip-alugados',
 			name: 'Equip. Alugados',
 			icon: Truck,
+			resource: 'equip_alugados' as const,
 			subItems: [
 				{
 					name: 'Ativos',
@@ -198,8 +245,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 			name: 'Movimentações',
 			path: `/app/obras/${projectId}/movimentacoes`,
 			icon: ArrowRightLeft,
+			resource: 'movimentacoes' as const,
 		},
 	];
+
+	const projectNavItems = projectNavItemsRaw
+		.map((item) => {
+			if (item.alwaysShow) return item;
+			if (item.resource && isAllowed(item.resource as any, 'view'))
+				return item;
+			return null;
+		})
+		.filter(Boolean) as any[];
 
 	const navItems = isProjectRoute ? projectNavItems : globalNavItems;
 

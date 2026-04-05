@@ -15,12 +15,15 @@ import {
 import { supabase } from '../../../config/supabase';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { useToast } from '../../../context/ToastContext';
+import { useEscape } from '../../../hooks/useEscape';
 
 export default function Almoxarifado() {
 	const { id } = useParams();
 	const { showToast } = useToast();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [showAddModal, setShowAddModal] = useState(false);
+
+	useEscape(() => setShowAddModal(false));
 
 	const [catalogs, setCatalogs] = useState<any[]>([]);
 	const [inventory, setInventory] = useState<any[]>([]);

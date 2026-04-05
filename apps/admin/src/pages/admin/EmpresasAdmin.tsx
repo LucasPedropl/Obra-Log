@@ -17,6 +17,7 @@ import { ERPLayout } from '../../components/layout/ERPLayout';
 import { useAdminData, Company } from '../../features/admin/hooks/useAdminData';
 import { adminService } from '../../features/admin/services/admin.service';
 import { useToast } from '../../context/ToastContext';
+import { useEscape } from '../../hooks/useEscape';
 
 export default function EmpresasAdmin() {
 	const {
@@ -46,6 +47,12 @@ export default function EmpresasAdmin() {
 
 	const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 	const [deleteTargetIds, setDeleteTargetIds] = useState<string[]>([]);
+
+	useEscape(() => {
+		setIsModalOpen(false);
+		setIsEditModalOpen(false);
+		setIsDeleteConfirmOpen(false);
+	});
 
 	// Admin Form
 	const [adminEmail, setAdminEmail] = useState('');

@@ -43,6 +43,7 @@ export default function ObraLogLogin() {
 					'selectedCompanyId',
 					companyUsers[0].company_id,
 				);
+				window.dispatchEvent(new Event('storage'));
 				navigate('/app/dashboard');
 			} else {
 				throw new Error('Você não está vinculado a nenhuma empresa.');

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ERPLayout } from '../../../components/layout/ERPLayout';
+import { useAuth } from '../../../context/AuthContext';
+import { useEscape } from '../../../hooks/useEscape';
 import {
 	Plus,
 	Download,
@@ -9,9 +11,13 @@ import {
 	CheckCircle2,
 	Search,
 	ChevronDown,
+	Pencil,
+	Trash,
+	Key,
 } from 'lucide-react';
 
 export default function Usuarios() {
+	const { isAllowed } = useAuth();
 	const [users, setUsers] = useState<any[]>([]);
 	const [profiles, setProfiles] = useState<any[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -19,6 +25,7 @@ export default function Usuarios() {
 	const [searchTerm, setSearchTerm] = useState('');
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [editingId, setEditingId] = useState<string | null>(null);
 	const [formData, setFormData] = useState({
 		fullName: '',
 		email: '',
@@ -30,6 +37,11 @@ export default function Usuarios() {
 		password: string;
 		email: string;
 	} | null>(null);
+
+	useEscape(() => {
+		setIsModalOpen(false);
+		setTempPasswordModal(null);
+	});
 	const [copied, setCopied] = useState(false);
 
 	const companyId = localStorage.getItem('selectedCompanyId');
@@ -80,8 +92,13 @@ export default function Usuarios() {
 		try {
 			const API_URL =
 				import.meta.env.VITE_API_URL || 'http://localhost:5005';
-			const res = await fetch(`${API_URL}/api/tenant/users`, {
-				method: 'POST',
+
+			const url = editingId
+				? `${API_URL}/api/tenant/users/${editingId}`
+				: `${API_URL}/api/tenant/users`;
+
+			const response = await fetch(url, {
+				method: editingId ? 'PUT' : 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					company_id: companyId,
@@ -91,26 +108,50 @@ export default function Usuarios() {
 				}),
 			});
 
-			if (!res.ok) {
-				const errorData = await res.json();
-				throw new Error(errorData.error || 'Erro ao criar usuário');
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(
+					errorData.error ||
+						`Erro ao ${editingId ? 'atualizar' : 'criar'} usuário`,
+				);
 			}
 
-			const data = await res.json();
+			const data = await response.json();
 
-			setTempPasswordModal({
-				isOpen: true,
-				email: data.email,
-				password: data.temp_password,
-			});
+			if (!editingId) {
+				setTempPasswordModal({
+					isOpen: true,
+					email: data.email,
+					password: data.temp_password,
+				});
+			}
 
 			setIsModalOpen(false);
 			setFormData({ fullName: '', email: '', profileId: '' });
+			setEditingId(null);
 			fetchUsers();
 		} catch (err: any) {
 			alert(err.message);
 		} finally {
 			setIsSubmitting(false);
+		}
+	};
+
+	const handleDelete = async (id: string) => {
+		try {
+			const API_URL =
+				import.meta.env.VITE_API_URL || 'http://localhost:5005';
+			const response = await fetch(`${API_URL}/api/tenant/users/${id}`, {
+				method: 'DELETE',
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Erro ao excluir usuário');
+			}
+			fetchUsers();
+		} catch (err: any) {
+			alert(err.message);
 		}
 	};
 
@@ -139,13 +180,23 @@ export default function Usuarios() {
 							acesso.
 						</p>
 					</div>
-					<button
-						onClick={() => setIsModalOpen(true)}
-						className="bg-primary hover:bg-primary-hover text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
-					>
-						<Plus size={18} />
-						Novo Usuário
-					</button>
+					{isAllowed('usuarios', 'create') && (
+						<button
+							onClick={() => {
+								setEditingId(null);
+								setFormData({
+									fullName: '',
+									email: '',
+									profileId: '',
+								});
+								setIsModalOpen(true);
+							}}
+							className="bg-primary hover:bg-primary-hover text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
+						>
+							<Plus size={18} />
+							Novo Usuário
+						</button>
+					)}
 				</div>
 
 				<div className="bg-surface border border-border rounded-sm shadow-sm overflow-hidden p-4 sm:p-6">
@@ -186,13 +237,16 @@ export default function Usuarios() {
 									<th className="px-6 py-4 text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">
 										Status
 									</th>
+									<th className="px-6 py-4 text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap text-right">
+										Ações
+									</th>
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-border">
 								{isLoading ? (
 									<tr>
 										<td
-											colSpan={4}
+											colSpan={5}
 											className="px-6 py-8 text-center text-text-muted"
 										>
 											Carregando...
@@ -210,7 +264,7 @@ export default function Usuarios() {
 								) : filteredUsers.length === 0 ? (
 									<tr>
 										<td
-											colSpan={4}
+											colSpan={5}
 											className="px-6 py-8 text-center text-text-muted"
 										>
 											Nenhum usuário encontrado.
@@ -234,17 +288,122 @@ export default function Usuarios() {
 												</span>
 											</td>
 											<td className="px-6 py-4">
-												<span
-													className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-														user.status === 'ACTIVE'
-															? 'bg-green-100 text-green-700'
-															: 'bg-red-100 text-red-700'
-													}`}
-												>
-													{user.status === 'ACTIVE'
-														? 'Ativo'
-														: 'Inativo'}
-												</span>
+												{user.require_password_change ? (
+													<span
+														className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 cursor-pointer hover:bg-orange-200 transition-colors"
+														title="Usuário Pendente. Clique para ver a senha."
+														onClick={() => {
+															if (
+																user.temp_password
+															) {
+																setTempPasswordModal(
+																	{
+																		isOpen: true,
+																		email: user.email,
+																		password:
+																			user.temp_password,
+																	},
+																);
+															}
+														}}
+													>
+														Pendente
+													</span>
+												) : (
+													<span
+														className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+															user.status ===
+															'ACTIVE'
+																? 'bg-green-100 text-green-700'
+																: 'bg-red-100 text-red-700'
+														}`}
+													>
+														{user.status ===
+														'ACTIVE'
+															? 'Ativo'
+															: 'Inativo'}
+													</span>
+												)}
+											</td>
+											<td className="px-6 py-4 text-right">
+												<div className="flex items-center justify-end gap-2">
+													{isAllowed(
+														'usuarios',
+														'view',
+													) &&
+														user.require_password_change &&
+														user.temp_password && (
+															<button
+																className="p-2 text-text-muted hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-lg transition-colors"
+																title="Ver Senha Temporária"
+																onClick={() => {
+																	setTempPasswordModal(
+																		{
+																			isOpen: true,
+																			email: user.email,
+																			password:
+																				user.temp_password,
+																		},
+																	);
+																}}
+															>
+																<Key
+																	size={18}
+																/>
+															</button>
+														)}
+													{isAllowed(
+														'usuarios',
+														'edit',
+													) && (
+														<button
+															className="p-2 text-text-muted hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
+															title="Editar"
+															onClick={() => {
+																setEditingId(
+																	user.id,
+																);
+																setFormData({
+																	fullName:
+																		user.full_name,
+																	email: user.email,
+																	profileId:
+																		user.profile_id ||
+																		'',
+																});
+																setIsModalOpen(
+																	true,
+																);
+															}}
+														>
+															<Pencil size={18} />
+														</button>
+													)}
+													{isAllowed(
+														'usuarios',
+														'delete',
+													) && (
+														<button
+															className="p-2 text-text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+															title="Excluir"
+															onClick={() => {
+																if (
+																	window.confirm(
+																		'Tem certeza que deseja excluir ' +
+																			user.full_name +
+																			'?',
+																	)
+																) {
+																	handleDelete(
+																		user.id,
+																	);
+																}
+															}}
+														>
+															<Trash size={18} />
+														</button>
+													)}
+												</div>
 											</td>
 										</tr>
 									))
@@ -260,7 +419,7 @@ export default function Usuarios() {
 					<div className="bg-surface w-full max-w-md rounded-2xl shadow-xl border border-border flex flex-col">
 						<div className="flex items-center justify-between px-6 py-4 border-b border-border">
 							<h2 className="text-lg font-bold text-text-main">
-								Novo Usuário
+								{editingId ? 'Editar Usuário' : 'Novo Usuário'}
 							</h2>
 							<button
 								onClick={() => setIsModalOpen(false)}

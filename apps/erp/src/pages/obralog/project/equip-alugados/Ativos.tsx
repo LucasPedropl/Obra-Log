@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useToast } from '../../../../context/ToastContext';
+import { useEscape } from '../../../../hooks/useEscape';
 
 const normalizeString = (str: string) =>
 	str
@@ -39,6 +40,12 @@ export default function EquipAlugadosAtivos() {
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [isDevolucaoModalOpen, setIsDevolucaoModalOpen] = useState(false);
+
+	useEscape(() => {
+		setIsModalOpen(false);
+		setIsDevolucaoModalOpen(false);
+	});
+
 	const [selectedEquip, setSelectedEquip] = useState<any>(null);
 
 	const [formData, setFormData] = useState({

@@ -9,13 +9,18 @@ import {
 	ChevronDown,
 	Download,
 	Upload,
+	Pencil,
+	Trash,
 } from 'lucide-react';
 import { useToast } from '../../../context/ToastContext';
+import { useAuth } from '../../../context/AuthContext';
+import { useEscape } from '../../../hooks/useEscape';
 import { env } from '../../../config/env';
 import { useNavigate } from 'react-router-dom';
 
 export default function Insumos() {
 	const navigate = useNavigate();
+	const { isAllowed } = useAuth();
 	const [insumos, setInsumos] = useState<any[]>([]);
 	const [categorias, setCategorias] = useState<any[]>([]);
 	const [unidades, setUnidades] = useState<any[]>([]);
@@ -24,6 +29,8 @@ export default function Insumos() {
 	const [fetching, setFetching] = useState(true);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const { showToast } = useToast();
+
+	useEscape(() => setIsModalOpen(false));
 
 	const [formData, setFormData] = useState({
 		name: '',
@@ -341,13 +348,15 @@ export default function Insumos() {
 							Gerencie catálogo de materiais e serviços.
 						</p>
 					</div>
-					<button
-						onClick={() => setIsModalOpen(true)}
-						className="bg-primary hover:bg-primary-hover text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
-					>
-						<Plus size={18} />
-						Novo Insumo
-					</button>
+					{isAllowed('insumos', 'create') && (
+						<button
+							onClick={() => setIsModalOpen(true)}
+							className="bg-primary hover:bg-primary-hover text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
+						>
+							<Plus size={18} />
+							Novo Insumo
+						</button>
+					)}
 				</div>
 
 				{fetching ? (
@@ -395,6 +404,9 @@ export default function Insumos() {
 										<th className="px-6 py-4 text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">
 											Estoque
 										</th>
+										<th className="px-6 py-4 text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap text-right">
+											Ações
+										</th>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-border">
@@ -405,7 +417,7 @@ export default function Insumos() {
 									).length === 0 ? (
 										<tr>
 											<td
-												colSpan={3}
+												colSpan={4}
 												className="px-6 py-8 text-center text-text-muted"
 											>
 												Nenhum insumo encontrado.
@@ -457,6 +469,46 @@ export default function Insumos() {
 														{ins.is_stock_controlled
 															? `Sim (Min: ${ins.min_threshold})`
 															: 'Não'}
+													</td>
+													<td className="px-6 py-4 text-right">
+														<div className="flex items-center justify-end gap-2">
+															{isAllowed(
+																'insumos',
+																'edit',
+															) && (
+																<button
+																	className="p-2 text-text-muted hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
+																	title="Editar"
+																	onClick={() => {
+																		// Editar insumo
+																	}}
+																>
+																	<Pencil
+																		size={
+																			18
+																		}
+																	/>
+																</button>
+															)}
+															{isAllowed(
+																'insumos',
+																'delete',
+															) && (
+																<button
+																	className="p-2 text-text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+																	title="Excluir"
+																	onClick={() => {
+																		// Excluir insumo
+																	}}
+																>
+																	<Trash
+																		size={
+																			18
+																		}
+																	/>
+																</button>
+															)}
+														</div>
 													</td>
 												</tr>
 											))

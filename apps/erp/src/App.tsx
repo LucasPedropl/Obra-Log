@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { AppRouter } from './routes/AppRouter';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider } from './context/AuthContext';
 import { supabase } from './config/supabase';
 
 export default function App() {
@@ -32,9 +33,11 @@ export default function App() {
 
 	return (
 		<ThemeProvider>
-			<ToastProvider>
-				<AppRouter />
-			</ToastProvider>
+			<AuthProvider>
+				<ToastProvider>
+					<AppRouter />
+				</ToastProvider>
+			</AuthProvider>
 		</ThemeProvider>
 	);
 }
