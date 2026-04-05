@@ -38,9 +38,12 @@ export default function Usuarios() {
 		email: string;
 	} | null>(null);
 
+	const [userDetailsModal, setUserDetailsModal] = useState<any | null>(null);
+
 	useEscape(() => {
 		setIsModalOpen(false);
 		setTempPasswordModal(null);
+		setUserDetailsModal(null);
 	});
 	const [copied, setCopied] = useState(false);
 
@@ -274,7 +277,8 @@ export default function Usuarios() {
 									filteredUsers.map((user, idx) => (
 										<tr
 											key={idx}
-											className="hover:bg-black/5 dark:hover:bg-white/5 even:bg-black/[0.02] dark:even:bg-white/[0.02] transition-colors"
+											onClick={() => setUserDetailsModal(user)}
+											className="hover:bg-black/5 dark:hover:bg-white/5 even:bg-black/[0.02] dark:even:bg-white/[0.02] transition-colors cursor-pointer"
 										>
 											<td className="px-6 py-4 font-medium text-text-main">
 												{user.full_name}
@@ -292,7 +296,8 @@ export default function Usuarios() {
 													<span
 														className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 cursor-pointer hover:bg-orange-200 transition-colors"
 														title="Usuário Pendente. Clique para ver a senha."
-														onClick={() => {
+														onClick={(e) => {
+															e.stopPropagation();
 															if (
 																user.temp_password
 															) {
@@ -336,7 +341,8 @@ export default function Usuarios() {
 															<button
 																className="p-2 text-text-muted hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-lg transition-colors"
 																title="Ver Senha Temporária"
-																onClick={() => {
+																onClick={(e) => {
+																	e.stopPropagation();
 																	setTempPasswordModal(
 																		{
 																			isOpen: true,
@@ -359,7 +365,8 @@ export default function Usuarios() {
 														<button
 															className="p-2 text-text-muted hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
 															title="Editar"
-															onClick={() => {
+															onClick={(e) => {
+																e.stopPropagation();
 																setEditingId(
 																	user.id,
 																);
@@ -386,7 +393,8 @@ export default function Usuarios() {
 														<button
 															className="p-2 text-text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
 															title="Excluir"
-															onClick={() => {
+															onClick={(e) => {
+																e.stopPropagation();
 																if (
 																	window.confirm(
 																		'Tem certeza que deseja excluir ' +
@@ -578,6 +586,97 @@ export default function Usuarios() {
 							>
 								Concluir e Fechar
 							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{userDetailsModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+					<div className="bg-surface w-full max-w-md rounded-2xl shadow-xl flex flex-col border border-border animate-in fade-in zoom-in duration-200">
+						<div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background/50 rounded-t-2xl">
+							<h2 className="text-lg font-bold text-text-main flex items-center gap-2">
+								<div className="p-2 bg-primary/10 rounded-lg">
+									<Search size={20} className="text-primary" />
+								</div>
+								Detalhes do Usuário
+							</h2>
+							<button
+								onClick={() => setUserDetailsModal(null)}
+								className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-text-main transition-colors"
+							>
+								<X size={20} />
+							</button>
+						</div>
+
+						<div className="p-6 space-y-5">
+							<div>
+								<label className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1 block">
+									Nome Completo
+								</label>
+								<div className="font-medium text-text-main text-lg">
+									{userDetailsModal.full_name}
+								</div>
+							</div>
+
+							<div>
+								<label className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1 block">
+									Email Corporativo
+								</label>
+								<div className="text-text-main">
+									{userDetailsModal.email}
+								</div>
+							</div>
+
+							<div className="flex justify-between items-center bg-background p-4 rounded-xl border border-border">
+								<div>
+									<label className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1 block">
+										Perfil de Acesso
+									</label>
+									<span className="inline-flex items-center px-2.5 py-1 rounded-md border border-border bg-surface text-sm font-medium text-text-main shadow-sm">
+										{userDetailsModal.profile_name}
+									</span>
+								</div>
+								<div>
+									<label className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1 block text-right">
+										Status
+									</label>
+									{userDetailsModal.require_password_change ? (
+										<span className="inline-flex items-center justify-end px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+											Pendente
+										</span>
+									) : (
+										<span className={`inline-flex items-center justify-end px-2.5 py-1 rounded-full text-xs font-medium ${
+											userDetailsModal.status === 'ACTIVE'
+												? 'bg-green-100 text-green-700'
+												: 'bg-red-100 text-red-700'
+										}`}>
+											{userDetailsModal.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+										</span>
+									)}
+								</div>
+							</div>
+
+							{userDetailsModal.require_password_change && userDetailsModal.temp_password && (
+								<div className="pt-2">
+									<label className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-2">
+										<Key size={14} className="text-orange-500" />
+										Senha Temporária (Não alterada)
+									</label>
+									<div className="flex items-center gap-2">
+										<div className="bg-orange-50 dark:bg-orange-500/5 border border-orange-200 dark:border-orange-500/20 rounded-lg px-4 py-3 font-mono text-lg text-orange-700 dark:text-orange-400 tracking-wider w-full select-all">
+											{userDetailsModal.temp_password}
+										</div>
+										<button
+											onClick={() => copyToClipboard(userDetailsModal.temp_password)}
+											className="h-12 w-12 flex items-center justify-center bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20 rounded-lg transition-colors shrink-0"
+											title="Copiar senha"
+										>
+											{copied ? <CheckCircle2 size={20} /> : <Copy size={20} />}
+										</button>
+									</div>
+								</div>
+							)}
 						</div>
 					</div>
 				</div>

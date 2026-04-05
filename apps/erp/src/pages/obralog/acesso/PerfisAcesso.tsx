@@ -129,8 +129,12 @@ export default function PerfisAcesso() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [searchTerm, setSearchTerm] = useState('');
 	const [sites, setSites] = useState<any[]>([]);
+	const [profileDetailsModal, setProfileDetailsModal] = useState<any | null>(null);
 
-	useEscape(() => setIsModalOpen(false));
+	useEscape(() => {
+		setIsModalOpen(false);
+		setProfileDetailsModal(null);
+	});
 
 	// Accordions (Modulos)
 	const [expandedModules, setExpandedModules] = useState<
@@ -484,12 +488,12 @@ export default function PerfisAcesso() {
 									</tr>
 								) : (
 									filteredProfiles.map((p, idx) => {
-										const isGlobal =
-											p.scope === 'ALL_SITES';
+										const isGlobal = p.scope === 'ALL_SITES';
 										return (
 											<tr
 												key={idx}
-												className="hover:bg-background transition-colors"
+												onClick={() => setProfileDetailsModal(p)}
+												className="hover:bg-black/5 dark:hover:bg-white/5 even:bg-black/[0.02] dark:even:bg-white/[0.02] transition-colors cursor-pointer"
 											>
 												<td className="px-6 py-4 font-semibold text-text-main flex items-center gap-3">
 													<div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
@@ -521,15 +525,12 @@ export default function PerfisAcesso() {
 																<button
 																	className="p-2 text-text-muted hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
 																	title="Editar"
-																	onClick={() => {
+																	onClick={(e) => {
+																		e.stopPropagation();
 																		// Editar perfil
 																	}}
 																>
-																	<Pencil
-																		size={
-																			18
-																		}
-																	/>
+																	<Pencil size={18} />
 																</button>
 															)}
 														{isAllowed(
@@ -541,15 +542,12 @@ export default function PerfisAcesso() {
 																<button
 																	className="p-2 text-text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
 																	title="Excluir"
-																	onClick={() => {
+																	onClick={(e) => {
+																		e.stopPropagation();
 																		// Excluir perfil
 																	}}
 																>
-																	<Trash2
-																		size={
-																			18
-																		}
-																	/>
+																	<Trash2 size={18} />
 																</button>
 															)}
 													</div>
@@ -1089,6 +1087,84 @@ export default function PerfisAcesso() {
 									'Salvar Regras de Acesso'
 								)}
 							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{profileDetailsModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+					<div 
+						className="bg-surface w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-xl flex flex-col border border-border animate-in fade-in zoom-in duration-200"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<div className="flex items-center justify-between px-6 py-5 border-b border-border bg-background/50 rounded-t-2xl">
+							<div>
+								<h2 className="text-xl font-bold text-text-main flex items-center gap-3">
+									<div className="p-2 bg-primary/10 rounded-lg">
+										<Shield size={24} className="text-primary" />
+									</div>
+									Detalhes do Perfil de Acesso
+								</h2>
+								<p className="text-sm text-text-muted mt-1 ml-12">
+									Visualização das regras de permissão configuradas.
+								</p>
+							</div>
+							<button
+								onClick={() => setProfileDetailsModal(null)}
+								className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-text-main transition-colors"
+							>
+								<X size={24} />
+							</button>
+						</div>
+
+						<div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-background">
+							<div className="bg-surface border border-border p-5 rounded-2xl space-y-4">
+								<div>
+									<label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1 block">
+										Nome do Perfil
+									</label>
+									<div className="font-bold text-text-main text-lg h-8 flex items-center">
+										{profileDetailsModal.name}
+									</div>
+								</div>
+								<div>
+									<label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-1 block">
+										Escopo
+									</label>
+									<div>
+										<span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
+											profileDetailsModal.scope === 'ALL_SITES'
+												? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+												: 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20'
+										}`}>
+											{profileDetailsModal.scope === 'ALL_SITES' ? 'Global (Acesso Completo)' : 'Específico (Restrito)'}
+										</span>
+									</div>
+								</div>
+							</div>
+
+							<div className="space-y-4">
+								<h3 className="text-base font-bold text-text-main flex items-center gap-2 border-b border-border pb-2">
+									Regras de Permissão Ativas
+								</h3>
+								<div className="bg-surface border border-border rounded-xl overflow-hidden">
+									<div className="p-4 bg-background border-b border-border text-sm text-text-muted">
+										Apenas os módulos e ações com permissão <strong>concedida</strong> estão listados abaixo.
+									</div>
+									<div className="p-1">
+										<pre className="text-xs text-text-main font-mono bg-black/5 dark:bg-white/5 p-4 rounded-lg overflow-x-auto">
+											{JSON.stringify(profileDetailsModal.permissions, (key, value) => {
+												// Filter out false values for cleaner display
+												if (value === false) return undefined;
+												// Filter out empty objects
+												if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) return undefined;
+												return value;
+											}, 2)}
+										</pre>
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>

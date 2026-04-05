@@ -68,7 +68,7 @@ const router = createBrowserRouter([
 	{
 		path: '/app/obras/:id/visao-geral',
 		element: (
-			<ProtectedRoute resourceName="obras" requiredAction="view">
+			<ProtectedRoute resourceName="obras.pages.visao_geral" requiredAction="view">
 				<VisaoGeral />
 			</ProtectedRoute>
 		),
@@ -76,7 +76,7 @@ const router = createBrowserRouter([
 	{
 		path: '/app/obras/:id/almoxarifado',
 		element: (
-			<ProtectedRoute resourceName="obras" requiredAction="view">
+			<ProtectedRoute resourceName="obras.pages.almoxarifado" requiredAction="view">
 				<Almoxarifado />
 			</ProtectedRoute>
 		),
@@ -84,7 +84,7 @@ const router = createBrowserRouter([
 	{
 		path: '/app/obras/:id/ferramentas/disponiveis',
 		element: (
-			<ProtectedRoute resourceName="ferramentas" requiredAction="view">
+			<ProtectedRoute resourceName="obras.pages.ferramentas.disponiveis" requiredAction="view">
 				<FerramentasDisponiveis />
 			</ProtectedRoute>
 		),
@@ -92,7 +92,7 @@ const router = createBrowserRouter([
 	{
 		path: '/app/obras/:id/ferramentas/emprestimos',
 		element: (
-			<ProtectedRoute resourceName="ferramentas" requiredAction="view">
+			<ProtectedRoute resourceName="obras.pages.ferramentas.emprestimos" requiredAction="view">
 				<FerramentasEmprestimos />
 			</ProtectedRoute>
 		),
@@ -100,7 +100,7 @@ const router = createBrowserRouter([
 	{
 		path: '/app/obras/:id/ferramentas/historico',
 		element: (
-			<ProtectedRoute resourceName="ferramentas" requiredAction="view">
+			<ProtectedRoute resourceName="obras.pages.ferramentas.historico" requiredAction="view">
 				<FerramentasHistorico />
 			</ProtectedRoute>
 		),
@@ -108,7 +108,7 @@ const router = createBrowserRouter([
 	{
 		path: '/app/obras/:id/colaboradores',
 		element: (
-			<ProtectedRoute resourceName="colaboradores" requiredAction="view">
+			<ProtectedRoute resourceName="obras.pages.colaboradores" requiredAction="view">
 				<ColaboradoresProjeto />
 			</ProtectedRoute>
 		),
@@ -116,7 +116,7 @@ const router = createBrowserRouter([
 	{
 		path: '/app/obras/:id/epis/disponiveis',
 		element: (
-			<ProtectedRoute resourceName="epis" requiredAction="view">
+			<ProtectedRoute resourceName="obras.pages.epis.disponiveis" requiredAction="view">
 				<EPisDisponiveis />
 			</ProtectedRoute>
 		),
@@ -124,7 +124,7 @@ const router = createBrowserRouter([
 	{
 		path: '/app/obras/:id/epis/historico',
 		element: (
-			<ProtectedRoute resourceName="epis" requiredAction="view">
+			<ProtectedRoute resourceName="obras.pages.epis.historico" requiredAction="view">
 				<EPisHistorico />
 			</ProtectedRoute>
 		),
@@ -132,7 +132,7 @@ const router = createBrowserRouter([
 	{
 		path: '/app/obras/:id/equip-alugados',
 		element: (
-			<ProtectedRoute resourceName="equip_alugados" requiredAction="view">
+			<ProtectedRoute resourceName="obras.pages.equip_alugados.ativos" requiredAction="view">
 				<Navigate to="ativos" replace />
 			</ProtectedRoute>
 		),
@@ -140,7 +140,7 @@ const router = createBrowserRouter([
 	{
 		path: '/app/obras/:id/equip-alugados/ativos',
 		element: (
-			<ProtectedRoute resourceName="equip_alugados" requiredAction="view">
+			<ProtectedRoute resourceName="obras.pages.equip_alugados.ativos" requiredAction="view">
 				<EquipAlugadosAtivos />
 			</ProtectedRoute>
 		),
@@ -148,7 +148,7 @@ const router = createBrowserRouter([
 	{
 		path: '/app/obras/:id/equip-alugados/historico',
 		element: (
-			<ProtectedRoute resourceName="equip_alugados" requiredAction="view">
+			<ProtectedRoute resourceName="obras.pages.equip_alugados.historico" requiredAction="view">
 				<EquipAlugadosHistorico />
 			</ProtectedRoute>
 		),
@@ -156,7 +156,7 @@ const router = createBrowserRouter([
 	{
 		path: '/app/obras/:id/movimentacoes',
 		element: (
-			<ProtectedRoute resourceName="movimentacoes" requiredAction="view">
+			<ProtectedRoute resourceName="obras.pages.movimentacoes" requiredAction="view">
 				<Movimentacoes />
 			</ProtectedRoute>
 		),

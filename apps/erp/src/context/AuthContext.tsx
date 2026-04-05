@@ -316,37 +316,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	}, []);
 
 	const isAllowed = (
-		resource: string,
+		resourcePath: string,
 		action: keyof PermissionActions,
 	): boolean => {
 		if (!permissions) {
-			console.log(
-				`[isAllowed] No permissions loaded for resource: ${resource}`,
-			);
 			return false; // Fail secure
 		}
 
-		// Tenta encontrar em permissões flat ou acessando os paths que o Sidebar ou Telas chamarem.
-		const resourcePerms = (permissions as any)[resource];
-		if (!resourcePerms) {
-			console.log(
-				`[isAllowed] No resourcePerms found for resource: ${resource} in permissions:`,
-				permissions,
-			);
-			// fallback para quando tentar chamar 'dashboard' ou itens aninhados,
-			// ele tenta checar se é um item raiz
+		const pathParts = resourcePath.split('.');
+		if (pathParts.length > 1) {
+			let current: any = permissions;
+			for (const part of pathParts) {
+				if (current && typeof current === 'object' && part in current) {
+					current = current[part];
+				} else {
+					current = undefined;
+					break;
+				}
+			}
+			
+			if (current && typeof current === 'object' && current[action] === true) {
+				return true;
+			}
 			return false;
 		}
 
-		// @ts-ignore
-		return !!resourcePerms[action];
+		// Faz busca profunda em todo o objeto permissions procurando pelo 'resource' e validando se tem a 'action' === true.
+		const checkPermission = (obj: any, resKey: string, act: string): boolean => {
+			if (!obj || typeof obj !== 'object') return false;
+
+			if (resKey in obj) {
+				const target = obj[resKey];
+				// Permitir que target seja true flat
+				if (target === true) return true;
+				if (target[act] === true) return true;
+				
+				const checkAnyTrue = (node: any): boolean => {
+					if (!node || typeof node !== 'object') return false;
+					if (node[act] === true) return true;
+					for (const k in node) {
+						if (checkAnyTrue(node[k])) return true;
+					}
+					return false;
+				};
+
+				if (checkAnyTrue(target)) return true;
+			}
+
+			for (const key in obj) {
+				if (typeof obj[key] === 'object') {
+					if (checkPermission(obj[key], resKey, act)) {
+						return true;
+					}
+				}
+			}
+
+			return false;
+		};
+
+		return checkPermission(permissions, resourcePath, action);
 	};
 
 	const canAccessSpecificSite = (siteId: string): boolean => {
 		if (!permissions) return false;
 
 		const obrasPerms = permissions.obras;
-		if (!obrasPerms || !obrasPerms.view) return false;
+		if (!obrasPerms || !isAllowed('obras', 'view')) return false;
 
 		if (obrasPerms.access_type === 'all') return true;
 

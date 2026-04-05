@@ -186,16 +186,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 					name: 'Disponíveis',
 					path: `/app/obras/${projectId}/ferramentas/disponiveis`,
 					icon: ClipboardList,
+					resource: 'obras.pages.ferramentas.disponiveis' as const,
 				},
 				{
 					name: 'Empréstimos',
 					path: `/app/obras/${projectId}/ferramentas/emprestimos`,
 					icon: ArrowRightLeft,
+					resource: 'obras.pages.ferramentas.emprestimos' as const,
 				},
 				{
 					name: 'Histórico',
 					path: `/app/obras/${projectId}/ferramentas/historico`,
 					icon: Clock,
+					resource: 'obras.pages.ferramentas.historico' as const,
 				},
 			],
 		},
@@ -215,11 +218,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 					name: 'Disponíveis',
 					path: `/app/obras/${projectId}/epis/disponiveis`,
 					icon: ClipboardList,
+					resource: 'obras.pages.epis.disponiveis' as const,
 				},
 				{
 					name: 'Histórico',
 					path: `/app/obras/${projectId}/epis/historico`,
 					icon: Clock,
+					resource: 'obras.pages.epis.historico' as const,
 				},
 			],
 		},
@@ -233,11 +238,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 					name: 'Ativos',
 					path: `/app/obras/${projectId}/equip-alugados/ativos`,
 					icon: ClipboardList,
+					resource: 'obras.pages.equip_alugados.ativos' as const,
 				},
 				{
 					name: 'Histórico',
 					path: `/app/obras/${projectId}/equip-alugados/historico`,
 					icon: Clock,
+					resource: 'obras.pages.equip_alugados.historico' as const,
 				},
 			],
 		},
@@ -252,6 +259,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 	const projectNavItems = projectNavItemsRaw
 		.map((item) => {
 			if (item.alwaysShow) return item;
+			if (item.subItems) {
+				const filSubItems = item.subItems.filter((s) =>
+					s.resource ? isAllowed(s.resource, 'view') : true,
+				);
+				if (filSubItems.length > 0) {
+					return { ...item, subItems: filSubItems };
+				}
+				return null;
+			}
 			if (item.resource && isAllowed(item.resource as any, 'view'))
 				return item;
 			return null;
