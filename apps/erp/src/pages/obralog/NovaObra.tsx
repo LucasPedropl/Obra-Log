@@ -4,6 +4,7 @@ import { Loader2, Plus, HardHat, FileX2, X } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { env } from '../../config/env';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../config/supabase';
 
 export default function NovaObra() {
 	const [obras, setObras] = useState<any[]>([]);

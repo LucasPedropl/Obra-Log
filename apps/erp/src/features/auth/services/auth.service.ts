@@ -60,7 +60,14 @@ export const authService = {
 
 	async getUserCompanies(userId: string) {
 		const API_URL = env.VITE_API_URL;
-		const res = await fetch(`${API_URL}/api/users/${userId}/companies`);
+		const { data: sessionData } = await supabase.auth.getSession();
+		const token = sessionData?.session?.access_token || '';
+
+		const res = await fetch(`${API_URL}/api/users/${userId}/companies`, {
+			headers: {
+				Authorization: `Bearer ${token}`,
+			},
+		});
 		if (!res.ok) {
 			throw new Error('Erro ao buscar empresas do usuário');
 		}
