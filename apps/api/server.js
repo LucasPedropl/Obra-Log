@@ -22,6 +22,11 @@ app.get('/health', (req, res) => {
 // MIDDLEWARE DE AUTENTICAÇÃO (BLINDAGEM)
 // ============================================================================
 const authMiddleware = async (req, res, next) => {
+	// Permite requisições de preflight (OPTIONS) do navegador sem token
+	if (req.method === 'OPTIONS') {
+		return next();
+	}
+
 	try {
 		const authHeader = req.headers.authorization;
 		if (!authHeader || !authHeader.startsWith('Bearer ')) {

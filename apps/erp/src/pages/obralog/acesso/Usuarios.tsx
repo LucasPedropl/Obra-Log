@@ -15,6 +15,7 @@ import {
 	Trash,
 	Key,
 } from 'lucide-react';
+import { supabase } from '../../../config/supabase';
 
 export default function Usuarios() {
 	const { isAllowed } = useAuth();
@@ -61,8 +62,15 @@ export default function Usuarios() {
 			setIsLoading(true);
 			const API_URL =
 				import.meta.env.VITE_API_URL || 'http://localhost:5005';
+			
+			const { data: sessionData } = await supabase.auth.getSession();
+			const token = sessionData?.session?.access_token || '';
+			
 			const res = await fetch(
 				`${API_URL}/api/tenant/users?company_id=${companyId}`,
+				{
+					headers: { Authorization: `Bearer ${token}` }
+				}
 			);
 			if (!res.ok) throw new Error('Erro ao buscar usuários');
 			const data = await res.json();
@@ -78,8 +86,15 @@ export default function Usuarios() {
 		try {
 			const API_URL =
 				import.meta.env.VITE_API_URL || 'http://localhost:5005';
+			
+			const { data: sessionData } = await supabase.auth.getSession();
+			const token = sessionData?.session?.access_token || '';
+
 			const res = await fetch(
 				`${API_URL}/api/access_profiles?company_id=${companyId}`,
+				{
+					headers: { Authorization: `Bearer ${token}` }
+				}
 			);
 			if (!res.ok) throw new Error('Erro ao buscar perfis de acesso');
 			const data = await res.json();
@@ -100,9 +115,15 @@ export default function Usuarios() {
 				? `${API_URL}/api/tenant/users/${editingId}`
 				: `${API_URL}/api/tenant/users`;
 
+			const { data: sessionData } = await supabase.auth.getSession();
+			const token = sessionData?.session?.access_token || '';
+
 			const response = await fetch(url, {
 				method: editingId ? 'PUT' : 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}` 
+				},
 				body: JSON.stringify({
 					company_id: companyId,
 					full_name: formData.fullName,

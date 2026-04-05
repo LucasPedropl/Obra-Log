@@ -326,8 +326,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 		const pathParts = resourcePath.split('.');
 		if (pathParts.length > 1) {
 			let current: any = permissions;
+			let parentHasAccess = false;
+
 			for (const part of pathParts) {
-				if (current && typeof current === 'object' && part in current) {
+				if (!current || typeof current !== 'object') {
+					current = undefined;
+					break;
+				}
+
+				// Confere se algum nó "pai" mais alto já concede o acesso livre
+				if (current[action] === true) {
+					parentHasAccess = true;
+				}
+
+				if (part in current) {
 					current = current[part];
 				} else {
 					current = undefined;
@@ -342,6 +354,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			) {
 				return true;
 			}
+
+			if (parentHasAccess) {
+				return true;
+			}
+
 			return false;
 		}
 
