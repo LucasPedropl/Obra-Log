@@ -11,6 +11,11 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	Settings,
+	Package,
+	ArrowRightLeft,
+	HardHat,
+	Wrench,
+	Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
@@ -20,7 +25,7 @@ interface SidebarProps {
 	onToggleSidebar: () => void;
 }
 
-const navItems = [
+const mainNavItems = [
 	{ name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
 	{ name: 'Obras', icon: Building2, href: '/obras' },
 	{ name: 'Insumos', icon: PackageOpen, href: '/insumos' },
@@ -29,6 +34,46 @@ const navItems = [
 
 export function Sidebar({ isOpen, onToggleSidebar }: SidebarProps) {
 	const pathname = usePathname();
+
+	// Check if we are inside a specific Obra (e.g. /obras/123/...)
+	const isObraRoute = pathname?.match(/^\/obras\/([^\/]+)(?:\/|$)/);
+	const obraId = isObraRoute ? isObraRoute[1] : null;
+
+	const navItems = obraId
+		? [
+				{
+					name: 'Visão Geral',
+					icon: LayoutDashboard,
+					href: `/obras/${obraId}/visao-geral`,
+				},
+				{
+					name: 'Almoxarifado',
+					icon: Package,
+					href: `/obras/${obraId}/almoxarifado`,
+				},
+				{
+					name: 'Colaboradores',
+					icon: Users,
+					href: `/obras/${obraId}/colaboradores`,
+				},
+				{
+					name: 'Movimentações',
+					icon: ArrowRightLeft,
+					href: `/obras/${obraId}/movimentacoes`,
+				},
+				{ name: 'EPIs', icon: HardHat, href: `/obras/${obraId}/epis` },
+				{
+					name: 'Ferramentas',
+					icon: Wrench,
+					href: `/obras/${obraId}/ferramentas`,
+				},
+				{
+					name: 'Alugados',
+					icon: Truck,
+					href: `/obras/${obraId}/equip-alugados`,
+				},
+			]
+		: mainNavItems;
 
 	return (
 		<aside
@@ -77,7 +122,7 @@ export function Sidebar({ isOpen, onToggleSidebar }: SidebarProps) {
 				{/* Botão para encolher/expandir centralizado na linha do separador e borda direita */}
 				<button
 					onClick={onToggleSidebar}
-					className="absolute -right-3 -bottom-3 flex h-6 w-6 items-center justify-center rounded-md bg-white border border-gray-200 text-gray-500 hover:text-gray-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 z-50"
+					className="absolute -right-3 -bottom-3 flex h-6 w-6 items-center justify-center rounded-[5px] bg-[#101828] border border-gray-700 text-gray-300 hover:bg-[#1b263b] hover:text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#1b263b]/50 z-50"
 					aria-label="Toggle Sidebar"
 				>
 					{isOpen ? (

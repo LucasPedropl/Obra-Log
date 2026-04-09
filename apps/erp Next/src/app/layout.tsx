@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { Poppins, Geist } from 'next/font/google';
 import './globals.css';
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
+import { ToastProvider } from '@/components/ui/toaster';
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 const poppins = Poppins({
 	subsets: ['latin'],
@@ -22,11 +23,11 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="pt-BR" className={cn("font-sans", geist.variable)}>
+		<html lang="pt-BR" className={cn('font-sans', geist.variable)}>
 			<body
 				className={`${poppins.className} min-h-screen bg-background antialiased`}
 			>
-				{children}
+				<ToastProvider>{children}</ToastProvider>
 			</body>
 		</html>
 	);

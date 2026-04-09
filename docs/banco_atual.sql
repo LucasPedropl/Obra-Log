@@ -65,7 +65,10 @@ CREATE TABLE public.companies (
   name character varying NOT NULL,
   active boolean DEFAULT true,
   created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT companies_pkey PRIMARY KEY (id)
+  max_instances integer DEFAULT 1,
+  parent_id uuid,
+  CONSTRAINT companies_pkey PRIMARY KEY (id),
+  CONSTRAINT companies_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.companies(id)
 );
 CREATE TABLE public.company_users (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

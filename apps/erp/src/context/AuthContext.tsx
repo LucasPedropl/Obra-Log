@@ -88,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					.from('companies')
 					.select('parent_id')
 					.eq('id', currentCompanyId)
-					.single();
+					.maybeSingle();
 
 				const parentId = companyRecord?.parent_id;
 
@@ -98,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					.select('profile_id')
 					.eq('user_id', session.user.id)
 					.eq('company_id', currentCompanyId)
-					.single();
+					.maybeSingle();
 
 				// 3. Se NÃO ACHOU na instância, e existe uma Empresa Pai, tenta herdar o acesso da Empresa Pai
 				if ((cuError || !companyUser) && parentId) {
@@ -107,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 						.select('profile_id')
 						.eq('user_id', session.user.id)
 						.eq('company_id', parentId)
-						.single();
+						.maybeSingle();
 
 					if (!puError && parentUser) {
 						companyUser = parentUser;
@@ -125,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 								.from('access_profiles')
 								.select('permissions, allowed_sites')
 								.eq('id', companyUser.profile_id)
-								.single();
+								.maybeSingle();
 
 						if (!profileError && profile) {
 							setPermissions(
@@ -300,6 +300,171 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 						setPermissions(fullPerms as PermissionsJSON);
 						setAllowedSites([]);
 					}
+				} else {
+					// Fallback when companyUser is null (e.g. owner/admin or user with no direct link via company_users but still logged in)
+					const fullPerms = {
+						dashboard: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+						acesso: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+						config_dados: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+						mao_de_obra: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+						obras: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+							access_type: 'all',
+							pages: {
+								visao_geral: {
+									view: true,
+									create: true,
+									edit: true,
+									delete: true,
+								},
+								almoxarifado: {
+									view: true,
+									create: true,
+									edit: true,
+									delete: true,
+								},
+								ferramentas: {
+									disponiveis: {
+										view: true,
+										create: true,
+										edit: true,
+										delete: true,
+									},
+									emprestimos: {
+										view: true,
+										create: true,
+										edit: true,
+										delete: true,
+									},
+									historico: {
+										view: true,
+										create: true,
+										edit: true,
+										delete: true,
+									},
+								},
+								epis: {
+									disponiveis: {
+										view: true,
+										create: true,
+										edit: true,
+										delete: true,
+									},
+									historico: {
+										view: true,
+										create: true,
+										edit: true,
+										delete: true,
+									},
+								},
+								equip_alugados: {
+									ativos: {
+										view: true,
+										create: true,
+										edit: true,
+										delete: true,
+									},
+									historico: {
+										view: true,
+										create: true,
+										edit: true,
+										delete: true,
+									},
+								},
+								movimentacoes: {
+									view: true,
+									create: true,
+									edit: true,
+									delete: true,
+								},
+								colaboradores: {
+									view: true,
+									create: true,
+									edit: true,
+									delete: true,
+								},
+							},
+						},
+						colaboradores: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+						ferramentas: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+						epis: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+						equip_alugados: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+						movimentacoes: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+						insumos: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+						relatorios: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+						usuarios: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+						perfis: {
+							view: true,
+							create: true,
+							edit: true,
+							delete: true,
+						},
+					};
+					setPermissions(fullPerms as PermissionsJSON);
+					setAllowedSites([]);
 				}
 			}
 		} catch (error) {

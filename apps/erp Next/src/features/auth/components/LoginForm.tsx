@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginFormData } from '../schemas/loginSchema';
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { GoogleLoginButton } from './GoogleLoginButton';
+import { SetupProfileModal } from './SetupProfileModal';
 
 import { useRouter } from 'next/navigation';
 
@@ -16,6 +17,8 @@ import { createClient } from '@/config/supabase';
 export function LoginForm() {
 	const router = useRouter();
 	const supabase = createClient();
+	const [requireSetup, setRequireSetup] = useState(false);
+	const [authUser, setAuthUser] = useState<any>(null);
 
 	const {
 		register,
@@ -38,6 +41,12 @@ export function LoginForm() {
 				throw error;
 			}
 
+			if (authData.user?.user_metadata?.require_password_change) {
+				setAuthUser(authData.user);
+				setRequireSetup(true);
+				return;
+			}
+
 			// Login redireciona para a seleção de instância/filial (Netflix Style)
 			router.push('/selecionar-instancia');
 			router.refresh(); // Força o layout a atualizar
@@ -51,6 +60,17 @@ export function LoginForm() {
 
 	return (
 		<div className="w-full max-w-md space-y-8">
+			{requireSetup && authUser && (
+				<SetupProfileModal
+					user={authUser}
+					onComplete={() => {
+						setRequireSetup(false);
+						router.push('/selecionar-instancia');
+						router.refresh();
+					}}
+				/>
+			)}
+
 			<div className="text-center sm:text-left">
 				<h2 className="text-3xl font-bold tracking-tight text-gray-900">
 					Bem-vindo(a) de volta!
