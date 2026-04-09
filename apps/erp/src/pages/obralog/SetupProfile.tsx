@@ -79,16 +79,12 @@ export default function SetupProfile() {
 			// Check companies to decide where to navigate
 			const companyUsers = await authService.getUserCompanies(user.id);
 
-			if (companyUsers && companyUsers.length > 1) {
+			const activeCompanies = companyUsers
+				?.map((cu: any) => cu.companies)
+				.filter((c: any) => c && c.active);
+
+			if (activeCompanies && activeCompanies.length > 0) {
 				navigate('/app/select-company');
-			} else if (companyUsers && companyUsers.length === 1) {
-				// Automatically select the only company
-				localStorage.setItem(
-					'selectedCompanyId',
-					companyUsers[0].company_id,
-				);
-				window.dispatchEvent(new Event('storage'));
-				navigate('/app/dashboard');
 			} else {
 				throw new Error('Você não está vinculado a nenhuma empresa.');
 			}

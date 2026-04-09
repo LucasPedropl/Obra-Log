@@ -32,7 +32,7 @@ Multi-Tenant** e um **Painel Super-Admin isolado**.
     wrappers otimizados).
 5.  **BaaS**: Supabase (integração estrita com tipagem, RLS para segurança,
     Storage para arquivos).
-
+6.  **Frontend 2**: NextJS, a versao mais nova que vai substituir o frontend antigo
 ---
 
 # Arquitetura e Padrões de Código

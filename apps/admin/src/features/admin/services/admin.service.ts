@@ -15,15 +15,15 @@ export const adminService = {
 	/**
 	 * Cria uma nova empresa (Tenant)
 	 */
-	async createCompany(name: string) {
+	async createCompany(name: string, maxInstances: number = 1) {
 		const token = await getAuthToken();
 		const res = await fetch(`${API_URL}/api/admin/companies`, {
 			method: 'POST',
-			headers: { 
+			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${token}`
+				Authorization: `Bearer ${token}`,
 			},
-			body: JSON.stringify({ name }),
+			body: JSON.stringify({ name, max_instances: maxInstances }),
 		});
 
 		if (!res.ok) {
@@ -47,9 +47,9 @@ export const adminService = {
 		const token = await getAuthToken();
 		const res = await fetch(`${API_URL}/api/admin/companies/${companyId}`, {
 			method: 'PUT',
-			headers: { 
+			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${token}`
+				Authorization: `Bearer ${token}`,
 			},
 			body: JSON.stringify({ name }),
 		});
@@ -75,9 +75,9 @@ export const adminService = {
 		const token = await getAuthToken();
 		const res = await fetch(`${API_URL}/api/admin/users`, {
 			method: 'POST',
-			headers: { 
+			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${token}`
+				Authorization: `Bearer ${token}`,
 			},
 			body: JSON.stringify({ companyId, email }),
 		});
@@ -105,9 +105,9 @@ export const adminService = {
 			`${API_URL}/api/admin/companies/${companyId}/users`,
 			{
 				headers: {
-					'Authorization': `Bearer ${token}`
-				}
-			}
+					Authorization: `Bearer ${token}`,
+				},
+			},
 		);
 
 		if (!res.ok) {
@@ -133,9 +133,9 @@ export const adminService = {
 			`${API_URL}/api/admin/users/${userId}/reset-password`,
 			{
 				method: 'POST',
-				headers: { 
+				headers: {
 					'Content-Type': 'application/json',
-					'Authorization': `Bearer ${token}`
+					Authorization: `Bearer ${token}`,
 				},
 			},
 		);
@@ -161,9 +161,9 @@ export const adminService = {
 		const token = await getAuthToken();
 		const res = await fetch(`${API_URL}/api/admin/companies/${companyId}`, {
 			method: 'DELETE',
-			headers: { 
+			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${token}`
+				Authorization: `Bearer ${token}`,
 			},
 		});
 
@@ -188,9 +188,9 @@ export const adminService = {
 		const token = await getAuthToken();
 		const res = await fetch(`${API_URL}/api/admin/delete-database`, {
 			method: 'POST',
-			headers: { 
+			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${token}`
+				Authorization: `Bearer ${token}`,
 			},
 			body: JSON.stringify({ adminUserId }),
 		});

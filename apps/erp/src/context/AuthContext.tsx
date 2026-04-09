@@ -83,13 +83,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 			setCompanyId(currentCompanyId);
 
 			if (currentCompanyId) {
-				// Busca a vinculação do usuário na `company_users`
-				const { data: companyUser, error: cuError } = await supabase
+				// 1. Busca detalhes da empresa para saber se é uma instância filha
+				const { data: companyRecord } = await supabase
+					.from('companies')
+					.select('parent_id')
+					.eq('id', currentCompanyId)
+					.single();
+
+				const parentId = companyRecord?.parent_id;
+
+				// 2. Tenta buscar a vinculação específica na Instância atual
+				let { data: companyUser, error: cuError } = await supabase
 					.from('company_users')
 					.select('profile_id')
 					.eq('user_id', session.user.id)
 					.eq('company_id', currentCompanyId)
 					.single();
+
+				// 3. Se NÃO ACHOU na instância, e existe uma Empresa Pai, tenta herdar o acesso da Empresa Pai
+				if ((cuError || !companyUser) && parentId) {
+					const { data: parentUser, error: puError } = await supabase
+						.from('company_users')
+						.select('profile_id')
+						.eq('user_id', session.user.id)
+						.eq('company_id', parentId)
+						.single();
+
+					if (!puError && parentUser) {
+						companyUser = parentUser;
+						cuError = null;
+					}
+				}
 
 				if (!cuError && companyUser) {
 					if (companyUser.profile_id) {

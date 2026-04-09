@@ -1,41 +1,50 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "Start ERP",
-      "type": "npm",
-      "script": "dev:erp",
-      "isBackground": true,
-      "problemMatcher": [],
-      "group": "build"
-    },
-    {
-      "label": "Start Admin",
-      "type": "npm",
-      "script": "dev:admin",
-      "isBackground": true,
-      "problemMatcher": [],
-      "group": "build"
-    },
-    {
-      "label": "Start API",
-      "type": "npm",
-      "script": "dev:api",
-      "isBackground": true,
-      "problemMatcher": [],
-      "group": "build"
-    },
-    {
-      "label": "Start All",
-      "dependsOn": [
-        "Start ERP",
-        "Start Admin",
-        "Start API"
-      ],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
-    }
-  ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start ERP",
+			"type": "npm",
+			"script": "dev:erp",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Start Admin",
+			"type": "npm",
+			"script": "dev:admin",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Start API",
+			"type": "npm",
+			"script": "dev:api",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Start ERP Next",
+			"type": "npm",
+			"script": "dev:erp-next",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Start All",
+			"dependsOn": [
+				"Start ERP",
+				"Start ERP Next",
+				"Start Admin",
+				"Start API"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		}
+	]
 }

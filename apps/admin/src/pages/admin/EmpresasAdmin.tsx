@@ -28,6 +28,7 @@ export default function EmpresasAdmin() {
 	const { showToast } = useToast();
 
 	const [newCompanyName, setNewCompanyName] = useState('');
+	const [newCompanyInstances, setNewCompanyInstances] = useState<number>(1);
 	const [loadingCreate, setLoadingCreate] = useState(false);
 
 	// Selection / Deletion
@@ -95,8 +96,12 @@ export default function EmpresasAdmin() {
 
 		setLoadingCreate(true);
 		try {
-			await adminService.createCompany(newCompanyName);
+			await adminService.createCompany(
+				newCompanyName,
+				newCompanyInstances,
+			);
 			setNewCompanyName('');
+			setNewCompanyInstances(1);
 			await refetchCompanies();
 			showToast('Empresa criada com sucesso!', 'success');
 		} catch (err: any) {
@@ -243,6 +248,24 @@ export default function EmpresasAdmin() {
 									className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
 									required
 								/>
+								<div className="flex flex-col md:flex-row items-center gap-2">
+									<label className="text-sm font-medium text-slate-700 whitespace-nowrap">
+										Instâncias Max:
+									</label>
+									<input
+										type="number"
+										min="1"
+										placeholder="Qtd."
+										value={newCompanyInstances}
+										onChange={(e) =>
+											setNewCompanyInstances(
+												parseInt(e.target.value) || 1,
+											)
+										}
+										className="w-24 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+										required
+									/>
+								</div>
 								<button
 									disabled={loadingCreate}
 									type="submit"

@@ -34,7 +34,7 @@ export default function NovaObra() {
 					headers: {
 						Authorization: `Bearer ${token}`,
 					},
-				}
+				},
 			);
 			if (!res.ok) throw new Error('Erro ao buscar obras');
 			const data = await res.json();
@@ -69,9 +69,9 @@ export default function NovaObra() {
 				`${env.VITE_API_URL}/api/construction_sites`,
 				{
 					method: 'POST',
-					headers: { 
+					headers: {
 						'Content-Type': 'application/json',
-						'Authorization': `Bearer ${token}`
+						Authorization: `Bearer ${token}`,
 					},
 					body: JSON.stringify({
 						name: obraname.trim(),
@@ -116,7 +116,7 @@ export default function NovaObra() {
 
 	return (
 		<ERPLayout>
-			<div className="space-y-6 max-w-5xl mx-auto">
+			<div className="space-y-6 w-full">
 				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 					<div>
 						<h1 className="text-2xl font-bold text-text-main flex items-center gap-2">

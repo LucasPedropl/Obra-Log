@@ -158,19 +158,37 @@ export default function PerfisAcesso() {
 		permissions: JSON.parse(JSON.stringify(INITIAL_PERMISSIONS)),
 	});
 
+	const [effectiveCompanyId, setEffectiveCompanyId] = useState<string | null>(
+		null,
+	);
+
 	useEffect(() => {
-		if (companyId) {
+		const loadEffectiveId = async () => {
+			if (companyId) {
+				const { data: cData } = await supabase
+					.from('companies')
+					.select('parent_id')
+					.eq('id', companyId)
+					.single();
+				setEffectiveCompanyId(cData?.parent_id || companyId);
+			}
+		};
+		loadEffectiveId();
+	}, [companyId]);
+
+	useEffect(() => {
+		if (effectiveCompanyId && companyId) {
 			fetchProfiles();
 			fetchSites();
 		}
-	}, [companyId]);
+	}, [effectiveCompanyId, companyId]);
 
 	const fetchSites = async () => {
 		try {
 			const { data } = await supabase
 				.from('construction_sites')
 				.select('id, name')
-				.eq('company_id', companyId);
+				.eq('company_id', companyId); // Obras são da instância!
 			if (data) setSites(data);
 		} catch (err) {
 			console.error(err);
@@ -178,12 +196,13 @@ export default function PerfisAcesso() {
 	};
 
 	const fetchProfiles = async () => {
+		if (!effectiveCompanyId) return;
 		try {
 			setIsLoading(true);
 			const { data, error } = await supabase
 				.from('access_profiles')
 				.select('*')
-				.eq('company_id', companyId);
+				.eq('company_id', effectiveCompanyId); // Perfis são do Parent / Mãe!
 
 			if (error) {
 				console.error(error);
@@ -231,12 +250,12 @@ export default function PerfisAcesso() {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!formData.name) return;
+		if (!formData.name || !effectiveCompanyId) return;
 		setIsSubmitting(true);
 
 		try {
 			const payload = {
-				company_id: companyId,
+				company_id: effectiveCompanyId,
 				name: formData.name,
 				scope: formData.scope,
 				allowed_sites:
@@ -393,7 +412,7 @@ export default function PerfisAcesso() {
 
 	return (
 		<ERPLayout>
-			<div className="space-y-6 w-full max-w-7xl mx-auto">
+			<div className="space-y-6 w-full">
 				<div className="flex items-center justify-between">
 					<div>
 						<h1 className="text-2xl font-bold text-text-main">

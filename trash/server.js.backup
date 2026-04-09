@@ -30,9 +30,11 @@ const authMiddleware = async (req, res, next) => {
 	try {
 		const authHeader = req.headers.authorization;
 		if (!authHeader || !authHeader.startsWith('Bearer ')) {
-			return res.status(401).json({ error: 'Acesso negado. Token Ausente.' });
+			return res
+				.status(401)
+				.json({ error: 'Acesso negado. Token Ausente.' });
 		}
-		
+
 		const token = authHeader.split(' ')[1];
 		const supabaseAdmin = createClient(
 			process.env.SUPABASE_URL,
@@ -41,17 +43,24 @@ const authMiddleware = async (req, res, next) => {
 		);
 
 		// Valida o JWT do usuário logado
-		const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-		
+		const {
+			data: { user },
+			error,
+		} = await supabaseAdmin.auth.getUser(token);
+
 		if (error || !user) {
-			return res.status(401).json({ error: 'Acesso negado. Token Inválido ou Expirado.' });
+			return res
+				.status(401)
+				.json({ error: 'Acesso negado. Token Inválido ou Expirado.' });
 		}
 
 		req.user = user; // Instancia o usuário validado na requisição para uso futuro
 		next();
 	} catch (err) {
 		console.error('Erro no AuthMiddleware:', err);
-		res.status(500).json({ error: 'Erro interno ao validar autenticação.' });
+		res.status(500).json({
+			error: 'Erro interno ao validar autenticação.',
+		});
 	}
 };
 

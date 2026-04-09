@@ -21,8 +21,8 @@ export function useAdminData() {
 			const token = sessionData?.session?.access_token;
 			const res = await fetch(`${API_URL}/api/admin/companies`, {
 				headers: {
-					'Authorization': `Bearer ${token}`
-				}
+					Authorization: `Bearer ${token}`,
+				},
 			});
 			if (!res.ok) throw new Error('Falha ao buscar empresas');
 			const data = await res.json();

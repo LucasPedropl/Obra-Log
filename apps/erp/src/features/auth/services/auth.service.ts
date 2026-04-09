@@ -73,4 +73,45 @@ export const authService = {
 		}
 		return res.json();
 	},
+
+	async getCompanyInstances(companyId: string) {
+		const API_URL = env.VITE_API_URL;
+		const { data: sessionData } = await supabase.auth.getSession();
+		const token = sessionData?.session?.access_token || '';
+
+		const res = await fetch(
+			`${API_URL}/api/companies/${companyId}/instances`,
+			{
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
+			},
+		);
+		if (!res.ok) {
+			throw new Error('Erro ao buscar instâncias da empresa');
+		}
+		return res.json();
+	},
+
+	async createCompanyInstance(companyId: string, name: string) {
+		const API_URL = env.VITE_API_URL;
+		const { data: sessionData } = await supabase.auth.getSession();
+		const token = sessionData?.session?.access_token || '';
+
+		const res = await fetch(
+			`${API_URL}/api/companies/${companyId}/instances`,
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`,
+				},
+				body: JSON.stringify({ name }),
+			},
+		);
+		if (!res.ok) {
+			throw new Error('Erro ao criar instância da empresa');
+		}
+		return res.json();
+	},
 };

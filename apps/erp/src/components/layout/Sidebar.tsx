@@ -2,6 +2,9 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { NavLink, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { SidebarMode } from './ERPLayout';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../config/supabase';
+import { env } from '../../config/env';
+import { useToast } from '../../context/ToastContext';
 import {
 	LayoutDashboard,
 	HardHat,
@@ -26,6 +29,9 @@ import {
 	Clock,
 	ClipboardList,
 	MonitorCog,
+	Building2,
+	Plus,
+	LayoutDashboard as DashIcon,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -41,6 +47,81 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
 	const location = useLocation();
 	const navigate = useNavigate();
+
+	const { showToast } = useToast();
+	const [showProjectMenu, setShowProjectMenu] = useState(false);
+	const [projects, setProjects] = useState<any[]>([]);
+	const [projectName, setProjectName] = useState<string | null>(null);
+	const projectMenuRef = useRef<HTMLDivElement>(null);
+
+	const companyId = localStorage.getItem('selectedCompanyId');
+
+	const isProjectRoute =
+		location.pathname.includes('/app/obras/') &&
+		location.pathname !== '/app/obras/nova';
+
+	const match = location.pathname.match(/\/app\/obras\/([^\/]+)/);
+	const projectId = match ? match[1] : null;
+
+	useEffect(() => {
+		async function fetchProjectsList() {
+			if (!companyId) return;
+			try {
+				const { data, error } = await supabase
+					.from('construction_sites')
+					.select('id, name')
+					.eq('company_id', companyId);
+
+				if (error) throw error;
+				if (data) {
+					setProjects(data);
+				}
+			} catch (error) {
+				console.error('Error fetching projects list:', error);
+			}
+		}
+
+		async function fetchCurrentProject() {
+			if (projectId && isProjectRoute) {
+				try {
+					const { data, error } = await supabase
+						.from('construction_sites')
+						.select('name')
+						.eq('id', projectId)
+						.maybeSingle();
+
+					if (error) throw error;
+					if (data) {
+						setProjectName(data.name);
+					} else {
+						setProjectName(null);
+					}
+				} catch (error) {
+					console.error('Error fetching project:', error);
+					setProjectName(null);
+				}
+			} else {
+				setProjectName(null);
+			}
+		}
+
+		fetchCurrentProject();
+		fetchProjectsList();
+	}, [projectId, isProjectRoute, companyId]);
+
+	useEffect(() => {
+		function handleClickOutside(event: MouseEvent) {
+			if (
+				projectMenuRef.current &&
+				!projectMenuRef.current.contains(event.target as Node)
+			) {
+				setShowProjectMenu(false);
+			}
+		}
+		document.addEventListener('mousedown', handleClickOutside);
+		return () =>
+			document.removeEventListener('mousedown', handleClickOutside);
+	}, []);
 	const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
 		const saved = localStorage.getItem('erp_expanded_menus');
 		return saved ? JSON.parse(saved) : [];
@@ -90,15 +171,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
 	console.log('[Sidebar] isAllowed obras?', isAllowed('obras', 'view'));
 	console.log('[Sidebar] isAllowed usuarios?', isAllowed('usuarios', 'view'));
-
-	// Determine if we are in a project route
-	const isProjectRoute =
-		location.pathname.includes('/app/obras/') &&
-		location.pathname !== '/app/obras/nova';
-
-	// Extract the ID from the URL if we are in a project route
-	const match = location.pathname.match(/\/app\/obras\/([^\/]+)/);
-	const projectId = match ? match[1] : null;
 
 	const globalNavItemsRaw = [
 		{
@@ -506,32 +578,109 @@ export const Sidebar: React.FC<SidebarProps> = ({
 			</nav>
 
 			<div className="p-3 border-t border-border relative mt-auto">
-				<NavLink
-					to="/app/configuracoes"
-					draggable={false}
-					onDragStart={(e) => e.preventDefault()}
-					className={({ isActive }) =>
-						`group relative flex items-center gap-3 p-3 rounded-lg transition-colors w-full ${
-							isActive
-								? 'bg-secondary text-white font-medium'
-								: 'text-text-muted hover:text-text-main hover:bg-background'
-						} ${!isOpen && 'justify-center'}`
-					}
-				>
-					<Settings size={22} className="shrink-0" />
-					{isOpen && (
-						<span className="font-medium truncate flex-1 text-left select-none">
-							Configurações
-						</span>
-					)}
+				{isProjectRoute && companyId && (
+					<div
+						className={`transition-all duration-300 ${!isOpen && 'flex justify-center'}`}
+					>
+						<div className="relative" ref={projectMenuRef}>
+							<button
+								onClick={() =>
+									setShowProjectMenu(!showProjectMenu)
+								}
+								className={`flex items-center ${isOpen ? 'gap-2 justify-between w-full' : 'justify-center w-10'} hover:bg-background p-2 rounded-lg transition-colors border border-transparent hover:border-border select-none`}
+							>
+								<div className="flex items-center gap-2 overflow-hidden">
+									<div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary shrink-0">
+										<Building2 size={16} />
+									</div>
+									{isOpen && (
+										<span className="font-semibold text-text-main truncate text-sm">
+											{projectName || 'Selecione...'}
+										</span>
+									)}
+								</div>
+								{isOpen && (
+									<ChevronDown
+										size={14}
+										className={`text-text-muted transition-transform shrink-0 ${showProjectMenu ? 'rotate-180' : ''}`}
+									/>
+								)}
+							</button>
 
-					{/* Tooltip for closed state */}
-					{!isOpen && (
-						<div className="absolute left-full ml-4 px-3 py-2 bg-surface text-text-main text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 border border-border shadow-xl">
-							Configurações
+							{showProjectMenu && (
+								<div
+									className={`absolute bottom-full mb-2 ${isOpen ? 'left-0 w-64' : 'left-full ml-2 w-56'} bg-surface border border-border shadow-xl rounded-xl overflow-hidden z-50 flex flex-col`}
+								>
+									<div className="px-4 py-2 text-xs font-semibold text-text-muted uppercase tracking-wider bg-background border-b border-border">
+										Ir para a Obra
+									</div>
+									<div className="max-h-60 overflow-y-auto custom-scrollbar flex flex-col py-1">
+										{projects.length > 0 ? (
+											projects.map((proj) => (
+												<button
+													key={proj.id}
+													onClick={() => {
+														setShowProjectMenu(
+															false,
+														);
+														navigate(
+															`/app/obras/${proj.id}/visao-geral`,
+														);
+													}}
+													className={`flex items-center text-left gap-3 px-4 py-2 text-sm hover:bg-background transition-colors ${proj.id === projectId ? 'text-primary font-medium bg-primary/5' : 'text-text-main'}`}
+												>
+													<HardHat
+														size={16}
+														className={
+															proj.id ===
+															projectId
+																? 'text-primary'
+																: 'text-text-muted shrink-0'
+														}
+													/>
+													<span className="truncate">
+														{proj.name}
+													</span>
+												</button>
+											))
+										) : (
+											<div className="px-4 py-3 text-sm text-text-muted text-center">
+												Nenhuma obra cadastrada
+											</div>
+										)}
+									</div>
+									<div className="border-t border-border flex flex-col py-1 bg-background/50">
+										<button
+											onClick={() => {
+												setShowProjectMenu(false);
+												navigate('/app/obras/nova');
+											}}
+											className="flex items-center gap-3 px-4 py-2 w-full text-left text-sm text-text-main hover:bg-surface transition-colors"
+										>
+											<div className="w-5 h-5 rounded flex items-center justify-center bg-primary text-white shrink-0">
+												<Plus size={14} />
+											</div>
+											<span>Nova Obra</span>
+										</button>
+										<button
+											onClick={() => {
+												setShowProjectMenu(false);
+												navigate('/app/dashboard');
+											}}
+											className="flex items-center gap-3 px-4 py-2 text-sm text-center text-text-main hover:bg-surface transition-colors border-t border-border/50 mt-1 pt-2"
+										>
+											<DashIcon
+												size={16}
+												className="text-text-muted shrink-0"
+											/>
+											<span>Menu Principal</span>
+										</button>
+									</div>
+								</div>
+							)}
 						</div>
-					)}
-				</NavLink>
+					</div>
+				)}
 			</div>
 
 			{/* Context Menu flutuante */}

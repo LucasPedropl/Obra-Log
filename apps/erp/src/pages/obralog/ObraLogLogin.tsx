@@ -36,17 +36,19 @@ export default function ObraLogLogin() {
 			// Check companies
 			const companyUsers = await authService.getUserCompanies(user.id);
 
-			if (companyUsers && companyUsers.length > 1) {
+			// Extract valid active companies
+			const activeCompanies = companyUsers
+				?.map((cu: any) => cu.companies)
+				.filter((c: any) => c && c.active);
+
+			if (activeCompanies && activeCompanies.length > 0) {
+				// To force Instance selection / Tenant check, always redirect to select-company
+				// We don't auto-redirect to dashboard anymore on root login if we want that Netflix style.
 				navigate('/app/select-company');
-			} else if (companyUsers && companyUsers.length === 1) {
-				localStorage.setItem(
-					'selectedCompanyId',
-					companyUsers[0].company_id,
-				);
-				window.dispatchEvent(new Event('storage'));
-				navigate('/app/dashboard');
 			} else {
-				throw new Error('Você não está vinculado a nenhuma empresa.');
+				throw new Error(
+					'Você não está vinculado a nenhum Sistema/Empresa.',
+				);
 			}
 		} catch (err: any) {
 			setError(err.message || 'Erro ao realizar login');

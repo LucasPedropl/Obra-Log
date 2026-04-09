@@ -1,5 +1,6 @@
 import { supabase } from '../../../config/supabase';
 import { z } from 'zod';
+import { env } from '../../../config/env';
 
 export const loginSchema = z.object({
 	email: z.string().email('E-mail inválido'),
@@ -58,7 +59,7 @@ export const authService = {
 	},
 
 	async getUserCompanies(userId: string) {
-		const API_URL = import.meta.env.VITE_API_URL || '';
+		const API_URL = env.VITE_API_URL;
 		const { data: sessionData } = await supabase.auth.getSession();
 		const token = sessionData?.session?.access_token || '';
 
