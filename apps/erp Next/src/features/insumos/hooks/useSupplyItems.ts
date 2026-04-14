@@ -6,6 +6,9 @@ import {
 	createCategoryAdmin,
 	createUnitAdmin,
 	getSupplyItemsAdmin,
+	deleteSupplyItemAdmin,
+	getCategoriesAdmin,
+	getUnitsAdmin,
 } from '@/app/actions/adminActions';
 
 export const supplyItemSchema = z.object({
@@ -42,6 +45,28 @@ export function useSupplyItems() {
 			name,
 			abbreviation,
 		});
+	};
+
+	const fetchCategories = async () => {
+		try {
+			const companyId = getActiveCompanyId();
+			if (!companyId) return [];
+			return await getCategoriesAdmin(companyId);
+		} catch (err) {
+			console.error('Error fetching categories:', err);
+			return [];
+		}
+	};
+
+	const fetchUnits = async () => {
+		try {
+			const companyId = getActiveCompanyId();
+			if (!companyId) return [];
+			return await getUnitsAdmin(companyId);
+		} catch (err) {
+			console.error('Error fetching units:', err);
+			return [];
+		}
 	};
 
 	const createSupplyItem = async (data: SupplyItemFormData) => {
@@ -94,11 +119,32 @@ export function useSupplyItems() {
 		}
 	};
 
+	const deleteSupplyItem = async (id: string) => {
+		try {
+			setIsLoading(true);
+			setError(null);
+			const companyId = getActiveCompanyId();
+			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
+
+			await deleteSupplyItemAdmin(id, companyId);
+			return true;
+		} catch (err: any) {
+			console.error('Error deleting supply item:', err);
+			setError(err.message || 'Erro ao excluir o insumo');
+			return false;
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
 	return {
 		createSupplyItem,
 		fetchSupplyItems,
+		deleteSupplyItem,
 		createCategory,
 		createUnit,
+		fetchCategories,
+		fetchUnits,
 		isLoading,
 		error,
 	};

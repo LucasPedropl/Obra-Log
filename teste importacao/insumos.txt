@@ -1,0 +1,48 @@
+Cimento CP II;SC50;50;N
+Cimento Acabamento Fino;SC20;20;N
+Areia Média Lavada;M3;10;N
+Areia Fina;M3;5;N
+Brita Zero;M3;15;N
+Tinta Acrílica Branca Fosca;GL18;5;N
+Massa Corrida PVA;GL18;10;N
+Tijolo Baiano;MIL;5;N
+Tijolo Maciço;MIL;2;N
+Tubo PVC 100mm;UN;10;N
+Conexão Joelho 90 PVC 100mM;UN;20;N
+Cabo Flexível 2.5mm;RL50;5;N
+Disjuntor 20A DIN;UN;15;N
+Óculos de Segurança Incolor;UN;20;N
+Óculos de Segurança Escuro;UN;10;N
+Protetor Auricular Tipo Plug;PR;50;N
+Protetor Auricular Tipo Concha;UN;10;N
+Luva de Raspa Cano Curto;PR;30;N
+Luva de Vaqueta;PR;20;N
+Luva Nitrílica Verde;PR;40;N
+Botina de Segurança com Bico de Aço;PR;15;N
+Botina de Segurança sem Bico;PR;10;N
+Capacete de Segurança com Jugular;UN;20;N
+Cinto de Segurança Tipo Paraquedista;UN;10;N
+Máscara PFF2;UN;50;N
+Máscara de Solda com Lente;UN;5;N
+Avental de PVC;UN;5;N
+Furadeira de Impacto Industrial;UN;2;S
+Parafusadeira a Bateria 12v;UN;3;S
+Martelete Perfurador Rompedor SDS;UN;2;S
+Serra Circular de Bancada;UN;1;S
+Serra Mármore;UN;2;S
+Esmerilhadeira Angular de 4_1/2;UN;2;S
+Máquina de Solda Inversora;UN;1;S
+Betoneira 120L de Obra;UN;1;S
+Kit de Chaves Combinadas;UN;3;S
+Alicate Universal 8;UN;5;S
+Alicate de Pressão 10;UN;2;S
+Chave Phillips Fenda Jogo com 6;UN;4;S
+Trena de Fita 5m;UN;10;S
+Trena de Fita 50m;UN;2;S
+Carrinho de Mão Fortificado;UN;10;S
+Pá Quadrada com Cabo;UN;15;S
+Enxadão com Cabo;UN;5;S
+Picareta Chibanca;UN;5;S
+Nível a Laser de Linhas;UN;1;S
+Esquadro de Alumínio;UN;3;S
+Prumo de Alumínio Reto;UN;2;S

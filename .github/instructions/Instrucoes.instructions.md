@@ -32,7 +32,9 @@ Multi-Tenant** e um **Painel Super-Admin isolado**.
     wrappers otimizados).
 5.  **BaaS**: Supabase (integração estrita com tipagem, RLS para segurança,
     Storage para arquivos).
-6.  **Frontend 2**: NextJS, a versao mais nova que vai substituir o frontend antigo
+6.  **Frontend 2**: NextJS, a versao mais nova que vai substituir o frontend
+    antigo
+
 ---
 
 # Arquitetura e Padrões de Código
@@ -62,9 +64,13 @@ Organize o projeto por features dentro de `src/features/<modulo>/`:
 
 - **Limitação de Linhas**: Máximo de **150-200 linhas** por arquivo (.ts ou
   .tsx). Extraia sub-componentes e lógica sempre que necessário.
-- **TypeScript Strict**: Uso de `any` é proibido. Tipagem total para respostas,
-  interfaces e DTOs (preferencialmente inferidos do Zod:
-  `z.infer<typeof schema>`).
+- **TypeScript Strict**: Uso de `any` é estritamente proibido e deve ser
+  ativamente evitado/resolvido para prevenir o erro
+  `eslint@typescript-eslint/no-explicit-any`. Não utilize `any` nas tipagens de
+  responses, inputs, arrays ou hooks. Crie e utilize interfaces/tipos bem
+  definidos em TypeScript e DTOs (preferencialmente inferidos do Zod:
+  `z.infer<typeof schema>`). Se for absolutamente necessário um tipo genérico,
+  utilize `unknown` e faça a verificação de tipo (type narrowing).
 - **Tratamento de Erros**: Todas as chamadas assíncronas devem usar `try/catch`
   e fornecer estados de `error` e `isLoading` para a UI.
 - **Nomenclatura**: Nomes hiper-descritivos em inglês (Clean Code).
@@ -93,10 +99,19 @@ Organize o projeto por features dentro de `src/features/<modulo>/`:
 2. **Arquivos Temporarios e Scripts**: Todos os arquivos que você criar para
    modificar arquivos do projeto, como scripts JS ou outros tipos de arquvos,
    devem ficar dentro da pasta "trash", para que possam ser apagagados mais
-   facilmente no futuro, e ao final, sempre que possível, devem ser apagados, para evitar acúmulo de arquivos
+   facilmente no futuro, e ao final, sempre que possível, devem ser apagados,
+   para evitar acúmulo de arquivos
 3. **Regra de Sistema de Arquivos (Windows)**: Nunca utilize comandos de
    terminal estilo Unix (como cat << EOF, echo ou redirection >) para escrever
    ou modificar blocos de código multiplinhas, pois o ambiente é Windows e isso
    causará a criação de garbage files acidentais. Use sempre e exclusivamente as
    ferramentas nativas do seu contexto (como create_file, replace_string_in_file
    ou edit_file) para injetar, criar ou modificar código."
+
+# Dicas/Sugestões:
+
+- **banco_atual.sql**: em /docs/banco_atual.sql tem um dump do banco de dados
+  atual, use-o para entender a estrutura do banco e as relações entre as
+  tabelas, isso vai te ajudar a criar os hooks e services de forma mais
+  eficiente, e se for preciso modificar o banco para oque precisa ser feito, é
+  só me passar ja no chat o codigo sql, que colocarei no sql editor do supabase.

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -16,6 +16,8 @@ import {
 	HardHat,
 	Wrench,
 	Truck,
+	ShieldCheck,
+	ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
@@ -25,21 +27,43 @@ interface SidebarProps {
 	onToggleSidebar: () => void;
 }
 
-const mainNavItems = [
+type NavItem = {
+	name: string;
+	icon: React.ElementType;
+	href?: string;
+	children?: { name: string; href: string }[];
+};
+
+const mainNavItems: NavItem[] = [
 	{ name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
 	{ name: 'Obras', icon: Building2, href: '/obras' },
 	{ name: 'Insumos', icon: PackageOpen, href: '/insumos' },
 	{ name: 'Colaboradores', icon: Users, href: '/colaboradores' },
+	{
+		name: 'Acesso ao Sistema',
+		icon: ShieldCheck,
+		children: [
+			{ name: 'Perfis de Acesso', href: '/acesso/perfis' },
+			{ name: 'Usuários', href: '/acesso/usuarios' },
+		],
+	},
 ];
 
 export function Sidebar({ isOpen, onToggleSidebar }: SidebarProps) {
 	const pathname = usePathname();
+	const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
+		{},
+	);
+
+	const toggleExpand = (name: string) => {
+		setExpandedItems((prev) => ({ ...prev, [name]: !prev[name] }));
+	};
 
 	// Check if we are inside a specific Obra (e.g. /obras/123/...)
 	const isObraRoute = pathname?.match(/^\/obras\/([^\/]+)(?:\/|$)/);
 	const obraId = isObraRoute ? isObraRoute[1] : null;
 
-	const navItems = obraId
+	const navItems: NavItem[] = obraId
 		? [
 				{
 					name: 'Visão Geral',
@@ -57,20 +81,55 @@ export function Sidebar({ isOpen, onToggleSidebar }: SidebarProps) {
 					href: `/obras/${obraId}/colaboradores`,
 				},
 				{
+					name: 'Ferramentas',
+					icon: Wrench,
+					children: [
+						{
+							name: 'Disponíveis',
+							href: `/obras/${obraId}/ferramentas/disponiveis`,
+						},
+						{
+							name: 'Em uso',
+							href: `/obras/${obraId}/ferramentas/em-uso`,
+						},
+						{
+							name: 'Histórico',
+							href: `/obras/${obraId}/ferramentas/historico`,
+						},
+					],
+				},
+				{
+					name: 'EPIs',
+					icon: HardHat,
+					children: [
+						{
+							name: 'Disponíveis',
+							href: `/obras/${obraId}/epis/disponiveis`,
+						},
+						{
+							name: 'Histórico',
+							href: `/obras/${obraId}/epis/historico`,
+						},
+					],
+				},
+				{
+					name: 'Equip. Alugados',
+					icon: Truck,
+					children: [
+						{
+							name: 'Ativos',
+							href: `/obras/${obraId}/equip-alugados/ativos`,
+						},
+						{
+							name: 'Histórico',
+							href: `/obras/${obraId}/equip-alugados/historico`,
+						},
+					],
+				},
+				{
 					name: 'Movimentações',
 					icon: ArrowRightLeft,
 					href: `/obras/${obraId}/movimentacoes`,
-				},
-				{ name: 'EPIs', icon: HardHat, href: `/obras/${obraId}/epis` },
-				{
-					name: 'Ferramentas',
-					icon: Wrench,
-					href: `/obras/${obraId}/ferramentas`,
-				},
-				{
-					name: 'Alugados',
-					icon: Truck,
-					href: `/obras/${obraId}/equip-alugados`,
 				},
 			]
 		: mainNavItems;
@@ -78,7 +137,7 @@ export function Sidebar({ isOpen, onToggleSidebar }: SidebarProps) {
 	return (
 		<aside
 			className={cn(
-				'relative z-20 flex h-full flex-col bg-[#101828] text-white transition-all duration-300 ease-in-out',
+				'relative z-20 flex h-full flex-col bg-[#101828] text-white transition-all duration-300 ease-in-out select-none',
 				isOpen ? 'w-64' : 'w-20',
 			)}
 		>
@@ -136,23 +195,41 @@ export function Sidebar({ isOpen, onToggleSidebar }: SidebarProps) {
 			{/* Navegação - overflow visible para garantir que os tooltips escapem */}
 			<nav className="flex-1 space-y-1.5 px-4 py-6 overflow-visible">
 				{navItems.map((item) => {
+					const hasChildren =
+						item.children && item.children.length > 0;
 					const isActive =
-						pathname === item.href ||
-						pathname?.startsWith(item.href);
-					return (
-						<div key={item.name} className="relative group">
-							<Link href={item.href} className="block">
-								<div
-									className={cn(
-										'flex items-center rounded-md transition-all duration-200',
-										isOpen
-											? 'px-3 py-2.5 justify-start'
-											: 'h-10 w-10 mx-auto justify-center',
-										isActive
-											? 'bg-white/10 text-white font-medium'
-											: 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
-									)}
-								>
+						(item.href &&
+							(pathname === item.href ||
+								pathname?.startsWith(item.href))) ||
+						(hasChildren &&
+							item.children?.some(
+								(child) =>
+									pathname === child.href ||
+									pathname?.startsWith(child.href),
+							));
+					const isExpanded = expandedItems[item.name];
+
+					const buttonContent = (
+						<div
+							className={cn(
+								'flex items-center rounded-md transition-all duration-200 cursor-pointer',
+								isOpen
+									? 'px-3 py-2.5 justify-start'
+									: 'h-10 w-10 mx-auto justify-center',
+								isActive
+									? 'bg-white/10 text-white font-medium'
+									: 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
+							)}
+						>
+							<div
+								className={cn(
+									'flex flex-1 items-center',
+									isOpen
+										? 'justify-between'
+										: 'justify-center',
+								)}
+							>
+								<div className="flex items-center justify-center">
 									<item.icon
 										size={20}
 										strokeWidth={isActive ? 2.5 : 2}
@@ -167,19 +244,110 @@ export function Sidebar({ isOpen, onToggleSidebar }: SidebarProps) {
 										className={cn(
 											'ml-3 text-sm overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out',
 											isOpen
-												? 'opacity-100 max-w-[200px]'
+												? 'opacity-100 max-w-[140px]'
 												: 'opacity-0 max-w-0 ml-0',
 										)}
 									>
 										{item.name}
 									</span>
 								</div>
-							</Link>
 
-							{/* Tooltip quando Sidebar Fechado */}
+								{hasChildren && isOpen && (
+									<ChevronDown
+										size={16}
+										className={cn(
+											'shrink-0 text-gray-400 transition-transform duration-200',
+											isExpanded ? 'rotate-180' : '',
+										)}
+									/>
+								)}
+							</div>
+						</div>
+					);
+
+					return (
+						<div key={item.name} className="relative group">
+							{hasChildren ? (
+								<div
+									onClick={() =>
+										isOpen && toggleExpand(item.name)
+									}
+								>
+									{buttonContent}
+								</div>
+							) : (
+								<Link href={item.href || '#'} className="block">
+									{buttonContent}
+								</Link>
+							)}
+
+							{/* Submenu Inline (quando a barra está aberta e item expandido) */}
+							{hasChildren && isOpen && isExpanded && (
+								<div className="mt-1 ml-6 pl-2 border-l border-gray-800 space-y-1">
+									{item.children?.map((child) => {
+										const isChildActive =
+											pathname === child.href ||
+											pathname?.startsWith(child.href);
+										return (
+											<Link
+												key={child.name}
+												href={child.href}
+												className="block"
+											>
+												<div
+													className={cn(
+														'px-3 py-2 rounded-md text-sm transition-colors',
+														isChildActive
+															? 'text-white bg-white/5 font-medium'
+															: 'text-gray-400 hover:text-gray-200 hover:bg-white/5',
+													)}
+												>
+													{child.name}
+												</div>
+											</Link>
+										);
+									})}
+								</div>
+							)}
+
+							{/* Floating Menu / Tooltip quando Sidebar Fechado */}
 							{!isOpen && (
-								<div className="absolute left-[110%] top-1/2 -translate-y-1/2 ml-2 rounded-md bg-gray-800 px-3 py-1.5 text-xs font-semibold text-white shadow-xl opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto whitespace-nowrap z-[100]">
-									{item.name}
+								<div
+									className={cn(
+										'absolute left-full top-1/2 -translate-y-1/2 pl-6 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto z-[100] min-w-max invisible group-hover:visible transition-none group-hover:transition-all group-hover:duration-300',
+									)}
+								>
+									<div
+										className={cn(
+											'rounded-md bg-[#1f2937] shadow-xl overflow-hidden ring-1 ring-gray-700/50 pointer-events-auto',
+											hasChildren
+												? 'py-1'
+												: 'px-3 py-1.5',
+										)}
+									>
+										{hasChildren ? (
+											<div className="flex flex-col">
+												<div className="px-4 py-2 border-b border-gray-700 text-xs font-bold text-gray-400 uppercase tracking-wider">
+													{item.name}
+												</div>
+												{item.children?.map((child) => (
+													<Link
+														key={child.name}
+														href={child.href}
+														className="block"
+													>
+														<div className="px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 hover:text-white transition-colors">
+															{child.name}
+														</div>
+													</Link>
+												))}
+											</div>
+										) : (
+											<span className="text-xs font-semibold text-white whitespace-nowrap">
+												{item.name}
+											</span>
+										)}
+									</div>
 								</div>
 							)}
 						</div>
@@ -232,8 +400,10 @@ export function Sidebar({ isOpen, onToggleSidebar }: SidebarProps) {
 
 					{/* Tooltip quando Sidebar Fechado */}
 					{!isOpen && (
-						<div className="absolute left-[110%] top-1/2 -translate-y-1/2 ml-2 rounded-md bg-gray-800 px-3 py-1.5 text-xs font-semibold text-white shadow-xl opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto whitespace-nowrap z-[100]">
-							Configurações
+						<div className="absolute left-full top-1/2 -translate-y-1/2 pl-6 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto z-[100] min-w-max invisible group-hover:visible transition-none group-hover:transition-all group-hover:duration-300">
+							<div className="rounded-md bg-[#1f2937] px-3 py-1.5 text-xs font-semibold text-white shadow-xl ring-1 ring-gray-700/50 whitespace-nowrap pointer-events-auto">
+								Configurações
+							</div>
 						</div>
 					)}
 				</div>

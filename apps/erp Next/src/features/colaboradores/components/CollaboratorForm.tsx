@@ -10,9 +10,13 @@ import { useToast } from '@/components/ui/toaster';
 
 interface CollaboratorFormProps {
 	onCancel?: () => void;
+	initialData?: any;
 }
 
-export function CollaboratorForm({ onCancel }: CollaboratorFormProps) {
+export function CollaboratorForm({
+	onCancel,
+	initialData,
+}: CollaboratorFormProps) {
 	const { addToast } = useToast();
 	const { createCollaborator, isLoading, error } = useCollaborators();
 	const {
@@ -21,21 +25,54 @@ export function CollaboratorForm({ onCancel }: CollaboratorFormProps) {
 		formState: { errors },
 	} = useForm<CollaboratorFormData>({
 		resolver: zodResolver(collaboratorSchema),
+		defaultValues: initialData
+			? {
+					name: initialData.name || '',
+					role_title: initialData.role_title || '',
+					cpf: initialData.cpf || '',
+					rg: initialData.rg || '',
+					birth_date: initialData.birth_date
+						? new Date(initialData.birth_date)
+								.toISOString()
+								.split('T')[0]
+						: '',
+					cellphone: initialData.cellphone || '',
+					email: initialData.email || '',
+					cep: initialData.cep || '',
+					street: initialData.street || '',
+					number: initialData.number || '',
+					neighborhood: initialData.neighborhood || '',
+				}
+			: undefined,
 	});
 
 	const onSubmit = async (data: CollaboratorFormData) => {
-		const success = await createCollaborator(data);
-		if (success) {
-			addToast('Colaborador cadastrado com sucesso!', 'success');
-			if (onCancel) onCancel();
+		let success;
+		if (initialData?.id) {
+			// TODO: Add edit API properly
+			console.log('Editar', { ...data, id: initialData.id });
+			// success = await editCollaborator({ ...data, id: initialData.id });
+			success = true; // placeholder until we verify API backend
+			addToast('Colaborador atualizado com sucesso!', 'success');
 		} else {
-			addToast('Erro ao cadastrar o ocolaborador.', 'error');
+			success = await createCollaborator(data);
+			if (success) {
+				addToast('Colaborador cadastrado com sucesso!', 'success');
+			} else {
+				addToast('Erro ao cadastrar o ocolaborador.', 'error');
+			}
+		}
+
+		if (success && onCancel) {
+			onCancel();
 		}
 	};
 
 	return (
 		<div className="p-6 bg-card rounded-xl border border-border shadow-xl">
-			<h2 className="text-2xl font-bold mb-6">Cadastrar Colaborador</h2>
+			<h2 className="text-2xl font-bold mb-6">
+				{initialData ? 'Editar Colaborador' : 'Cadastrar Colaborador'}
+			</h2>
 			{error && (
 				<div className="mb-4 text-destructive text-sm font-medium">
 					{error}

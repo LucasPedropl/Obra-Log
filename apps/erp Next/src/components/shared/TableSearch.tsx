@@ -30,14 +30,16 @@ export function TableSearch({
 					className="pl-9 h-10 bg-white border-gray-300 w-full rounded-[5px] shadow-sm"
 				/>
 			</div>
-			<Button
-				variant="outline"
-				onClick={onFilterClick}
-				className="w-full sm:w-auto h-10 flex items-center justify-center gap-2 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 rounded-[5px] shadow-sm shrink-0"
-			>
-				<ListFilter className="h-4 w-4" />
-				<span>Filtros</span>
-			</Button>
+			{onFilterClick && (
+				<Button
+					variant="outline"
+					onClick={onFilterClick}
+					className="w-full sm:w-auto h-10 flex items-center justify-center gap-2 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 rounded-[5px] shadow-sm shrink-0"
+				>
+					<ListFilter className="h-4 w-4" />
+					<span>Filtros</span>
+				</Button>
+			)}
 		</div>
 	);
 }

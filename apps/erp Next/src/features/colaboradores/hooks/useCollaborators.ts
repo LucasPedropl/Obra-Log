@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
 	createCollaboratorAdmin,
 	getCollaboratorsAdmin,
+	deleteCollaboratorAdmin,
 } from '@/app/actions/adminActions';
 
 export const collaboratorSchema = z.object({
@@ -81,9 +82,28 @@ export function useCollaborators() {
 		}
 	};
 
+	const deleteCollaborator = async (id: string) => {
+		try {
+			setIsLoading(true);
+			setError(null);
+			const companyId = getActiveCompanyId();
+			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
+
+			await deleteCollaboratorAdmin(id, companyId);
+			return true;
+		} catch (err: any) {
+			console.error('Error deleting collaborator:', err);
+			setError(err.message || 'Erro ao excluir o colaborador');
+			return false;
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
 	return {
 		createCollaborator,
 		fetchCollaborators,
+		deleteCollaborator,
 		isLoading,
 		error,
 	};

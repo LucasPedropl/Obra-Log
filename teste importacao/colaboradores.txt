@@ -1,0 +1,15 @@
+João Silva;Pedreiro
+Maria Santos;Ajudante
+Carlos Souza;Mestre de Obras
+Antônio Oliveira;Eletricista
+Francisco Ferreira;Encanador
+José Pereira;Armador
+Luiz Costa;Carpinteiro
+Paulo Rodrigues;Pintor
+Ana Martins;Auxiliar Administrativa
+Roberto Alves;Engenheiro Residente
+Marcos Rocha;Técnico de Segurança
+Felipe Almeida;Serralheiro
+Rodrigo Lima;Topógrafo
+Ricardo Mendes;Operador de Betoneira
+Cláudia Ribeiro;Almoxarife

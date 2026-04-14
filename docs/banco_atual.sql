@@ -208,6 +208,7 @@ CREATE TABLE public.users (
   email character varying NOT NULL,
   full_name character varying NOT NULL,
   is_super_admin boolean DEFAULT false,
+  last_login timestamp with time zone,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );

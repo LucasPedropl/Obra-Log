@@ -9,14 +9,27 @@ import { Button } from '@/components/ui/button';
 import { CollaboratorForm } from '@/features/colaboradores/components/CollaboratorForm';
 import { useCollaborators } from '@/features/colaboradores/hooks/useCollaborators';
 import { TableSearch } from '@/components/shared/TableSearch';
+import { FilterPanel } from '@/components/shared/FilterPanel';
 import { DataTable } from '@/components/shared/DataTable';
+import { ImportModal } from '@/components/shared/ImportModal';
+import { createClient } from '@/config/supabase';
+import { importCollaboratorsAdmin } from '@/app/actions/adminActions';
+import { getActiveCompanyId } from '@/lib/utils';
 
 export default function ColaboradoresPage() {
 	const [colaboradores, setColaboradores] = useState<any[]>([]);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [isFormOpen, setIsFormOpen] = useState(false);
+	const [editingItem, setEditingItem] = useState<any>(null);
 	const [searchTerm, setSearchTerm] = useState('');
-	const { fetchCollaborators, isLoading } = useCollaborators();
+	const [showFilters, setShowFilters] = useState(false);
+	const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+	// Filtros específicos
+	const [roleFilter, setRoleFilter] = useState('');
+
+	const { fetchCollaborators, deleteCollaborator, isLoading } =
+		useCollaborators();
 	const itemsPerPage = 10;
 
 	const loadColaboradores = async () => {
@@ -40,13 +53,23 @@ export default function ColaboradoresPage() {
 			? new Date(colab.created_at).toLocaleDateString('pt-BR')
 			: '';
 
-		return (
+		const matchesSearch =
 			colab.name?.toLowerCase().includes(searchLower) ||
 			colab.email?.toLowerCase().includes(searchLower) ||
 			colab.role_title?.toLowerCase().includes(searchLower) ||
-			dateStr.includes(searchLower)
-		);
+			dateStr.includes(searchLower);
+
+		const matchesRole = roleFilter
+			? colab.role_title?.toLowerCase() === roleFilter.toLowerCase()
+			: true;
+
+		return matchesSearch && matchesRole;
 	});
+
+	// Get unique roles for the filter dropdown
+	const availableRoles = Array.from(
+		new Set(colaboradores.map((c) => c.role_title).filter(Boolean)),
+	);
 
 	const totalPages = Math.max(
 		1,
@@ -58,6 +81,33 @@ export default function ColaboradoresPage() {
 		loadColaboradores();
 	};
 
+	const handleImport = async (lines: string[]) => {
+		const result: any[] = [];
+		const companyId = getActiveCompanyId();
+		if (!companyId) return;
+
+		for (const line of lines) {
+			const parts = line.split(';');
+			if (parts.length >= 2) {
+				const [name, role_title] = parts;
+				result.push({
+					name: name.trim(),
+					role_title: role_title.trim(),
+					company_id: companyId,
+					status: 'ACTIVE',
+				});
+			}
+		}
+
+		if (result.length > 0) {
+			try {
+				await importCollaboratorsAdmin(result);
+				loadColaboradores();
+			} catch (error) {
+				console.error('Erro ao importar colaboradores:', error);
+			}
+		}
+	};
 	const currentColabs = filteredColaboradores.slice(
 		(currentPage - 1) * itemsPerPage,
 		currentPage * itemsPerPage,
@@ -72,22 +122,35 @@ export default function ColaboradoresPage() {
 				addLabel="Cadastrar Colaborador"
 			/>
 
-			{isFormOpen && (
+			{(isFormOpen || editingItem) && (
 				<div
 					className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"
-					onClick={() => setIsFormOpen(false)}
+					onClick={() => {
+						setIsFormOpen(false);
+						setEditingItem(null);
+					}}
 				>
 					<div
 						className="relative w-full max-w-2xl mt-8 md:mt-0 animate-in fade-in zoom-in duration-300"
 						onClick={(e) => e.stopPropagation()}
 					>
 						<button
-							onClick={() => setIsFormOpen(false)}
+							onClick={() => {
+								setIsFormOpen(false);
+								setEditingItem(null);
+							}}
 							className="absolute top-4 right-4 z-10 p-2 text-muted-foreground hover:bg-muted/30 rounded-full transition-colors"
 						>
 							<X size={20} />
 						</button>
-						<CollaboratorForm onCancel={handleFormClose} />
+						<CollaboratorForm
+							onCancel={() => {
+								setIsFormOpen(false);
+								setEditingItem(null);
+								loadColaboradores();
+							}}
+							initialData={editingItem}
+						/>
 					</div>
 				</div>
 			)}
@@ -104,15 +167,45 @@ export default function ColaboradoresPage() {
 				/>
 			) : (
 				<div className="space-y-4">
-					{/* Barra de Pesquisa e Filtros */}
-					<TableSearch
-						value={searchTerm}
-						onChange={handleSearchChange}
-						placeholder="Buscar colaboradores por nome, email ou cargo..."
-						onFilterClick={() =>
-							console.log('Abrir filtros de colaboradores')
-						}
-					/>
+					<div className="space-y-4">
+						<TableSearch
+							value={searchTerm}
+							onChange={handleSearchChange}
+							placeholder="Buscar colaboradores por nome, email ou cargo..."
+							onFilterClick={() => setShowFilters(!showFilters)}
+						/>
+
+						<FilterPanel
+							isOpen={showFilters}
+							onClose={() => setShowFilters(false)}
+							onClear={() => {
+								setRoleFilter('');
+							}}
+						>
+							<div className="flex flex-col gap-1.5">
+								<label className="text-sm font-medium text-gray-700">
+									Cargo / Função
+								</label>
+								<select
+									value={roleFilter}
+									onChange={(e) =>
+										setRoleFilter(e.target.value)
+									}
+									className="h-10 px-3 py-2 rounded-[5px] border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-full"
+								>
+									<option value="">Todos os cargos</option>
+									{availableRoles.map((role) => (
+										<option
+											key={String(role)}
+											value={String(role)}
+										>
+											{String(role)}
+										</option>
+									))}
+								</select>
+							</div>
+						</FilterPanel>
+					</div>
 
 					<div className="bg-white rounded-xl shadow-sm">
 						<DataTable
@@ -144,16 +237,18 @@ export default function ColaboradoresPage() {
 								},
 							]}
 							keyExtractor={(item) => item.id}
-							onEdit={(item) => console.log('Editar', item)}
-							onDelete={(item) => {
-								console.log('Excluir unitário:', item);
+							onEdit={(item) => setEditingItem(item)}
+							onDelete={async (item) => {
+								await deleteCollaborator(item.id);
 								setColaboradores((prev) =>
 									prev.filter((c) => c.id !== item.id),
 								);
 							}}
-							onDeleteBulk={(items) => {
-								console.log('Excluir massa:', items);
+							onDeleteBulk={async (items) => {
 								const idsToRemove = items.map((i) => i.id);
+								for (const id of idsToRemove) {
+									await deleteCollaborator(id);
+								}
 								setColaboradores((prev) =>
 									prev.filter(
 										(c) => !idsToRemove.includes(c.id),
@@ -179,7 +274,7 @@ export default function ColaboradoresPage() {
 			<div className="flex items-center justify-end gap-3 w-full mt-4">
 				<Button
 					variant="outline"
-					onClick={() => console.log('Importar colaboradores')}
+					onClick={() => setIsImportModalOpen(true)}
 					className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
 				>
 					<Upload className="h-4 w-4" />
@@ -197,6 +292,14 @@ export default function ColaboradoresPage() {
 					</Button>
 				)}
 			</div>
+
+			<ImportModal
+				isOpen={isImportModalOpen}
+				onClose={() => setIsImportModalOpen(false)}
+				title="Importar Colaboradores"
+				description="Faça o upload do seu arquivo .txt (formato: Nome;Cargo/Função)"
+				onImportLines={handleImport}
+			/>
 		</div>
 	);
 }

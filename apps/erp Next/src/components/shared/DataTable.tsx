@@ -39,6 +39,8 @@ export function DataTable<T extends Record<string, any>>({
 }: DataTableProps<T>) {
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [detailItem, setDetailItem] = useState<T | null>(null);
+	const [itemToDelete, setItemToDelete] = useState<T | null>(null);
+	const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
 	const isMultiSelectMode = selectedIds.size > 0;
 
@@ -55,12 +57,17 @@ export function DataTable<T extends Record<string, any>>({
 	const clearSelection = () => setSelectedIds(new Set());
 
 	const handleBulkDelete = () => {
+		setBulkDeleteConfirm(true);
+	};
+
+	const confirmBulkDelete = () => {
 		if (onDeleteBulk) {
 			const itemsToDelete = data.filter((item) =>
 				selectedIds.has(keyExtractor(item)),
 			);
 			onDeleteBulk(itemsToDelete);
 			clearSelection();
+			setBulkDeleteConfirm(false);
 		}
 	};
 
@@ -209,7 +216,7 @@ export function DataTable<T extends Record<string, any>>({
 							{onDelete && (
 								<Button
 									onClick={() => {
-										onDelete(detailItem);
+										setItemToDelete(detailItem);
 										setDetailItem(null);
 									}}
 									className="flex items-center gap-2 rounded-[5px] bg-red-600 hover:bg-red-700 text-white"
@@ -218,6 +225,95 @@ export function DataTable<T extends Record<string, any>>({
 									Excluir
 								</Button>
 							)}
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Confirm Single Delete Modal */}
+			{itemToDelete && (
+				<div
+					className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+					onClick={() => setItemToDelete(null)}
+				>
+					<div
+						className="relative w-full max-w-sm bg-white rounded-xl shadow-xl p-6 animate-in fade-in zoom-in duration-200"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<div className="flex flex-col items-center text-center space-y-4">
+							<div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-2">
+								<Trash2 className="w-6 h-6" />
+							</div>
+							<h2 className="text-xl font-semibold text-gray-800">
+								Excluir Item
+							</h2>
+							<p className="text-sm text-gray-500">
+								Tem certeza que deseja excluir este item? Esta
+								ação não poderá ser desfeita.
+							</p>
+						</div>
+
+						<div className="flex gap-3 justify-center mt-8">
+							<Button
+								variant="outline"
+								onClick={() => setItemToDelete(null)}
+								className="w-full rounded-[5px] border-gray-300 text-gray-700 hover:bg-gray-50"
+							>
+								Cancelar
+							</Button>
+							<Button
+								onClick={() => {
+									if (onDelete && itemToDelete) {
+										onDelete(itemToDelete);
+										setItemToDelete(null);
+									}
+								}}
+								className="w-full rounded-[5px] bg-red-600 hover:bg-red-700 text-white"
+							>
+								Excluir
+							</Button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Confirm Bulk Delete Modal */}
+			{bulkDeleteConfirm && (
+				<div
+					className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+					onClick={() => setBulkDeleteConfirm(false)}
+				>
+					<div
+						className="relative w-full max-w-sm bg-white rounded-xl shadow-xl p-6 animate-in fade-in zoom-in duration-200"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<div className="flex flex-col items-center text-center space-y-4">
+							<div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-2">
+								<Trash2 className="w-6 h-6" />
+							</div>
+							<h2 className="text-xl font-semibold text-gray-800">
+								Excluir {selectedIds.size} Itens
+							</h2>
+							<p className="text-sm text-gray-500">
+								Tem certeza que deseja excluir os itens
+								selecionados? Esta ação não poderá ser desfeita.
+							</p>
+						</div>
+
+						<div className="flex gap-3 justify-center mt-8">
+							<Button
+								variant="outline"
+								onClick={() => setBulkDeleteConfirm(false)}
+								className="w-full rounded-[5px] border-gray-300 text-gray-700 hover:bg-gray-50"
+							>
+								Cancelar
+							</Button>
+							<Button
+								onClick={confirmBulkDelete}
+								className="w-full rounded-[5px] bg-red-600 hover:bg-red-700 text-white"
+							>
+								Excluir Todos
+							</Button>
 						</div>
 					</div>
 				</div>

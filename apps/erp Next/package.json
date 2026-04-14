@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "cross-env CI=true next dev -p 3005",
+		"dev": "start http://localhost:3005 && cross-env CI=true next dev -p 3005",
 		"build": "next build",
 		"start": "next start -p 3005",
 		"lint": "eslint"

@@ -1,0 +1,14 @@
+Alvenaria;ALV
+Acabamento;ACA
+Hidráulica;HID
+Elétrica;ELE
+Equipamentos Pesados;EQP
+Ferramentas Manuais;FER-MAN
+Ferramentas Elétricas;FER-ELE
+EPI - Proteção Visual;EPI-VIS
+EPI - Proteção Auditiva;EPI-AUD
+EPI - Proteção Respiratória;EPI-RES
+EPI - Proteção Corporal;EPI-COR
+EPI - Proteção Mãos;EPI-MAO
+EPI - Proteção Pés;EPI-PE
+Material de Consumo;MAT-CON
