@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Check, PackageOpen, X, Grip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/config/supabase';
+import {
+	getSiteInventoryAdmin,
+	getSiteEpisAdmin,
+	addSiteEpisAdmin,
+} from '@/app/actions/adminActions';
 
 interface InventoryItem {
 	id: string;
@@ -27,47 +31,20 @@ export function AddEPIForm({ onCancel, onSaved, siteId }: AddEPIFormProps) {
 	const [isSaving, setIsSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const supabase = createClient();
-
 	useEffect(() => {
 		const fetchInventory = async () => {
 			try {
 				setIsLoading(true);
 				setError(null);
 
-				// 1. Fetch EPIs already tracked as EPIs on this site
-				const { data: existingEPIs, error: epiError } = await supabase
-					.from('site_epis')
-					.select('inventory_id')
-					.eq('site_id', siteId);
+				const [existingEPIs, inventoryData] = await Promise.all([
+					getSiteEpisAdmin(siteId),
+					getSiteInventoryAdmin(siteId),
+				]);
 
-				if (epiError) throw epiError;
 				const existingIds = new Set(
-					existingEPIs?.map((t) => t.inventory_id) || [],
+					existingEPIs?.map((t: any) => t.inventory_id) || [],
 				);
-
-				// 2. Fetch site_inventory with catalogs
-				// Exclude items that are known to be tools (is_tool = true)
-				const { data: inventoryData, error: fetchError } =
-					await supabase
-						.from('site_inventory')
-						.select(
-							`
-						id,
-						quantity,
-						catalogs (
-							name,
-							code,
-							is_tool,
-							categories (
-								primary_category
-							)
-						)
-					`,
-						)
-						.eq('site_id', siteId);
-
-				if (fetchError) throw fetchError;
 
 				const formatted: InventoryItem[] = (inventoryData || [])
 					.filter(
@@ -75,25 +52,28 @@ export function AddEPIForm({ onCancel, onSaved, siteId }: AddEPIFormProps) {
 							!existingIds.has(item.id) &&
 							item.catalogs?.is_tool !== true,
 					)
-					.map((item: any) => ({
-						id: item.id,
-						name: item.catalogs?.name || 'Produto sem nome',
-						code: item.catalogs?.code || 'S/C',
-						unit: 'UN',
-						category:
-							item.catalogs?.categories?.primary_category ||
-							'Sem Categoria',
-						subcategory: '',
-						quantity: item.quantity || 0,
-					}));
+					.map((item: any) => {
+						const catalog = item.catalogs ?? null;
+						return {
+							id: item.id,
+							name: catalog?.name || 'Produto sem nome',
+							code: catalog?.code || 'S/C',
+							unit:
+								catalog?.measurement_units?.abbreviation ||
+								'UN',
+							category:
+								catalog?.categories?.primary_category ||
+								'Sem Categoria',
+							subcategory:
+								catalog?.categories?.secondary_category || '',
+							quantity: item.quantity || 0,
+						};
+					});
 
 				setInventoryItems(formatted);
 			} catch (err: any) {
-				console.error(
-					'Error fetching inventory for EPIs:',
-					err.message,
-				);
-				setError(err.message);
+				console.error('Error fetching inventory for EPIs:', err);
+				setError(err.message || 'Erro ao carregar dados');
 			} finally {
 				setIsLoading(false);
 			}
@@ -127,21 +107,12 @@ export function AddEPIForm({ onCancel, onSaved, siteId }: AddEPIFormProps) {
 			setIsSaving(true);
 			setError(null);
 
-			const inserts = selectedItems.map((invId) => ({
-				site_id: siteId,
-				inventory_id: invId,
-			}));
-
-			const { error: insertError } = await supabase
-				.from('site_epis')
-				.insert(inserts);
-
-			if (insertError) throw insertError;
+			await addSiteEpisAdmin(siteId, selectedItems);
 
 			onSaved();
 		} catch (err: any) {
 			console.error('Error adding EPIs:', err);
-			setError(err.message);
+			setError(err.message || 'Erro ao salvar EPIs');
 		} finally {
 			setIsSaving(false);
 		}

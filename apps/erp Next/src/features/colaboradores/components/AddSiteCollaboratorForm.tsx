@@ -1,6 +1,21 @@
-import React, { useState } from 'react';
-import { Search, Check, Users, X, Grip, UserCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import {
+	Search,
+	Check,
+	Users,
+	X,
+	Grip,
+	UserCircle,
+	Loader2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+	getCollaboratorsAdmin,
+	getSiteCollaboratorsAdmin,
+	addSiteCollaboratorsAdmin,
+} from '@/app/actions/adminActions';
+import { getActiveCompanyId } from '@/lib/utils';
+import { useToast } from '@/components/ui/toaster';
 
 interface AddSiteCollaboratorFormProps {
 	onCancel: () => void;
@@ -13,115 +28,49 @@ export function AddSiteCollaboratorForm({
 	onSaved,
 	siteId,
 }: AddSiteCollaboratorFormProps) {
+	const { addToast } = useToast();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [selectedItems, setSelectedItems] = useState<string[]>([]);
+	const [globalItems, setGlobalItems] = useState<any[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [isSaving, setIsSaving] = useState(false);
 
-	// Simulated global collaborators
-	const [globalItems] = useState([
-		{
-			id: '1',
-			name: 'João da Silva',
-			role: 'Pedreiro',
-			cpf: '111.222.333-44',
-			department: 'Construção Civil',
-			shift: 'Integral',
-		},
-		{
-			id: '2',
-			name: 'Maria Souza',
-			role: 'Mestre de Obras',
-			cpf: '222.333.444-55',
-			department: 'Gestão de Obras',
-			shift: 'Integral',
-		},
-		{
-			id: '3',
-			name: 'Carlos Ferreira',
-			role: 'Eletricista',
-			cpf: '333.444.555-66',
-			department: 'Instalações',
-			shift: 'Integral',
-		},
-		{
-			id: '4',
-			name: 'Ana Oliveira',
-			role: 'Engenheira Civil',
-			cpf: '444.555.666-77',
-			department: 'Engenharia',
-			shift: 'Integral',
-		},
-		{
-			id: '5',
-			name: 'Paulo Santos',
-			role: 'Encanador',
-			cpf: '555.666.777-88',
-			department: 'Instalações',
-			shift: 'Integral',
-		},
-		{
-			id: '6',
-			name: 'Fernanda Lima',
-			role: 'Arquiteta',
-			cpf: '666.777.888-99',
-			department: 'Arquitetura',
-			shift: 'Meio Período',
-		},
-		{
-			id: '7',
-			name: 'Lucas Pereira',
-			role: 'Servente',
-			cpf: '777.888.999-00',
-			department: 'Construção Civil',
-			shift: 'Integral',
-		},
-		{
-			id: '8',
-			name: 'Juliana Castro',
-			role: 'Técnica de Segurança',
-			cpf: '888.999.000-11',
-			department: 'Segurança do Trabalho',
-			shift: 'Integral',
-		},
-		{
-			id: '9',
-			name: 'Marcos Almeida',
-			role: 'Armador',
-			cpf: '999.000.111-22',
-			department: 'Estruturas',
-			shift: 'Integral',
-		},
-		{
-			id: '10',
-			name: 'Patricia Dias',
-			role: 'Pintora',
-			cpf: '000.111.222-33',
-			department: 'Acabamentos',
-			shift: 'Integral',
-		},
-		{
-			id: '11',
-			name: 'Ricardo Mendes',
-			role: 'Carpinteiro',
-			cpf: '123.234.345-45',
-			department: 'Estruturas',
-			shift: 'Meio Período',
-		},
-		{
-			id: '12',
-			name: 'Camila Rocha',
-			role: 'Gesseira',
-			cpf: '234.345.456-56',
-			department: 'Acabamentos',
-			shift: 'Integral',
-		},
-	]);
+	useEffect(() => {
+		const loadData = async () => {
+			try {
+				setIsLoading(true);
+				const companyId = getActiveCompanyId();
+				if (!companyId) return;
+
+				const [globalDb, siteDb] = await Promise.all([
+					getCollaboratorsAdmin(companyId),
+					getSiteCollaboratorsAdmin(siteId),
+				]);
+
+				const siteCollabIds = siteDb.map(
+					(sc: any) => sc.collaborator_id,
+				);
+				const availableToAssign = globalDb.filter(
+					(g: any) => !siteCollabIds.includes(g.id),
+				);
+
+				setGlobalItems(availableToAssign);
+			} catch (error) {
+				console.error('Error loading collaborators:', error);
+				addToast('Erro ao carregar os colaboradores', 'error');
+			} finally {
+				setIsLoading(false);
+			}
+		};
+		loadData();
+	}, [siteId]);
 
 	const filteredItems = globalItems.filter(
 		(item) =>
-			item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			item.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			item.cpf.includes(searchTerm.toLowerCase()) ||
-			item.department.toLowerCase().includes(searchTerm.toLowerCase()),
+			item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			item.role_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			item.cpf?.includes(searchTerm.toLowerCase()) ||
+			item.email?.toLowerCase().includes(searchTerm.toLowerCase()),
 	);
 
 	const toggleSelection = (id: string) => {
@@ -133,9 +82,23 @@ export function AddSiteCollaboratorForm({
 		});
 	};
 
-	const handleSave = () => {
-		console.log({ selectedItems, siteId });
-		onSaved();
+	const handleSave = async () => {
+		if (selectedItems.length === 0) {
+			addToast('Nenhum colaborador selecionado', 'error');
+			return;
+		}
+
+		try {
+			setIsSaving(true);
+			await addSiteCollaboratorsAdmin(siteId, selectedItems);
+			addToast('Colaboradores alocados com sucesso', 'success');
+			onSaved();
+		} catch (error) {
+			console.error('Error attaching collaborators:', error);
+			addToast('Ocorreu um erro ao alocar colaboradores', 'error');
+		} finally {
+			setIsSaving(false);
+		}
 	};
 
 	return (
@@ -174,72 +137,93 @@ export function AddSiteCollaboratorForm({
 					</div>
 
 					<div className="grid grid-cols-1 gap-3 overflow-y-auto pr-2 rounded-[5px] flex-1 pb-4">
-						{filteredItems.map((item) => {
-							const isSelected = selectedItems.includes(item.id);
-							return (
-								<div
-									key={item.id}
-									onClick={() => toggleSelection(item.id)}
-									className={`group flex items-start gap-4 p-4 rounded-lg cursor-pointer border transition-all duration-200 ${
-										isSelected
-											? 'bg-blue-50/50 border-[#101828] shadow-sm'
-											: 'bg-white border-gray-200 hover:border-[#101828]/50 hover:shadow-sm'
-									}`}
-								>
+						{isLoading ? (
+							<div className="flex items-center justify-center h-full">
+								<Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+							</div>
+						) : (
+							filteredItems.map((item) => {
+								const isSelected = selectedItems.includes(
+									item.id,
+								);
+								return (
 									<div
-										className={`mt-1 w-5 h-5 shrink-0 rounded-[5px] border flex items-center justify-center transition-all duration-200 ${
+										key={item.id}
+										onClick={() => toggleSelection(item.id)}
+										className={`group flex items-start gap-4 p-4 rounded-lg cursor-pointer border transition-all duration-200 ${
 											isSelected
-												? 'bg-[#101828] border-[#101828] text-white'
-												: 'border-gray-300 bg-gray-50 group-hover:border-[#101828]/50'
+												? 'bg-blue-50/50 border-[#101828] shadow-sm'
+												: 'bg-white border-gray-200 hover:border-[#101828]/50 hover:shadow-sm'
 										}`}
 									>
-										{isSelected && (
-											<Check size={14} strokeWidth={3} />
-										)}
-									</div>
+										<div
+											className={`mt-1 w-5 h-5 shrink-0 rounded-[5px] border flex items-center justify-center transition-all duration-200 ${
+												isSelected
+													? 'bg-[#101828] border-[#101828] text-white'
+													: 'border-gray-300 bg-gray-50 group-hover:border-[#101828]/50'
+											}`}
+										>
+											{isSelected && (
+												<Check
+													size={14}
+													strokeWidth={3}
+												/>
+											)}
+										</div>
 
-									{/* Avatar placeholder */}
-									<div className="hidden sm:flex w-10 h-10 rounded-full bg-gray-100 flex-shrink-0 items-center justify-center border border-gray-200 mt-0.5">
-										<UserCircle className="w-6 h-6 text-gray-400" />
-									</div>
-
-									<div className="flex flex-1 flex-col sm:flex-row sm:items-center justify-between gap-3">
-										<div className="flex flex-col gap-1">
-											<div className="font-semibold text-sm text-gray-900 group-hover:text-[#101828] transition-colors">
-												{item.name}
+										{item.avatar_url ? (
+											<img
+												src={item.avatar_url}
+												alt={item.name}
+												className="hidden sm:flex w-10 h-10 rounded-full object-cover flex-shrink-0 items-center justify-center border border-gray-200 mt-0.5"
+											/>
+										) : (
+											<div className="hidden sm:flex w-10 h-10 rounded-full bg-gray-100 flex-shrink-0 items-center justify-center border border-gray-200 mt-0.5">
+												<UserCircle className="w-6 h-6 text-gray-400" />
 											</div>
-											<div className="flex items-center gap-2 text-xs font-medium text-gray-500">
-												<div className="flex items-center gap-1.5">
-													<Grip
-														size={12}
-														className="text-gray-400"
-													/>
-													<span className="bg-gray-100 px-2 py-0.5 rounded-[5px]">
-														{item.department}
+										)}
+
+										<div className="flex flex-1 flex-col sm:flex-row sm:items-center justify-between gap-3">
+											<div className="flex flex-col gap-1">
+												<div className="font-semibold text-sm text-gray-900 group-hover:text-[#101828] transition-colors">
+													{item.name}
+												</div>
+												<div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+													<div className="flex items-center gap-1.5">
+														<Grip
+															size={12}
+															className="text-gray-400"
+														/>
+														<span className="bg-gray-100 px-2 py-0.5 rounded-[5px]">
+															{item.email ||
+																'Sem email'}
+														</span>
+													</div>
+													<span className="text-gray-300">
+														•
+													</span>
+													<span className="text-gray-500">
+														{item.role_title ||
+															'Sem Cargo'}
 													</span>
 												</div>
-												<span className="text-gray-300">
-													•
-												</span>
-												<span className="text-gray-500">
-													{item.role}
-												</span>
 											</div>
-										</div>
-										<div className="flex flex-col sm:items-end gap-1.5 mt-2 sm:mt-0">
-											<div className="inline-flex items-center text-xs font-mono font-medium text-gray-600 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-[5px]">
-												CPF: {item.cpf}
-											</div>
-											<div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-												{item.shift}
+											<div className="flex flex-col sm:items-end gap-1.5 mt-2 sm:mt-0">
+												<div className="inline-flex items-center text-xs font-mono font-medium text-gray-600 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-[5px]">
+													CPF: {item.cpf || 'N/A'}
+												</div>
+												<div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+													STATUS:{' '}
+													{item.status || 'ativo'}
+												</div>
 											</div>
 										</div>
 									</div>
-								</div>
-							);
-						})}
+								);
+							})
+						)}
 
-						{filteredItems.length === 0 && (
+						{!isLoading && filteredItems.length === 0 && (
 							<div className="text-center py-16 flex flex-col items-center justify-center h-full">
 								<div className="w-16 h-16 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center mb-4">
 									<Users className="w-8 h-8 text-gray-300" />
@@ -276,10 +260,17 @@ export function AddSiteCollaboratorForm({
 
 					<Button
 						onClick={handleSave}
-						disabled={selectedItems.length === 0}
+						disabled={selectedItems.length === 0 || isSaving}
 						className="bg-[#101828] hover:bg-[#1b263b] text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md rounded-[5px] px-8 transition-colors"
 					>
-						Alojar na Obra
+						{isSaving ? (
+							<>
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								Salvando...
+							</>
+						) : (
+							'Alojar na Obra'
+						)}
 					</Button>
 				</div>
 			</div>

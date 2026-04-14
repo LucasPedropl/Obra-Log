@@ -27,16 +27,16 @@ interface InventoryRawItem {
 	catalog_id: string;
 	quantity: number | null;
 	min_threshold: number | null;
-	catalogs: Array<{
+	catalogs: {
 		name: string | null;
-		categories: Array<{
+		categories: {
 			primary_category: string | null;
 			secondary_category: string | null;
-		}> | null;
-		measurement_units: Array<{
+		} | null;
+		measurement_units: {
 			abbreviation: string | null;
-		}> | null;
-	}> | null;
+		} | null;
+	} | null;
 }
 
 export default function AlmoxarifadoObraPage({
@@ -56,33 +56,35 @@ export default function AlmoxarifadoObraPage({
 		setIsLoading(true);
 		try {
 			const data = await getSiteInventoryAdmin(resolvedParams.id);
-			const normalized = (data as InventoryRawItem[]).map((item) => {
-				const catalog = item.catalogs?.[0] ?? null;
-				const category = catalog?.categories?.[0] ?? null;
-				const measurementUnit = catalog?.measurement_units?.[0] ?? null;
+			const normalized = (data as unknown as InventoryRawItem[]).map(
+				(item) => {
+					const catalog = item.catalogs ?? null;
+					const category = catalog?.categories ?? null;
+					const measurementUnit = catalog?.measurement_units ?? null;
 
-				return {
-					id: item.id,
-					catalogId: item.catalog_id,
-					quantity: item.quantity ?? 0,
-					min_threshold: item.min_threshold ?? 0,
-					catalogs: catalog
-						? {
-								name: catalog.name || '-',
-								category:
-									category?.primary_category ||
-									'Sem Categoria',
-								measurement_units: measurementUnit
-									? {
-											abbreviation:
-												measurementUnit.abbreviation ||
-												'UN',
-										}
-									: null,
-							}
-						: null,
-				};
-			});
+					return {
+						id: item.id,
+						catalogId: item.catalog_id,
+						quantity: item.quantity ?? 0,
+						min_threshold: item.min_threshold ?? 0,
+						catalogs: catalog
+							? {
+									name: catalog.name || '-',
+									category:
+										category?.primary_category ||
+										'Sem Categoria',
+									measurement_units: measurementUnit
+										? {
+												abbreviation:
+													measurementUnit.abbreviation ||
+													'UN',
+											}
+										: null,
+								}
+							: null,
+					};
+				},
+			);
 
 			setItems(normalized);
 		} catch (error) {

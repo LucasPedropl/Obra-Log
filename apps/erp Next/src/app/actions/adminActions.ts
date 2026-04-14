@@ -246,6 +246,38 @@ export async function importCatalogsAdmin(data: any[]) {
 	return true;
 }
 
+export async function getSiteCollaboratorsAdmin(siteId: string) {
+	const { data, error } = await supabaseAdmin
+		.from('site_collaborators')
+		.select('id, collaborator_id, collaborators(name, role_title, cpf)')
+		.eq('site_id', siteId);
+
+	if (error) throw error;
+	return data || [];
+}
+
+export async function addSiteCollaboratorsAdmin(
+	siteId: string,
+	collaboratorIds: string[],
+) {
+	if (!collaboratorIds.length) return true;
+
+	const payload = collaboratorIds.map((id) => ({
+		site_id: siteId,
+		collaborator_id: id,
+	}));
+
+	const { error } = await supabaseAdmin
+		.from('site_collaborators')
+		.insert(payload);
+
+	if (error) {
+		console.error(error);
+		throw error;
+	}
+	return true;
+}
+
 export async function getSiteInventoryAdmin(siteId: string) {
 	const { data, error } = await supabaseAdmin
 		.from('site_inventory')
@@ -348,4 +380,109 @@ export async function addInventoryItemsAdmin(
 	}
 
 	return true;
+}
+
+export async function getSiteToolsAdmin(siteId: string) {
+	const { data, error } = await supabaseAdmin
+		.from('site_tools')
+		.select('inventory_id')
+		.eq('site_id', siteId);
+	if (error) throw error;
+	return data || [];
+}
+
+export async function getSiteEpisAdmin(siteId: string) {
+	const { data, error } = await supabaseAdmin
+		.from('site_epis')
+		.select('inventory_id')
+		.eq('site_id', siteId);
+	if (error) throw error;
+	return data || [];
+}
+
+export async function addSiteToolsAdmin(
+	siteId: string,
+	inventoryIds: string[],
+) {
+	const inserts = inventoryIds.map((id) => ({
+		site_id: siteId,
+		inventory_id: id,
+	}));
+	const { error } = await supabaseAdmin.from('site_tools').insert(inserts);
+	if (error) throw error;
+	return true;
+}
+
+export async function addSiteEpisAdmin(siteId: string, inventoryIds: string[]) {
+	const inserts = inventoryIds.map((id) => ({
+		site_id: siteId,
+		inventory_id: id,
+	}));
+	const { error } = await supabaseAdmin.from('site_epis').insert(inserts);
+	if (error) throw error;
+	return true;
+}
+
+export async function getToolItemsAdmin(siteId: string) {
+	const { data: toolsData, error: toolsError } = await supabaseAdmin
+		.from('site_tools')
+		.select(
+			'id, inventory_id, site_inventory(quantity, catalogs(name, code, categories(primary_category)))',
+		)
+		.eq('site_id', siteId);
+	if (toolsError) throw toolsError;
+
+	const { data: loansData, error: loansError } = await supabaseAdmin
+		.from('tool_loans')
+		.select('inventory_id, quantity')
+		.eq('site_id', siteId)
+		.eq('status', 'OPEN');
+	if (loansError) throw loansError;
+
+	const loansByInventory = (loansData || []).reduce((acc: any, loan) => {
+		acc[loan.inventory_id] = (acc[loan.inventory_id] || 0) + loan.quantity;
+		return acc;
+	}, {});
+
+	return (toolsData || []).map((t: any) => {
+		const totalQty = t.site_inventory?.quantity || 0;
+		const loanedQty = loansByInventory[t.inventory_id] || 0;
+		const catalog = t.site_inventory?.catalogs;
+
+		return {
+			id: t.id,
+			inventoryId: t.inventory_id,
+			name: catalog?.name || 'Ferramenta Desconhecida',
+			category: catalog?.categories?.primary_category || 'Sem Categoria',
+			code: catalog?.code || '-',
+			totalQuantity: totalQty,
+			availableQuantity: Math.max(0, totalQty - loanedQty),
+		};
+	});
+}
+
+export async function getEPIItemsAdmin(siteId: string) {
+	const { data: episData, error: episError } = await supabaseAdmin
+		.from('site_epis')
+		.select(
+			'id, inventory_id, site_inventory(catalog_id, quantity, min_threshold, catalogs(name, code, categories(primary_category)))',
+		)
+		.eq('site_id', siteId);
+	if (episError) throw episError;
+
+	return (episData || []).map((t: any) => {
+		const totalQty = t.site_inventory?.quantity || 0;
+		const catalog = t.site_inventory?.catalogs;
+
+		return {
+			id: t.id,
+			inventoryId: t.inventory_id,
+			catalogId: t.site_inventory?.catalog_id,
+			name: catalog?.name || 'EPI Desconhecido',
+			category: catalog?.categories?.primary_category || 'Sem Categoria',
+			code: catalog?.code || '-',
+			totalQuantity: totalQty,
+			minThreshold: t.site_inventory?.min_threshold || 0,
+		};
+	});
 }

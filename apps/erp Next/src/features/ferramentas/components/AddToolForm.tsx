@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Check, PackageOpen, X, Grip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/config/supabase';
+import {
+	getSiteInventoryAdmin,
+	getSiteToolsAdmin,
+	addSiteToolsAdmin,
+} from '@/app/actions/adminActions';
 
 interface InventoryItem {
 	id: string;
@@ -26,7 +30,6 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSaving, setIsSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const supabase = createClient();
 
 	useEffect(() => {
 		const fetchInventory = async () => {
@@ -34,66 +37,39 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 				setIsLoading(true);
 				setError(null);
 
-				// 1. Get existing tools to exclude
-				const { data: existingTools, error: toolsError } =
-					await supabase
-						.from('site_tools')
-						.select('inventory_id')
-						.eq('site_id', siteId);
+				const [existingTools, inventoryData] = await Promise.all([
+					getSiteToolsAdmin(siteId),
+					getSiteInventoryAdmin(siteId),
+				]);
 
-				if (toolsError) throw toolsError;
 				const existingIds = new Set(
-					existingTools?.map((t) => t.inventory_id) || [],
+					existingTools?.map((t: any) => t.inventory_id) || [],
 				);
-
-				// 2. Fetch site_inventory with catalogs
-				const { data: inventoryData, error: fetchError } =
-					await supabase
-						.from('site_inventory')
-						.select(
-							`
-						id,
-						quantity,
-						catalogs (
-							name,
-							code,
-							categories (
-								primary_category
-							)
-						)
-					`,
-						)
-						.eq('site_id', siteId);
-
-				if (fetchError) throw fetchError;
 
 				const formatted: InventoryItem[] = (inventoryData || [])
 					.filter((item: any) => !existingIds.has(item.id))
-					.map((item: any) => ({
-						id: item.id,
-						name: item.catalogs?.name || 'Produto sem nome',
-						code: item.catalogs?.code || 'S/C',
-						unit: 'UN', // Defaults since it's not strongly typed in relation here
-						category:
-							item.catalogs?.categories?.primary_category ||
-							'Sem Categoria',
-						subcategory: '',
-						quantity: item.quantity || 0,
-					}));
+					.map((item: any) => {
+						const catalog = item.catalogs ?? null;
+						return {
+							id: item.id,
+							name: catalog?.name || 'Produto sem nome',
+							code: catalog?.code || 'S/C',
+							unit:
+								catalog?.measurement_units?.abbreviation ||
+								'UN',
+							category:
+								catalog?.categories?.primary_category ||
+								'Sem Categoria',
+							subcategory:
+								catalog?.categories?.secondary_category || '',
+							quantity: item.quantity || 0,
+						};
+					});
 
 				setInventoryItems(formatted);
 			} catch (err: any) {
-				console.error(
-					'Error fetching inventory for tools CODE:',
-					err.code,
-					'MSG:',
-					err.message,
-					'HINT:',
-					err.hint,
-					'DETAILS:',
-					err.details,
-				);
-				setError(err.message);
+				console.error('Error fetching inventory for tools:', err);
+				setError(err.message || 'Erro ao carregar dados');
 			} finally {
 				setIsLoading(false);
 			}
@@ -125,21 +101,14 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 
 		try {
 			setIsSaving(true);
-			const inserts = selectedItems.map((inventoryId) => ({
-				site_id: siteId,
-				inventory_id: inventoryId,
-			}));
+			setError(null);
 
-			const { error: insertError } = await supabase
-				.from('site_tools')
-				.insert(inserts);
-
-			if (insertError) throw insertError;
+			await addSiteToolsAdmin(siteId, selectedItems);
 
 			onSaved();
 		} catch (err: any) {
 			console.error('Error saving tools:', err);
-			setError(err.message);
+			setError(err.message || 'Erro ao salvar ferramentas');
 		} finally {
 			setIsSaving(false);
 		}
