@@ -128,22 +128,12 @@ export default function RentedActivePage({ params }: RentedActivePageProps) {
 
 	return (
 		<div className="flex flex-col gap-6 relative">
-			<div className="flex w-full items-center justify-between">
-				<PageHeader
-					title="Equipamentos Alugados"
-					description="Gerencie todos os equipamentos de locação da obra."
-					onAdd={() => setIsAddFormOpen(true)}
-					addLabel="Registrar Chegada"
-				/>
-				<Button
-					variant="outline"
-					onClick={() => setIsImportModalOpen(true)}
-					className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm ml-4"
-				>
-					<Upload className="h-4 w-4" />
-					<span>Importar</span>
-				</Button>
-			</div>
+			<PageHeader
+				title="Equipamentos Alugados"
+				description="Gerencie todos os equipamentos de locação da obra."
+				onAdd={() => setIsAddFormOpen(true)}
+				addLabel="Registrar Chegada"
+			/>
 
 			{isAddFormOpen && (
 				<div
@@ -166,32 +156,39 @@ export default function RentedActivePage({ params }: RentedActivePageProps) {
 				</div>
 			)}
 
-			<div className="flex flex-col flex-1 bg-white rounded-xl border border-gray-200">
-				{!isLoading && activeEquipments.length === 0 ? (
-					<div className="p-12">
-						<EmptyState
-							title="Nenhum equipamento alugado"
-							description="Comece registrando a chegada de um equipamento."
-							icon={<Truck className="w-8 h-8 text-gray-400" />}
-						/>
-					</div>
-				) : (
-					<>
-						<DataTable
-							data={currentEquipments}
-							columns={columns}
-							keyExtractor={(item) => item.id}
-						/>
+			{!isLoading && activeEquipments.length === 0 ? (
+				<EmptyState
+					title="Nenhum equipamento alugado"
+					description="Comece registrando a chegada de um equipamento."
+					icon={<Truck className="w-8 h-8 text-gray-400" />}
+				/>
+			) : (
+				<>
+					<DataTable
+						data={currentEquipments}
+						columns={columns}
+						keyExtractor={(item) => item.id}
+					/>
 
-						{activeEquipments.length > 0 && (
-							<Pagination
-								currentPage={currentPage}
-								totalPages={totalPages}
-								onPageChange={setCurrentPage}
-							/>
-						)}
-					</>
-				)}
+					{activeEquipments.length > 0 && (
+						<Pagination
+							currentPage={currentPage}
+							totalPages={totalPages}
+							onPageChange={setCurrentPage}
+						/>
+					)}
+				</>
+			)}
+
+			<div className="flex items-center justify-end gap-3 w-full mt-4">
+				<Button
+					variant="outline"
+					onClick={() => setIsImportModalOpen(true)}
+					className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
+				>
+					<Upload className="h-4 w-4" />
+					<span>Importar</span>
+				</Button>
 			</div>
 
 			{isReturnFormOpen && selectedEquipment && (

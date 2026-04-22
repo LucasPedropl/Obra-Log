@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/config/supabase';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { createCategoryAdmin } from '@/app/actions/adminActions';
 
 import { X, Upload, Loader2, Info, Plus } from 'lucide-react';
+import { getActiveCompanyId } from '@/lib/utils';
+
+import { ManageSelectsModal } from '@/features/insumos/components/ManageSelectsModal';
+import { useToast } from '@/components/ui/toaster';
 
 interface AddRentedFormProps {
 	siteId: string;
@@ -14,8 +19,7 @@ export function AddRentedForm({
 	siteId,
 	onCancel,
 	onSaved,
-}: AddRentedFormProps) {
-	const supabase = createClient();
+}: AddRentedFormProps) {	const { addToast } = useToast();	const supabase = createClient();
 	const [user, setUser] = useState<any>(null);
 	useEffect(() => {
 		supabase.auth.getUser().then(({ data }) => {
@@ -38,66 +42,108 @@ export function AddRentedForm({
 	const [error, setError] = useState<string | null>(null);
 
 	// Category creation state
-	const [isCatModalOpen, setIsCatModalOpen] = useState(false);
-	const [newCatName, setNewCatName] = useState('');
+	const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
+	const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+	const [newCategoryData, setNewCategoryData] = useState({
+		primary: '',
+		secondary: '',
+	});
 	const [isCreatingCat, setIsCreatingCat] = useState(false);
 
 	useEffect(() => {
 		async function fetchContext() {
 			if (!siteId) return;
 
-			// Fetch company_id from site
-			const { data: siteData } = await supabase
-				.from('construction_sites')
-				.select('company_id')
-				.eq('id', siteId)
-				.single();
-
-			if (siteData?.company_id) {
-				setCompanyId(siteData.company_id);
+			try {
+				const currentCompanyId = getActiveCompanyId();
+				if (!currentCompanyId) {
+					throw new Error('Nenhuma empresa ativa selecionada.');
+				}
+				
+				setCompanyId(currentCompanyId);
 
 				// Fetch categories
-				const { data: catData } = await supabase
-					.from('rented_equipment_categories')
-					.select('id, name')
-					.eq('company_id', siteData.company_id)
-					.order('name');
+				const { data: catData, error: catError } = await supabase
+					.from('categories')
+					.select('id, primary_category, secondary_category')
+					.eq('company_id', currentCompanyId)
+					.order('primary_category');
+
+				if (catError) throw catError;
 
 				if (catData) {
-					setCategories(catData);
+					setCategories(
+						catData.map((c: any) => ({
+							id: c.id,
+							primary_category: c.primary_category,
+							secondary_category: c.secondary_category || '',
+						})),
+					);
 				}
+			} catch (err: any) {
+				console.error('Error fetching context:', err);
+				setError('Erro ao carregar os dados. Tente novamente.');
 			}
 		}
 		fetchContext();
-	}, [siteId]);
+	}, [siteId, supabase]);
 
-	const handleCreateCategory = async () => {
-		if (!newCatName.trim() || !companyId) return;
+	const handleCreateCategory = (newCategoryLabel: string) => {
+		setNewCategoryData({ primary: newCategoryLabel, secondary: '' });
+		setIsCategoryModalOpen(true);
+	};
+
+	const confirmCreateCategory = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!newCategoryData.primary.trim() || !companyId) return;
 		setIsCreatingCat(true);
 
 		try {
-			const { data, error: catError } = await supabase
-				.from('rented_equipment_categories')
-				.insert({
-					company_id: companyId,
-					name: newCatName.trim(),
-				})
-				.select()
-				.single();
+			const labelToSave = newCategoryData.secondary
+				? `${newCategoryData.primary} - ${newCategoryData.secondary}`
+				: newCategoryData.primary;
 
-			if (catError) throw catError;
+			const newId = await createCategoryAdmin({
+				company_id: companyId,
+				entry_type: 'PRODUTO',
+				primary_category: labelToSave,
+			});
+
+			const newCat = {
+				id: newId,
+				primary_category: newCategoryData.primary,
+				secondary_category: newCategoryData.secondary,
+			};
 
 			setCategories((prev) =>
-				[...prev, data].sort((a, b) => a.name.localeCompare(b.name)),
+				[...prev, newCat].sort((a, b) =>
+					a.primary_category.localeCompare(b.primary_category),
+				),
 			);
-			setCategoryId(data.id);
-			setIsCatModalOpen(false);
-			setNewCatName('');
+			setCategoryId(newId);
+			addToast('Categoria cadastrada com sucesso!', 'success');
+			setIsCategoryModalOpen(false);
+			setNewCategoryData({ primary: '', secondary: '' });
 		} catch (err: any) {
 			console.error(err);
-			setError(err.message || 'Erro ao criar categoria.');
+			addToast(err.message || 'Erro ao criar categoria.', 'error');
 		} finally {
 			setIsCreatingCat(false);
+		}
+	};
+
+	const handleDeleteCategories = async (ids: string[]) => {
+		setCategories((prev) => prev.filter((c) => !ids.includes(c.id)));
+	};
+
+	const handleEditCategory = (id: string) => {
+		const cat = categories.find((c) => c.id === id);
+		if (cat) {
+			setNewCategoryData({
+				primary: cat.primary_category,
+				secondary: cat.secondary_category || '',
+			});
+			setIsCategoryModalOpen(true);
 		}
 	};
 
@@ -123,7 +169,7 @@ export function AddRentedForm({
 			const selectedCategory = categories.find(
 				(c) => c.id === categoryId,
 			);
-			const categoryName = selectedCategory?.name || 'Geral';
+			const categoryName = selectedCategory?.primary_category || 'Geral';
 
 			// Get a default unit (UN)
 			const { data: units } = await supabase
@@ -145,7 +191,7 @@ export function AddRentedForm({
 					name: `[ALUGADO] ${name}`,
 					is_stock_controlled: true,
 					is_rented_equipment: true,
-					is_tool: listType === 'FERRAMENTA',
+					is_tool: false,
 				})
 				.select('id')
 				.single();
@@ -167,20 +213,7 @@ export function AddRentedForm({
 			if (invError) throw invError;
 			const inventoryId = inventoryItem.id;
 
-			// 3. Link to EPI or Tools list
-			if (listType === 'EPI') {
-				await supabase.from('site_epis').insert({
-					site_id: siteId,
-					inventory_id: inventoryId,
-				});
-			} else {
-				await supabase.from('site_tools').insert({
-					site_id: siteId,
-					inventory_id: inventoryId,
-				});
-			}
-
-			// 4. Record Entry Movement
+			// 3. Record Entry Movement
 			await supabase.from('site_movements').insert({
 				site_id: siteId,
 				inventory_id: inventoryId,
@@ -190,7 +223,7 @@ export function AddRentedForm({
 				reason: 'PURCHASE',
 			});
 
-			// 5. Record Rented Equipment
+			// 4. Record Rented Equipment
 			const { error: rentError } = await supabase
 				.from('rented_equipments')
 				.insert({
@@ -269,12 +302,15 @@ export function AddRentedForm({
 								<SearchableSelect
 									options={categories.map((c) => ({
 										value: c.id,
-										label: c.name,
-									}))}
-									value={categoryId}
-									onChange={(val) => setCategoryId(val)}
-									placeholder="Pesquisar categoria..."
-									onManage={() => setIsCatModalOpen(true)}
+									label: c.secondary_category
+										? `${c.primary_category} - ${c.secondary_category}`
+										: c.primary_category,
+								}))}
+								value={categoryId}
+								onChange={(val) => setCategoryId(val)}
+								placeholder="Selecionar categoria..."
+								onManage={() => setIsManageCategoriesOpen(true)}
+								onCreate={handleCreateCategory}
 								/>
 							</div>
 						</div>
@@ -310,47 +346,6 @@ export function AddRentedForm({
 								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#101828]"
 								required
 							/>
-						</div>
-
-						<div className="col-span-2">
-							<label className="block text-sm font-medium text-gray-700 mb-2">
-								Destino no Sistema *
-							</label>
-							<div className="flex gap-4">
-								<label className="flex items-center gap-2 cursor-pointer">
-									<input
-										type="radio"
-										name="listType"
-										value="FERRAMENTA"
-										checked={listType === 'FERRAMENTA'}
-										onChange={() =>
-											setListType('FERRAMENTA')
-										}
-										className="w-4 h-4 text-[#101828] focus:ring-[#101828]"
-									/>
-									<span className="text-sm font-medium text-gray-700">
-										Ferramentas
-									</span>
-								</label>
-								<label className="flex items-center gap-2 cursor-pointer">
-									<input
-										type="radio"
-										name="listType"
-										value="EPI"
-										checked={listType === 'EPI'}
-										onChange={() => setListType('EPI')}
-										className="w-4 h-4 text-[#101828] focus:ring-[#101828]"
-									/>
-									<span className="text-sm font-medium text-gray-700">
-										EPIs
-									</span>
-								</label>
-							</div>
-							<p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-								<Info className="w-3 h-3" />O item também
-								aparecerá automaticamente no botão de
-								Almoxarifado.
-							</p>
 						</div>
 
 						<div className="col-span-2">
@@ -418,58 +413,88 @@ export function AddRentedForm({
 				</button>
 			</div>
 
-			{isCatModalOpen && (
-				<div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-					<div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col">
-						<div className="flex items-center justify-between p-4 border-b border-gray-100">
-							<h2 className="text-lg font-bold text-gray-900">
-								Nova Categoria
-							</h2>
-							<button
-								onClick={() => setIsCatModalOpen(false)}
-								className="p-1 text-gray-400 hover:text-gray-600 rounded-full transition-colors"
-							>
-								<X className="w-5 h-5" />
-							</button>
-						</div>
-						<div className="p-4 flex-1">
-							<label className="block text-sm font-medium text-gray-700 mb-1">
-								Nome da Categoria
-							</label>
-							<input
-								type="text"
-								value={newCatName}
-								onChange={(e) => setNewCatName(e.target.value)}
-								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#101828]"
-								placeholder="Ex: Escoras, Betoneiras..."
-								autoFocus
-							/>
-						</div>
-						<div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 flex-shrink-0">
-							<button
-								type="button"
-								onClick={() => setIsCatModalOpen(false)}
-								className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-							>
-								Cancelar
-							</button>
-							<button
-								type="button"
-								onClick={handleCreateCategory}
-								disabled={isCreatingCat || !newCatName.trim()}
-								className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-white bg-[#101828] border border-transparent rounded-md hover:bg-[#1b263b] disabled:opacity-50 disabled:cursor-not-allowed"
-							>
-								{isCreatingCat ? (
-									<Loader2 className="w-4 h-4 animate-spin" />
-								) : (
-									<span className="flex items-center gap-1">
-										<Plus className="w-4 h-4" /> Criar
-									</span>
-								)}
-							</button>
-						</div>
+			{isCategoryModalOpen && (
+				<div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+					<div className="bg-white text-gray-900 rounded-xl shadow-2xl border border-gray-200 w-[500px] max-w-[95vw] p-6">
+						<h3 className="text-xl font-bold mb-4">
+							Nova Categoria
+						</h3>
+						<form
+							onSubmit={confirmCreateCategory}
+							className="space-y-4"
+						>
+							<div>
+								<label className="block text-sm font-medium mb-1">
+									Categoria Primária
+								</label>
+								<input
+									type="text"
+									required
+									value={newCategoryData.primary}
+									onChange={(e) =>
+										setNewCategoryData({
+											...newCategoryData,
+											primary: e.target.value,
+										})
+									}
+									className="w-full flex h-10 rounded-[5px] border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#101828]/20 focus:border-[#101828]"
+									placeholder="Ex: Escoras"
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1">
+									Categoria Secundária (Opcional)
+								</label>
+								<input
+									type="text"
+									value={newCategoryData.secondary}
+									onChange={(e) =>
+										setNewCategoryData({
+											...newCategoryData,
+											secondary: e.target.value,
+										})
+									}
+									className="w-full flex h-10 rounded-[5px] border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#101828]/20 focus:border-[#101828]"
+									placeholder="Ex: Metálicas"
+								/>
+							</div>
+							<div className="flex justify-end gap-3 pt-4">
+								<button
+									type="button"
+									onClick={() =>
+										setIsCategoryModalOpen(false)
+									}
+									className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-[5px]"
+								>
+									Cancelar
+								</button>
+								<button
+									type="submit"
+									disabled={isCreatingCat}
+									className="px-4 py-2 text-sm font-semibold text-white bg-[#101828] hover:bg-[#1b263b] rounded-[5px] shadow-sm disabled:opacity-50"
+								>
+									Salvar Categoria
+								</button>
+							</div>
+						</form>
 					</div>
 				</div>
+			)}
+
+			{isManageCategoriesOpen && (
+				<ManageSelectsModal
+					title="Gerenciar Categorias"
+					description="Visualize, edite ou exclua categorias."
+					items={categories.map((c) => ({
+						id: c.id,
+						title: c.primary_category,
+						subtitle: c.secondary_category,
+						isInUse: false,
+					}))}
+					onClose={() => setIsManageCategoriesOpen(false)}
+					onDelete={handleDeleteCategories}
+					onEdit={handleEditCategory}
+				/>
 			)}
 		</div>
 	);

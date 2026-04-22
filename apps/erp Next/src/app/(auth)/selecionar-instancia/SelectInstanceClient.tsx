@@ -47,6 +47,7 @@ export function SelectInstanceClient() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [userId, setUserId] = useState<string | null>(null);
+	const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
 	const [companies, setCompanies] = useState<Company[]>([]);
 	const [selectedParentCompany, setSelectedParentCompany] =
 		useState<Company | null>(null);
@@ -99,6 +100,17 @@ export function SelectInstanceClient() {
 				const currentUserId = session.user.id;
 				setUserId(currentUserId);
 
+				// Verifica se é Super Admin
+				const { data: userData } = await supabase
+					.from('users')
+					.select('is_super_admin')
+					.eq('id', currentUserId)
+					.maybeSingle();
+
+				if (userData) {
+					setIsSuperAdmin(userData.is_super_admin);
+				}
+
 				const response = await fetch(
 					`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005'}/api/users/${currentUserId}/companies`,
 					{
@@ -108,7 +120,10 @@ export function SelectInstanceClient() {
 					},
 				);
 
-				if (!response.ok) throw new Error('Falha ao buscar empresas');
+				if (!response.ok) {
+					console.error('Erro na resposta da API:', response.status, response.statusText);
+					throw new Error('Falha ao buscar empresas');
+				}
 
 				const data = await response.json();
 
@@ -462,14 +477,16 @@ export function SelectInstanceClient() {
 				</h1>
 			</div>
 
-			<Button
-				variant="outline"
-				className="absolute top-8 right-8 text-muted-foreground hover:text-foreground rounded-full px-5 shadow-sm transition-all"
-				onClick={handleLogout}
-			>
-				Sair
-				<LogOut className="h-4 w-4 ml-2" />
-			</Button>
+			<div className="absolute top-8 right-8 flex items-center gap-4">
+				<Button
+					variant="outline"
+					className="text-muted-foreground hover:text-foreground rounded-full px-5 shadow-sm transition-all"
+					onClick={handleLogout}
+				>
+					Sair
+					<LogOut className="h-4 w-4 ml-2" />
+				</Button>
+			</div>
 
 			<div className="w-full max-w-5xl text-center space-y-12 animate-in fade-in duration-700 zoom-in-95">
 				<div className="space-y-4">
@@ -673,21 +690,25 @@ export function SelectInstanceClient() {
 									)}
 								</div>
 
-								{/* Botão de Configurações Globais */}
-								<div className="mt-8 pt-8 w-full flex justify-center">
-									<button
-										onClick={() => router.push('/admin')}
-										className="flex items-center gap-3 px-6 py-2.5 bg-card hover:bg-accent rounded-full border border-border shadow-sm text-muted-foreground hover:text-foreground transition-all font-medium focus:outline-none group"
-									>
-										<Settings
-											size={18}
-											className="text-primary/70 group-hover:text-primary transition-colors"
-										/>
-										<span>
-											Painel de Administração Global
-										</span>
-									</button>
-								</div>
+								{/* Botão de Configurações Globais apenas para Super Admins */}
+								{isSuperAdmin && (
+									<div className="mt-8 pt-8 w-full flex justify-center">
+										<button
+											onClick={() =>
+												router.push('/admin/usuarios')
+											}
+											className="flex items-center gap-3 px-6 py-2.5 bg-card hover:bg-accent rounded-full border border-border shadow-sm text-muted-foreground hover:text-foreground transition-all font-medium focus:outline-none group"
+										>
+											<Settings
+												size={18}
+												className="text-primary/70 group-hover:text-primary transition-colors"
+											/>
+											<span>
+												Painel de Administração Global
+											</span>
+										</button>
+									</div>
+								)}
 							</div>
 						)}
 					</div>

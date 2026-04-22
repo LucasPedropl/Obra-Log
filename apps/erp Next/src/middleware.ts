@@ -41,6 +41,7 @@ export async function middleware(request: NextRequest) {
 	const isLoginRoute = request.nextUrl.pathname === '/auth/login';
 	const isSelectInstanceRoute =
 		request.nextUrl.pathname === '/selecionar-instancia';
+	const isAdminRoute = request.nextUrl.pathname.startsWith('/admin');
 
 	const selectedCompanyId = request.cookies.get('selectedCompanyId')?.value;
 
@@ -65,14 +66,20 @@ export async function middleware(request: NextRequest) {
 	}
 
 	// Situação 1: O usuário NÃO está logado mas tentando acessar o sistema fechado (raíz)
-	if (!user && !isAuthRoute && !isSelectInstanceRoute) {
+	if (!user && !isAuthRoute && !isSelectInstanceRoute && !isAdminRoute) {
 		const url = request.nextUrl.clone();
 		url.pathname = '/auth/login';
 		return NextResponse.redirect(url);
 	}
 
 	// Situação 2: O usuário JÁ está logado mas não escolheu a filial ainda
-	if (user && !selectedCompanyId && !isSelectInstanceRoute && !isLoginRoute) {
+	if (
+		user &&
+		!selectedCompanyId &&
+		!isSelectInstanceRoute &&
+		!isLoginRoute &&
+		!isAdminRoute
+	) {
 		const url = request.nextUrl.clone();
 		url.pathname = '/selecionar-instancia';
 		return NextResponse.redirect(url);

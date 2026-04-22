@@ -114,6 +114,13 @@ CREATE TABLE public.measurement_units (
   CONSTRAINT measurement_units_pkey PRIMARY KEY (id),
   CONSTRAINT measurement_units_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id)
 );
+CREATE TABLE public.rented_equipment_categories (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  company_id uuid,
+  name character varying NOT NULL,
+  CONSTRAINT rented_equipment_categories_pkey PRIMARY KEY (id),
+  CONSTRAINT rented_equipment_categories_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id)
+);
 CREATE TABLE public.rented_equipments (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   site_id uuid NOT NULL,
@@ -211,4 +218,4 @@ CREATE TABLE public.users (
   last_login timestamp with time zone,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
-);
+);  '
