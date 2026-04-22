@@ -121,7 +121,11 @@ export function SelectInstanceClient() {
 				);
 
 				if (!response.ok) {
-					console.error('Erro na resposta da API:', response.status, response.statusText);
+					console.error(
+						'Erro na resposta da API:',
+						response.status,
+						response.statusText,
+					);
 					throw new Error('Falha ao buscar empresas');
 				}
 
