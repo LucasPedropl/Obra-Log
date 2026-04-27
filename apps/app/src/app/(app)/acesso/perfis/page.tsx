@@ -100,8 +100,9 @@ export default function PerfisDeAcessoPage() {
 			if (!companyId) throw new Error('Instância não encontrada.');
 
 			const response = await usersService.createUser({
-				...data,
-				company_id: companyId,
+				email: data.email,
+				full_name: data.full_name,
+				profile_id: data.profile_id,
 			});
 
 			setGeneratedPassword(response.tempPassword ?? null);
