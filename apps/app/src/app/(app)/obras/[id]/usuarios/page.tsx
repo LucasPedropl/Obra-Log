@@ -75,7 +75,7 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 
 	const handleSave = async () => {
 		if (!email || !fullName || !profileId) {
-			addToast({ title: 'Atenção', description: 'Preencha todos os campos.', type: 'error' });
+			addToast('Preencha todos os campos.', 'error');
 			return;
 		}
 
@@ -90,14 +90,14 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 			});
 
 			if (res.success) {
-				addToast({ title: 'Sucesso', description: 'Usuário vinculado à obra.', type: 'success' });
+				addToast('Usuário vinculado à obra.', 'success');
 				setIsFormOpen(false);
 				loadData();
 			} else {
-				addToast({ title: 'Erro', description: res.error || 'Erro ao salvar', type: 'error' });
+				addToast(res.error || 'Erro ao salvar', 'error');
 			}
 		} catch (err: any) {
-			addToast({ title: 'Erro', description: err.message, type: 'error' });
+			addToast(err.message, 'error');
 		} finally {
 			setIsSaving(false);
 		}

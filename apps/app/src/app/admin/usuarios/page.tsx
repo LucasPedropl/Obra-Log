@@ -415,7 +415,7 @@ export default function UsuariosPage() {
 													...prev,
 													{
 														id: generateId(),
-														companyId: '',
+														instanceId: '',
 														profileId: '',
 													},
 												])
