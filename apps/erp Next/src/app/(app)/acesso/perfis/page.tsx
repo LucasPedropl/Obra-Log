@@ -15,11 +15,15 @@ import {
 	AccessProfile,
 } from '@/features/admin/services/accessProfiles.service';
 import { AccessProfileForm } from '@/features/admin/components/AccessProfileForm';
+import { UserForm } from '@/features/admin/components/UserForm';
+import { usersService } from '@/features/admin/services/users.service';
 
 export default function PerfisDeAcessoPage() {
 	const [perfis, setPerfis] = useState<AccessProfile[]>([]);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [isFormOpen, setIsFormOpen] = useState(false);
+	const [isUserFormOpen, setIsUserFormOpen] = useState(false);
+	const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 	const [editingItem, setEditingItem] = useState<AccessProfile | null>(null);
 	const [searchTerm, setSearchTerm] = useState('');
 	const [showFilters, setShowFilters] = useState(false);
@@ -77,6 +81,34 @@ export default function PerfisDeAcessoPage() {
 		setEditingItem(null);
 	};
 
+	const handleUserFormClose = () => {
+		setIsUserFormOpen(false);
+		setGeneratedPassword(null);
+	};
+
+	const handleSaveUser = async (data: any) => {
+		try {
+			setIsSaving(true);
+			const companyCookie = document.cookie.match(
+				/(^| )selectedCompanyId=([^;]+)/,
+			);
+			if (!companyCookie) throw new Error('Instância não encontrada.');
+			const companyId = companyCookie[2];
+
+			const response = await usersService.createUser({
+				...data,
+				company_id: companyId,
+			});
+			
+			setGeneratedPassword(response.tempPassword);
+			addToast('Usuário criado com sucesso!', 'success');
+		} catch (error: any) {
+			addToast('Erro ao criar usuário: ' + error.message, 'error');
+		} finally {
+			setIsSaving(false);
+		}
+	};
+
 	const handleSave = async (data: any) => {
 		try {
 			setIsSaving(true);
@@ -129,7 +161,17 @@ export default function PerfisDeAcessoPage() {
 				description="Gerencie os níveis de acesso e permissões do sistema"
 				onAdd={() => setIsFormOpen(true)}
 				addLabel="Novo Perfil"
-			/>
+			>
+				<Button
+					size="sm"
+					variant="outline"
+					onClick={() => setIsUserFormOpen(true)}
+					className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] px-4 shadow-sm"
+				>
+					<Plus className="h-4 w-4" />
+					<span>Novo Usuário</span>
+				</Button>
+			</PageHeader>
 
 			{(isFormOpen || editingItem) && (
 				<div
@@ -157,6 +199,55 @@ export default function PerfisDeAcessoPage() {
 							onCancel={handleFormClose}
 							isLoading={isSaving}
 						/>
+					</div>
+				</div>
+			)}
+
+			{isUserFormOpen && (
+				<div
+					className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"
+					onClick={handleUserFormClose}
+				>
+					<div
+						className="relative w-full max-w-2xl mt-8 md:mt-0 animate-in fade-in zoom-in duration-300 bg-white p-6 rounded-xl shadow-xl border overflow-hidden max-h-[90vh]"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<button
+							onClick={handleUserFormClose}
+							className="absolute top-4 right-4 z-10 p-2 text-muted-foreground hover:bg-muted/30 rounded-full transition-colors"
+						>
+							<X size={20} />
+						</button>
+						
+						{generatedPassword ? (
+							<div className="text-center space-y-4 py-8">
+								<div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+									<ShieldCheck className="w-8 h-8 text-green-600" />
+								</div>
+								<h3 className="text-xl font-medium text-gray-900">Usuário Criado com Sucesso!</h3>
+								<p className="text-gray-500 max-w-sm mx-auto">
+									A senha temporária do usuário foi gerada. Copie-a agora, pois não será mostrada novamente.
+								</p>
+								<div className="bg-gray-100 p-4 rounded-lg flex items-center justify-center gap-3 max-w-xs mx-auto my-6">
+									<code className="text-xl font-mono font-bold tracking-wider">{generatedPassword}</code>
+								</div>
+								<Button onClick={handleUserFormClose} className="w-full max-w-xs">
+									Concluir
+								</Button>
+							</div>
+						) : (
+							<UserForm
+								companyId={
+									document.cookie.match(
+										/(^| )selectedCompanyId=([^;]+)/,
+									)?.[2] || ''
+								}
+								profiles={perfis}
+								onSubmit={handleSaveUser}
+								onCancel={handleUserFormClose}
+								isLoading={isSaving}
+							/>
+						)}
 					</div>
 				</div>
 			)}

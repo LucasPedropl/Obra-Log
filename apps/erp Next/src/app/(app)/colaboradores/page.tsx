@@ -207,7 +207,7 @@ export default function ColaboradoresPage() {
 						</FilterPanel>
 					</div>
 
-					<div className="bg-white rounded-xl shadow-sm">
+					<div className="">
 						<DataTable
 							data={currentColabs}
 							columns={[

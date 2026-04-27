@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { PackageOpen, Loader2, X } from 'lucide-react';
 import { TableSearch } from '@/components/shared/TableSearch';
 import { Pagination } from '@/components/shared/Pagination';
+import { DataTable } from '@/components/shared/DataTable';
 import { AddInventoryForm } from '@/features/almoxarifado/components/AddInventoryForm';
 import { getSiteInventoryAdmin } from '@/app/actions/adminActions';
 
@@ -177,50 +178,33 @@ export default function AlmoxarifadoObraPage({
 						placeholder="Pesquisar itens..."
 					/>
 
-					<div className="bg-white rounded-lg border border-gray-200">
-						<div className="overflow-x-auto">
-							<table className="w-full text-sm">
-								<thead className="bg-gray-50 border-b border-gray-200">
-									<tr>
-										<th className="text-left px-4 py-3 font-semibold text-gray-700">
-											Insumo
-										</th>
-										<th className="text-left px-4 py-3 font-semibold text-gray-700">
-											Categoria
-										</th>
-										<th className="text-right px-4 py-3 font-semibold text-gray-700">
-											Quantidade
-										</th>
-										<th className="text-left px-4 py-3 font-semibold text-gray-700">
-											Unidade
-										</th>
-									</tr>
-								</thead>
-								<tbody>
-									{paginatedItems.map((item) => (
-										<tr
-											key={item.id}
-											className="border-b border-gray-100"
-										>
-											<td className="px-4 py-3 text-gray-900">
-												{item.catalogs?.name || '-'}
-											</td>
-											<td className="px-4 py-3 text-gray-600">
-												{item.catalogs?.category || '-'}
-											</td>
-											<td className="px-4 py-3 text-right font-semibold text-gray-900">
-												{item.quantity || 0}
-											</td>
-											<td className="px-4 py-3 text-gray-600">
-												{item.catalogs
-													?.measurement_units
-													?.abbreviation || 'UN'}
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
-						</div>
+					<div className="">
+						<DataTable
+							data={paginatedItems}
+							columns={[
+								{
+									header: 'Insumo',
+									cell: (item) => item.catalogs?.name || '-',
+								},
+								{
+									header: 'Categoria',
+									cell: (item) =>
+										item.catalogs?.category || '-',
+								},
+								{
+									header: 'Quantidade',
+									cell: (item) => item.quantity || 0,
+									className: 'text-right font-semibold',
+								},
+								{
+									header: 'Unidade',
+									cell: (item) =>
+										item.catalogs?.measurement_units
+											?.abbreviation || 'UN',
+								},
+							]}
+							keyExtractor={(item) => item.id}
+						/>
 					</div>
 
 					<Pagination

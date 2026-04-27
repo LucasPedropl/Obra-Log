@@ -7,6 +7,7 @@ interface PageHeaderProps {
 	description: string;
 	onAdd?: () => void;
 	addLabel?: string;
+	children?: React.ReactNode;
 }
 
 export function PageHeader({
@@ -14,6 +15,7 @@ export function PageHeader({
 	description,
 	onAdd,
 	addLabel = 'Cadastrar',
+	children,
 }: PageHeaderProps) {
 	return (
 		<div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
@@ -23,6 +25,7 @@ export function PageHeader({
 			</div>
 
 			<div className="flex items-center gap-2">
+				{children}
 				{onAdd && (
 					<Button
 						size="sm"

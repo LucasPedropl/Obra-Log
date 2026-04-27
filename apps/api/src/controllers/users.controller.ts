@@ -198,7 +198,7 @@ export const getTenantUsers = async (req: Request, res: Response) => {
 
 export const createTenantUser = async (req: Request, res: Response) => {
 	try {
-		const { company_id, email, full_name, profile_id } = req.body;
+		const { company_id, email, full_name, profile_id, allowed_sites } = req.body;
 
 		if (!company_id || !email || !full_name) {
 			return res
@@ -239,6 +239,7 @@ export const createTenantUser = async (req: Request, res: Response) => {
 				user_id: authUser.user.id,
 				profile_id: profile_id || null,
 				status: 'ACTIVE',
+				allowed_sites: allowed_sites || [],
 			});
 
 		if (companyUserError) throw companyUserError;

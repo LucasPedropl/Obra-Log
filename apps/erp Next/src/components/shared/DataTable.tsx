@@ -73,7 +73,7 @@ export function DataTable<T extends Record<string, any>>({
 
 	return (
 		<div className="w-full flex flex-col gap-4">
-			<div className="bg-white rounded-xl shadow-sm">
+			<div className="">
 				<Table>
 					<TableHeader>
 						<TableRow>

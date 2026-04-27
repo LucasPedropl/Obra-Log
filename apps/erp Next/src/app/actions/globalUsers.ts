@@ -1,6 +1,7 @@
 'use server';
 
 import { supabaseAdmin } from '@/config/supabaseAdmin';
+import { cookies } from 'next/headers';
 
 export async function saveGlobalUserAction(data: {
 	id?: string;
@@ -86,6 +87,13 @@ export async function saveGlobalUserAction(data: {
 
 export async function getGlobalUsersAction() {
 	try {
+		const cookieStore = await cookies();
+		const companyId = cookieStore.get('selectedCompanyId')?.value;
+		
+		if (!companyId) {
+			return { success: false, error: 'Empresa não selecionada' };
+		}
+
 		const { data: users, error } = await supabaseAdmin
 			.from('users')
 			.select(
@@ -94,7 +102,7 @@ export async function getGlobalUsersAction() {
 				email,
 				full_name,
 				is_super_admin,
-				company_users (
+				company_users!inner (
 					company_id,
 					profile_id,
 					companies ( name ),
@@ -102,7 +110,8 @@ export async function getGlobalUsersAction() {
 				)
 			`,
 			)
-			.order('created_at', { ascending: false });
+			.eq('company_users.company_id', companyId)
+			.order('full_name', { ascending: true });
 
 		if (error) throw error;
 		return { success: true, users };
@@ -112,16 +121,30 @@ export async function getGlobalUsersAction() {
 	}
 }
 export async function getAllCompaniesAction() {
+	const cookieStore = await cookies();
+	const companyId = cookieStore.get('selectedCompanyId')?.value;
+
+	if (!companyId) return { success: false, companies: [] };
+
 	const { data, error } = await supabaseAdmin
 		.from('companies')
-		.select('id, name');
+		.select('id, name')
+		.eq('id', companyId);
+		
 	if (error) throw error;
 	return { success: true, companies: data };
 }
 export async function getAllProfilesAction() {
+	const cookieStore = await cookies();
+	const companyId = cookieStore.get('selectedCompanyId')?.value;
+
+	if (!companyId) return { success: false, profiles: [] };
+
 	const { data, error } = await supabaseAdmin
 		.from('access_profiles')
-		.select('id, name, company_id');
+		.select('id, name, company_id')
+		.eq('company_id', companyId);
+		
 	if (error) throw error;
 	return { success: true, profiles: data };
 }
