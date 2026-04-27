@@ -1,15 +1,7 @@
 import { useState } from 'react';
 import { getActiveCompanyId } from '@/lib/utils';
 import { z } from 'zod';
-import {
-	createSupplyItemAdmin,
-	createCategoryAdmin,
-	createUnitAdmin,
-	getSupplyItemsAdmin,
-	deleteSupplyItemAdmin,
-	getCategoriesAdmin,
-	getUnitsAdmin,
-} from '@/app/actions/adminActions';
+import { createClient } from '@/config/supabase';
 
 export const supplyItemSchema = z.object({
 	name: z.string().min(1, 'O nome do insumo é obrigatório'),
@@ -26,32 +18,49 @@ export type SupplyItemFormData = z.infer<typeof supplyItemSchema>;
 export function useSupplyItems() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const supabase = createClient();
 
 	const createCategory = async (name: string) => {
 		const companyId = getActiveCompanyId();
 		if (!companyId) throw new Error('Empresa não selecionada.');
-		return await createCategoryAdmin({
-			company_id: companyId,
-			primary_category: name,
-			entry_type: 'PRODUTO',
-		});
+		
+		const { data, error } = await supabase
+			.from('categories')
+			.insert([{ company_id: companyId, primary_category: name, entry_type: 'PRODUTO' }])
+			.select('id')
+			.single();
+			
+		if (error) throw error;
+		return data.id;
 	};
 
 	const createUnit = async (name: string, abbreviation: string) => {
 		const companyId = getActiveCompanyId();
 		if (!companyId) throw new Error('Empresa não selecionada.');
-		return await createUnitAdmin({
-			company_id: companyId,
-			name,
-			abbreviation,
-		});
+		
+		const { data, error } = await supabase
+			.from('measurement_units')
+			.insert([{ company_id: companyId, name, abbreviation }])
+			.select('id')
+			.single();
+			
+		if (error) throw error;
+		return data.id;
 	};
 
 	const fetchCategories = async () => {
 		try {
 			const companyId = getActiveCompanyId();
 			if (!companyId) return [];
-			return await getCategoriesAdmin(companyId);
+			
+			const { data, error } = await supabase
+				.from('categories')
+				.select('*')
+				.eq('company_id', companyId)
+				.order('primary_category', { ascending: true });
+				
+			if (error) throw error;
+			return data || [];
 		} catch (err) {
 			console.error('Error fetching categories:', err);
 			return [];
@@ -62,7 +71,15 @@ export function useSupplyItems() {
 		try {
 			const companyId = getActiveCompanyId();
 			if (!companyId) return [];
-			return await getUnitsAdmin(companyId);
+			
+			const { data, error } = await supabase
+				.from('measurement_units')
+				.select('*')
+				.eq('company_id', companyId)
+				.order('name', { ascending: true });
+				
+			if (error) throw error;
+			return data || [];
 		} catch (err) {
 			console.error('Error fetching units:', err);
 			return [];
@@ -75,18 +92,20 @@ export function useSupplyItems() {
 			setError(null);
 			const companyId = getActiveCompanyId();
 
-			if (!companyId) {
-				throw new Error('Nenhuma empresa selecionada.');
-			}
+			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
 
-			await createSupplyItemAdmin({
-				company_id: companyId,
-				name: data.name,
-				category_id: data.category_id,
-				unit_id: data.unit_id,
-				min_threshold: data.min_threshold,
-				is_stock_controlled: data.is_stock_controlled,
-			});
+			const { error: insertError } = await supabase
+				.from('catalogs')
+				.insert([{
+					company_id: companyId,
+					name: data.name,
+					category_id: data.category_id,
+					unit_id: data.unit_id,
+					min_threshold: data.min_threshold,
+					is_stock_controlled: data.is_stock_controlled,
+				}]);
+
+			if (insertError) throw insertError;
 
 			return true;
 		} catch (err: any) {
@@ -104,11 +123,15 @@ export function useSupplyItems() {
 			setError(null);
 			const companyId = getActiveCompanyId();
 
-			if (!companyId) {
-				throw new Error('Nenhuma empresa selecionada.');
-			}
+			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
 
-			const data = await getSupplyItemsAdmin(companyId);
+			const { data, error: fetchError } = await supabase
+				.from('catalogs')
+				.select('*, measurement_units(abbreviation)')
+				.eq('company_id', companyId)
+				.order('name', { ascending: true });
+
+			if (fetchError) throw fetchError;
 			return data || [];
 		} catch (err: any) {
 			console.error('Error fetching supply items:', err);
@@ -126,7 +149,13 @@ export function useSupplyItems() {
 			const companyId = getActiveCompanyId();
 			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
 
-			await deleteSupplyItemAdmin(id, companyId);
+			const { error: deleteError } = await supabase
+				.from('catalogs')
+				.delete()
+				.eq('id', id)
+				.eq('company_id', companyId);
+				
+			if (deleteError) throw deleteError;
 			return true;
 		} catch (err: any) {
 			console.error('Error deleting supply item:', err);

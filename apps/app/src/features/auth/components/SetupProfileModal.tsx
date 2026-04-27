@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { HardHat, Loader2 } from 'lucide-react';
+import { HardHat, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,8 @@ export function SetupProfileModal({
 	const [password, setPassword] = useState('');
 	const [confirmPassword, setConfirmPassword] = useState('');
 	const [loading, setLoading] = useState(false);
+	const [showPassword, setShowPassword] = useState(false);
+	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const [error, setError] = useState('');
 	const supabase = createClient();
 
@@ -85,8 +87,15 @@ export function SetupProfileModal({
 	};
 
 	return (
-		<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-			<div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden p-8">
+		<div className="fixed inset-0 z-[999] flex items-center justify-center p-4 h-[100dvh] w-screen">
+			{/* Backdrop com desfoque e escurecimento garantido em toda a tela */}
+			<div 
+				className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-500" 
+				aria-hidden="true"
+			/>
+
+			{/* Conteúdo do Modal */}
+			<div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden p-8 animate-in fade-in zoom-in-95 duration-300">
 				<div className="flex flex-col items-center mb-8 text-center">
 					<div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4">
 						<HardHat size={32} />
@@ -123,25 +132,45 @@ export function SetupProfileModal({
 						<Label className="block text-sm font-medium text-gray-700">
 							Nova Senha
 						</Label>
-						<Input
-							type="password"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							required
-							placeholder="••••••••"
-						/>
+						<div className="relative">
+							<Input
+								type={showPassword ? 'text' : 'password'}
+								value={password}
+								onChange={(e) => setPassword(e.target.value)}
+								required
+								placeholder="••••••••"
+								className="pr-10"
+							/>
+							<button
+								type="button"
+								onClick={() => setShowPassword(!showPassword)}
+								className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+							>
+								{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+							</button>
+						</div>
 					</div>
 					<div className="space-y-2">
 						<Label className="block text-sm font-medium text-gray-700">
 							Confirmar Nova Senha
 						</Label>
-						<Input
-							type="password"
-							value={confirmPassword}
-							onChange={(e) => setConfirmPassword(e.target.value)}
-							required
-							placeholder="••••••••"
-						/>
+						<div className="relative">
+							<Input
+								type={showConfirmPassword ? 'text' : 'password'}
+								value={confirmPassword}
+								onChange={(e) => setConfirmPassword(e.target.value)}
+								required
+								placeholder="••••••••"
+								className="pr-10"
+							/>
+							<button
+								type="button"
+								onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+								className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+							>
+								{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+							</button>
+						</div>
 					</div>
 
 					<Button

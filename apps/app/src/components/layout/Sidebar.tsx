@@ -48,7 +48,6 @@ const mainNavItems: NavItem[] = [
 		icon: ShieldCheck,
 		children: [
 			{ name: 'Perfis de Acesso', href: '/acesso/perfis' },
-			{ name: 'Usuários', href: '/acesso/usuarios' },
 		],
 	},
 ];
@@ -87,9 +86,14 @@ export function Sidebar({
 						href: `/obras/${obraId}/almoxarifado`,
 					},
 					{
-						name: 'Colaboradores',
+						name: 'Colaboradores (Campo)',
 						icon: Users,
 						href: `/obras/${obraId}/colaboradores`,
+					},
+					{
+						name: 'Acesso (Sistema)',
+						icon: ShieldCheck,
+						href: `/obras/${obraId}/usuarios`,
 					},
 					{
 						name: 'Ferramentas',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Check, PackageOpen, X, Grip, Loader2 } from 'lucide-react';
 import { useSupplyItems } from '@/features/insumos/hooks/useSupplyItems';
-import { addInventoryItemsAdmin } from '@/app/actions/adminActions';
+import { createClient } from '@/config/supabase';
 import { Button } from '@/components/ui/button';
 
 interface AddInventoryFormProps {
@@ -102,14 +102,74 @@ export function AddInventoryForm({
 				}),
 			);
 
-			await addInventoryItemsAdmin(siteId, payload);
+			const supabase = createClient();
+
+			// 1. Inserir no site_inventory
+			const inventoryData = payload.map((item) => ({
+				site_id: siteId,
+				catalog_id: item.catalogId,
+				quantity: item.quantity,
+				min_threshold: 0,
+			}));
+
+			const { data: inventoryResults, error: inventoryError } = await supabase
+				.from('site_inventory')
+				.upsert(inventoryData, { onConflict: 'site_id,catalog_id' })
+				.select('id, catalog_id');
+
+			if (inventoryError) throw inventoryError;
+
+			// 2. Separar Ferramentas e EPIs
+			const epiData: any[] = [];
+			const toolData: any[] = [];
+
+			(inventoryResults || []).forEach((invRow: any) => {
+				const originalItem = payload.find(
+					(i) => i.catalogId === invRow.catalog_id,
+				);
+				if (originalItem?.category === 'EPI') {
+					epiData.push({ site_id: siteId, inventory_id: invRow.id });
+				} else if (originalItem?.category === 'TOOL') {
+					toolData.push({ site_id: siteId, inventory_id: invRow.id });
+				}
+			});
+
+			// 3. Inserir EPIs
+			if (epiData.length > 0) {
+				const { data: existingEpis } = await supabase
+					.from('site_epis')
+					.select('inventory_id')
+					.in('inventory_id', epiData.map((e) => e.inventory_id));
+
+				const existingEpiIds = new Set(existingEpis?.map((e) => e.inventory_id) || []);
+				const newEpis = epiData.filter((e) => !existingEpiIds.has(e.inventory_id));
+
+				if (newEpis.length > 0) {
+					const { error: epiError } = await supabase.from('site_epis').insert(newEpis);
+					if (epiError) throw epiError;
+				}
+			}
+
+			// 4. Inserir Ferramentas
+			if (toolData.length > 0) {
+				const { data: existingTools } = await supabase
+					.from('site_tools')
+					.select('inventory_id')
+					.in('inventory_id', toolData.map((t) => t.inventory_id));
+
+				const existingToolIds = new Set(existingTools?.map((t) => t.inventory_id) || []);
+				const newTools = toolData.filter((t) => !existingToolIds.has(t.inventory_id));
+
+				if (newTools.length > 0) {
+					const { error: toolError } = await supabase.from('site_tools').insert(newTools);
+					if (toolError) throw toolError;
+				}
+			}
+
 			onSaved();
 		} catch (err: any) {
 			console.error('Erro ao salvar:', err);
-			alert(
-				'Erro ao salvar inventário: ' +
-					(err?.message || JSON.stringify(err)),
-			);
+			alert('Erro ao salvar inventário: ' + (err?.message || JSON.stringify(err)));
 		} finally {
 			setIsSaving(false);
 		}

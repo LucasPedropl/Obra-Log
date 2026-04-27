@@ -10,15 +10,7 @@
 			"group": "build"
 		},
 		{
-			"label": "Start API",
-			"type": "npm",
-			"script": "dev:api",
-			"isBackground": true,
-			"problemMatcher": [],
-			"group": "build"
-		},
-		{
-			"label": "Start ERP Next",
+			"label": "Start ERP",
 			"type": "npm",
 			"script": "dev:erp-next",
 			"isBackground": true,
@@ -28,9 +20,8 @@
 		{
 			"label": "Start All",
 			"dependsOn": [
-				"Start ERP Next",
-				"Start Admin",
-				"Start API"
+				"Start ERP",
+				"Start Admin"
 			],
 			"group": {
 				"kind": "build",

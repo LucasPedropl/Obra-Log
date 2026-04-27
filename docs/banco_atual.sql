@@ -5,9 +5,7 @@ CREATE TABLE public.access_profiles (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   company_id uuid NOT NULL,
   name character varying NOT NULL,
-  permissions jsonb DEFAULT '[]'::jsonb,
-  scope character varying NOT NULL CHECK (scope::text = ANY (ARRAY['ALL_SITES'::character varying, 'SPECIFIC_SITES'::character varying]::text[])),
-  allowed_sites jsonb DEFAULT '[]'::jsonb,
+  is_system_default boolean DEFAULT false,
   CONSTRAINT access_profiles_pkey PRIMARY KEY (id),
   CONSTRAINT access_profiles_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id)
 );
@@ -74,12 +72,11 @@ CREATE TABLE public.company_users (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   company_id uuid NOT NULL,
   user_id uuid NOT NULL,
-  profile_id uuid,
   status character varying NOT NULL DEFAULT 'ACTIVE'::character varying CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying, 'INACTIVE'::character varying]::text[])),
+  is_company_admin boolean DEFAULT false,
   CONSTRAINT company_users_pkey PRIMARY KEY (id),
   CONSTRAINT company_users_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id),
-  CONSTRAINT company_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT company_users_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.access_profiles(id)
+  CONSTRAINT company_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.construction_sites (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -106,6 +103,18 @@ CREATE TABLE public.epi_withdrawals (
   CONSTRAINT epi_withdrawals_catalog_id_fkey FOREIGN KEY (catalog_id) REFERENCES public.catalogs(id),
   CONSTRAINT epi_withdrawals_withdrawn_by_fkey FOREIGN KEY (withdrawn_by) REFERENCES public.users(id)
 );
+CREATE TABLE public.instance_users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  instance_id uuid NOT NULL,
+  profile_id uuid NOT NULL,
+  status character varying NOT NULL DEFAULT 'ACTIVE'::character varying CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying, 'INACTIVE'::character varying]::text[])),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT instance_users_pkey PRIMARY KEY (id),
+  CONSTRAINT instance_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT instance_users_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES public.construction_sites(id),
+  CONSTRAINT instance_users_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.access_profiles(id)
+);
 CREATE TABLE public.measurement_units (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   company_id uuid,
@@ -113,6 +122,13 @@ CREATE TABLE public.measurement_units (
   abbreviation character varying NOT NULL,
   CONSTRAINT measurement_units_pkey PRIMARY KEY (id),
   CONSTRAINT measurement_units_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id)
+);
+CREATE TABLE public.profile_permissions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  profile_id uuid NOT NULL,
+  permission_key character varying NOT NULL,
+  CONSTRAINT profile_permissions_pkey PRIMARY KEY (id),
+  CONSTRAINT profile_permissions_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.access_profiles(id)
 );
 CREATE TABLE public.rented_equipment_categories (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -218,4 +234,4 @@ CREATE TABLE public.users (
   last_login timestamp with time zone,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
-);  '
+);

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { createClient } from '@/config/supabase';
+import { usePathname } from 'next/navigation';
 
 export type PermissionActions = {
 	view: boolean;
@@ -38,12 +39,13 @@ export function PermissionsProvider({
 	const [loading, setLoading] = useState(true);
 	const supabase = createClient();
 
+	const pathname = usePathname();
+
 	useEffect(() => {
 		const loadPermissions = async () => {
 			try {
 				const {
 					data: { session },
-					error,
 				} = await supabase.auth.getSession();
 				if (!session?.user) return;
 
@@ -52,7 +54,8 @@ export function PermissionsProvider({
 				);
 				const companyId = companyCookie ? companyCookie[2] : null;
 
-				const [userRes, profileRes] = await Promise.all([
+				// 1. Verificar Super Admin Global e Company Admin
+				const [userRes, companyUserRes] = await Promise.all([
 					supabase
 						.from('users')
 						.select('is_super_admin')
@@ -61,53 +64,85 @@ export function PermissionsProvider({
 					companyId
 						? supabase
 								.from('company_users')
-								.select(
-									'profile_id, access_profiles(permissions)',
-								)
+								.select('is_company_admin')
 								.eq('user_id', session.user.id)
 								.eq('company_id', companyId)
 								.maybeSingle()
 						: Promise.resolve({ data: null }),
 				]);
 
-				setIsSuperAdmin(userRes.data?.is_super_admin || false);
-
-				if (profileRes.data && profileRes.data.access_profiles) {
-					// Supabase PostgREST might return an array if not careful, handle it
-					const accessProfile = Array.isArray(
-						profileRes.data.access_profiles,
-					)
-						? profileRes.data.access_profiles[0]
-						: profileRes.data.access_profiles;
-
-					if (accessProfile && accessProfile.permissions) {
-						const perms = accessProfile.permissions;
-						if (Array.isArray(perms)) {
-							const permMap: ResourcePermissions = {};
-							perms.forEach((p: any) => {
-								if (p.resource) {
-									permMap[p.resource] = p.actions;
-								}
-							});
-							setPermissions(permMap);
-						} else {
-							setPermissions(perms as ResourcePermissions);
-						}
-					} else {
-						setPermissions({});
-					}
-				} else {
-					setPermissions({});
+				const isSysSuper = userRes.data?.is_super_admin || false;
+				const isCompAdmin = companyUserRes.data?.is_company_admin || false;
+				
+				// Se for Admin da Empresa ou Super Admin, tem permissão total
+				if (isSysSuper || isCompAdmin) {
+					setIsSuperAdmin(true);
+					setPermissions(null); // Null significa acesso irrestrito na nossa lógica
+					setLoading(false);
+					return;
 				}
+
+				setIsSuperAdmin(false);
+
+				// 2. Se não é admin, verificar se está dentro de uma obra (URL: /obras/[siteId]/...)
+				const match = pathname?.match(/\/obras\/([a-f0-9\-]+)/i);
+				const siteId = match ? match[1] : null;
+
+				if (!siteId) {
+					setPermissions({}); // Sem permissões se não estiver numa obra e não for admin
+					setLoading(false);
+					return;
+				}
+
+				// 3. Buscar perfil na instância atual
+				const { data: instanceUser } = await supabase
+					.from('instance_users')
+					.select('profile_id')
+					.eq('user_id', session.user.id)
+					.eq('instance_id', siteId)
+					.eq('status', 'ACTIVE')
+					.maybeSingle();
+
+				if (!instanceUser?.profile_id) {
+					setPermissions({});
+					setLoading(false);
+					return;
+				}
+
+				// 4. Buscar permissões granulares da nova tabela
+				const { data: permsData } = await supabase
+					.from('profile_permissions')
+					.select('permission_key')
+					.eq('profile_id', instanceUser.profile_id);
+
+				const permMap: ResourcePermissions = {};
+				
+				if (permsData) {
+					permsData.forEach((p: any) => {
+						const parts = p.permission_key.split('.');
+						if (parts.length === 2) {
+							const resource = parts[0];
+							const action = parts[1] as keyof PermissionActions;
+							if (!permMap[resource]) {
+								permMap[resource] = { view: false, create: false, edit: false, delete: false };
+							}
+							permMap[resource][action] = true;
+						}
+					});
+				}
+
+				setPermissions(permMap);
+
 			} catch (error) {
 				console.error('Error loading permissions:', error);
+				setPermissions({});
 			} finally {
 				setLoading(false);
 			}
 		};
 
 		loadPermissions();
-	}, []);
+	}, [pathname]);
 
 	const can = (
 		resource: string,

@@ -17,7 +17,7 @@ import {
 import {
 	getGlobalUsersAction,
 	saveGlobalUserAction,
-	getAllCompaniesAction,
+	getInstancesAction,
 	getAllProfilesAction,
 } from '../../actions/globalUsers';
 
@@ -26,7 +26,7 @@ export default function UsuariosPage() {
 	const [loading, setLoading] = useState(false);
 
 	// Modal data
-	const [companies, setCompanies] = useState<any[]>([]);
+	const [instances, setInstances] = useState<any[]>([]);
 	const [profiles, setProfiles] = useState<any[]>([]);
 
 	// Modal state
@@ -37,9 +37,9 @@ export default function UsuariosPage() {
 	const [editId, setEditId] = useState<string | undefined>(undefined);
 	const [email, setEmail] = useState('');
 	const [fullName, setFullName] = useState('');
-	const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+	const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
 	const [assignments, setAssignments] = useState<
-		Array<{ id: string; companyId: string; profileId: string | null }>
+		Array<{ id: string; instanceId: string; profileId: string | null }>
 	>([]);
 
 	useEffect(() => {
@@ -65,12 +65,12 @@ export default function UsuariosPage() {
 
 	const loadOptions = async () => {
 		try {
-			const [compRes, profRes] = await Promise.all([
-				getAllCompaniesAction(),
+			const [instRes, profRes] = await Promise.all([
+				getInstancesAction(),
 				getAllProfilesAction(),
 			]);
-			if (compRes.success && compRes.companies)
-				setCompanies(compRes.companies);
+			if (instRes.success && instRes.instances)
+				setInstances(instRes.instances);
 			if (profRes.success && profRes.profiles)
 				setProfiles(profRes.profiles);
 		} catch (err) {
@@ -82,7 +82,7 @@ export default function UsuariosPage() {
 		setEditId(undefined);
 		setEmail('');
 		setFullName('');
-		setIsSuperAdmin(false);
+		setIsCompanyAdmin(false);
 		setAssignments([]);
 		setIsModalOpen(true);
 	};
@@ -91,13 +91,13 @@ export default function UsuariosPage() {
 		setEditId(u.id);
 		setEmail(u.email);
 		setFullName(u.full_name || '');
-		setIsSuperAdmin(u.is_super_admin || false);
+		setIsCompanyAdmin(u.is_company_admin || false);
 
-		const currentAssignments = (u.company_users || []).map(
-			(cu: any, i: number) => ({
-				id: cu.company_id + '_' + i,
-				companyId: cu.company_id,
-				profileId: cu.profile_id,
+		const currentAssignments = (u.assignments || []).map(
+			(a: any, i: number) => ({
+				id: a.instanceId + '_' + i,
+				instanceId: a.instanceId,
+				profileId: a.profileId,
 			}),
 		);
 
@@ -110,10 +110,10 @@ export default function UsuariosPage() {
 			alert('Preencha os campos obrigatórios (E-mail, Nome).');
 			return;
 		}
-		if (!isSuperAdmin && assignments.length === 0) {
+		if (!isCompanyAdmin && assignments.length === 0) {
 			if (
 				!confirm(
-					'Usuário padrão deve ter ao menos 1 vínculo com filial. Se não cadastrar nenhuma, ele não acessará o sistema. Continuar?',
+					'Usuário padrão deve ter ao menos 1 vínculo com filial (obra). Se não cadastrar nenhuma, ele não acessará o sistema. Continuar?',
 				)
 			)
 				return;
@@ -125,10 +125,10 @@ export default function UsuariosPage() {
 				id: editId,
 				email,
 				fullName,
-				isSuperAdmin: isSuperAdmin,
+				isCompanyAdmin: isCompanyAdmin,
 				assignments: assignments.map((a) => ({
-					companyId: a.companyId,
-					profileId: a.profileId,
+					instanceId: a.instanceId,
+					profileId: a.profileId as string,
 				})),
 			});
 
@@ -151,7 +151,7 @@ export default function UsuariosPage() {
 
 	const handleAssignmentChange = (
 		id: string,
-		field: 'companyId' | 'profileId',
+		field: 'instanceId' | 'profileId',
 		value: string,
 	) => {
 		setAssignments((prev) =>
@@ -223,16 +223,16 @@ export default function UsuariosPage() {
 												</div>
 											</td>
 											<td className="px-6 py-4 text-gray-600">
-												{!u.is_super_admin ? (
+												{!u.is_company_admin ? (
 													<div className="flex flex-col gap-1 text-xs">
-														{(u.company_users || [])
+														{(u.assignments || [])
 															.length > 0 ? (
 															(
-																u.company_users ||
+																u.assignments ||
 																[]
 															).map(
 																(
-																	cu: any,
+																	a: any,
 																	i: number,
 																) => (
 																	<div
@@ -240,16 +240,10 @@ export default function UsuariosPage() {
 																		className="bg-gray-100 px-2 py-1 rounded inline-block w-max"
 																	>
 																		•{' '}
-																		{cu
-																			.companies
-																			?.name ||
-																			'Filial'}{' '}
+																		{a.instanceName}{' '}
 																		-{' '}
 																		<span className="text-blue-600 font-medium">
-																			{cu
-																				.access_profiles
-																				?.name ||
-																				'Sem Perfil'}
+																			{a.profileName}
 																		</span>
 																	</div>
 																),
@@ -262,21 +256,25 @@ export default function UsuariosPage() {
 													</div>
 												) : (
 													<span className="text-purple-600 text-xs font-semibold">
-														- Acesso Irrestrito a
-														Todas -
+														- Acesso Total na Empresa -
 													</span>
 												)}
 											</td>
 											<td className="px-6 py-4">
 												{u.is_super_admin ? (
-													<span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+													<span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
 														<Key className="w-3 h-3 mr-1" />
-														Super Admin
+														Sistema Root
+													</span>
+												) : u.is_company_admin ? (
+													<span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+														<Building2 className="w-3 h-3 mr-1" />
+														Admin Empresa
 													</span>
 												) : (
 													<span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
 														<User className="w-3 h-3 mr-1" />
-														Padrão
+														Usuário Filial
 													</span>
 												)}
 											</td>
@@ -374,31 +372,29 @@ export default function UsuariosPage() {
 							<div className="flex items-center gap-3 p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
 								<input
 									type="checkbox"
-									id="superAdminCheck"
+									id="companyAdminCheck"
 									className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
-									checked={isSuperAdmin}
+									checked={isCompanyAdmin}
 									onChange={(e) => {
-										setIsSuperAdmin(e.target.checked);
+										setIsCompanyAdmin(e.target.checked);
 										if (e.target.checked)
 											setAssignments([]);
 									}}
 								/>
 								<div>
 									<label
-										htmlFor="superAdminCheck"
+										htmlFor="companyAdminCheck"
 										className="text-sm font-semibold text-gray-900 cursor-pointer"
 									>
-										Definir como Super Admin
+										Definir como Admin da Empresa
 									</label>
 									<p className="text-xs text-gray-500">
-										Se marcado, terá acesso total e
-										invisível ao sistema inteiro, ignorando
-										filiais.
+										Se marcado, terá acesso total a todas as filiais e configurações desta empresa.
 									</p>
 								</div>
 							</div>
 
-							{!isSuperAdmin && (
+							{!isCompanyAdmin && (
 								<div className="space-y-4 pt-2">
 									<div className="flex justify-between items-center">
 										<div>
@@ -442,14 +438,6 @@ export default function UsuariosPage() {
 									) : (
 										<div className="space-y-3">
 											{assignments.map((assignment) => {
-												// Perfis disponíveis: apenas os da empresa selecionada (ou todos se nada foi selecionado para mostrar limpo)
-												const filteredProfiles =
-													profiles.filter(
-														(p) =>
-															p.company_id ===
-															assignment.companyId,
-													);
-
 												return (
 													<div
 														key={assignment.id}
@@ -457,19 +445,18 @@ export default function UsuariosPage() {
 													>
 														<div className="w-full flex-1">
 															<SearchableSelect
-																options={companies.map(c => ({ value: c.id, label: c.name }))}
-																value={assignment.companyId}
-																onChange={(val) => handleAssignmentChange(assignment.id, 'companyId', val)}
-																placeholder="Selecione uma Filial..."
+																options={instances.map(c => ({ value: c.id, label: c.name }))}
+																value={assignment.instanceId}
+																onChange={(val) => handleAssignmentChange(assignment.id, 'instanceId', val)}
+																placeholder="Selecione uma Filial (Obra)..."
 															/>
 														</div>
 														<div className="w-full flex-1">
 															<SearchableSelect
-																options={filteredProfiles.map(p => ({ value: p.id, label: p.name }))}
+																options={profiles.map(p => ({ value: p.id, label: p.name }))}
 																value={assignment.profileId || ''}
 																onChange={(val) => handleAssignmentChange(assignment.id, 'profileId', val)}
 																placeholder="Selecione o Perfil..."
-																disabled={!assignment.companyId}
 															/>
 														</div>
 														<Button

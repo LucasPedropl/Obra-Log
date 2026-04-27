@@ -1,10 +1,14 @@
-import { createClient } from '@supabase/supabase-js';
-import { env } from './env';
+import { createBrowserClient } from '@supabase/ssr';
 
-// Cliente Singleton do Supabase
-export const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-});
+export const createClient = () => {
+	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+	const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+	if (!supabaseUrl || !supabaseAnonKey) {
+		throw new Error(
+			'As variáveis de ambiente do Supabase estão ausentes. Verifique o seu .env.local.',
+		);
+	}
+
+	return createBrowserClient(supabaseUrl, supabaseAnonKey);
+};

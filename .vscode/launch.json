@@ -2,15 +2,27 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "Iniciar API + Front (Local)",
+			"name": "Admin (3010)",
 			"type": "pwa-chrome",
 			"request": "launch",
-			"url": "http://localhost:3000",
-			"webRoot": "${workspaceFolder}/src",
-			"preLaunchTask": "Start All",
-			"presentation": {
-				"hidden": false
-			}
+			"url": "http://localhost:3010",
+			"webRoot": "${workspaceFolder}/apps/admin",
+			"preLaunchTask": "Start Admin"
+		},
+		{
+			"name": "ERP (3005)",
+			"type": "pwa-chrome",
+			"request": "launch",
+			"url": "http://localhost:3005",
+			"webRoot": "${workspaceFolder}/apps/app",
+			"preLaunchTask": "Start ERP"
+		},
+		{
+			"name": "Debug All",
+			"type": "pwa-chrome",
+			"request": "launch",
+			"url": "http://localhost:3010",
+			"preLaunchTask": "Start All"
 		}
 	]
 }

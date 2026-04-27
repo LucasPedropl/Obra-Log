@@ -3,14 +3,20 @@
 import { supabaseAdmin } from '@/config/supabaseAdmin';
 import { cookies } from 'next/headers';
 
-export async function saveGlobalUserAction(data: {
-	id?: string;
-	email: string;
-	fullName: string;
-	isSuperAdmin: boolean;
-	assignments: Array<{ companyId: string; profileId: string | null }>;
-}) {
+export async function saveGlobalUserAction(
+	data: {
+		id?: string;
+		email: string;
+		fullName: string;
+		isCompanyAdmin: boolean;
+		assignments: Array<{ instanceId: string; profileId: string }>;
+	}
+) {
 	try {
+		const cookieStore = await cookies();
+		const companyId = cookieStore.get('selectedCompanyId')?.value;
+		if (!companyId) return { success: false, error: 'Empresa não selecionada' };
+
 		let userId = data.id;
 
 		// 1. Create or Update Auth User
@@ -29,7 +35,6 @@ export async function saveGlobalUserAction(data: {
 				});
 
 			if (authError) {
-				// Possavelmente o e-mail já existe
 				throw new Error(authError.message);
 			}
 
@@ -40,7 +45,7 @@ export async function saveGlobalUserAction(data: {
 				id: userId,
 				email: data.email,
 				full_name: data.fullName,
-				is_super_admin: data.isSuperAdmin,
+				is_super_admin: false, // Só o painel Super Admin pode criar super admins
 			});
 		} else {
 			// Atualizando apenas o que for permitido localmente
@@ -48,29 +53,51 @@ export async function saveGlobalUserAction(data: {
 				.from('users')
 				.update({
 					full_name: data.fullName,
-					is_super_admin: data.isSuperAdmin,
 				})
 				.eq('id', userId);
 		}
 
-		// 2. Clean existing assignments
+		// 2. Garantir vínculo com a Empresa (Tenant) e definir se é Admin Global da Empresa
 		if (userId) {
 			await supabaseAdmin
 				.from('company_users')
-				.delete()
-				.eq('user_id', userId);
+				.upsert({
+					company_id: companyId,
+					user_id: userId,
+					is_company_admin: data.isCompanyAdmin,
+					status: 'ACTIVE',
+				}, { onConflict: 'user_id,company_id' }); // Supondo que a constraint exista ou atualiza
 		}
 
-		// 3. Add new assignments if not Super Admin
-		if (!data.isSuperAdmin && data.assignments.length > 0 && userId) {
+		// 3. Clean existing instance assignments para esta empresa
+		if (userId) {
+			// Precisamos deletar apenas os acessos das instâncias desta empresa
+			const { data: companyInstances } = await supabaseAdmin
+				.from('construction_sites')
+				.select('id')
+				.eq('company_id', companyId);
+			
+			const instanceIds = companyInstances?.map(i => i.id) || [];
+			
+			if (instanceIds.length > 0) {
+				await supabaseAdmin
+					.from('instance_users')
+					.delete()
+					.eq('user_id', userId)
+					.in('instance_id', instanceIds);
+			}
+		}
+
+		// 4. Add new instance assignments se NÃO for Admin
+		if (!data.isCompanyAdmin && data.assignments.length > 0 && userId) {
 			const dbAssignments = data.assignments.map((a) => ({
-				company_id: a.companyId,
 				user_id: userId,
+				instance_id: a.instanceId,
 				profile_id: a.profileId,
 				status: 'ACTIVE',
 			}));
 			const { error: assignError } = await supabaseAdmin
-				.from('company_users')
+				.from('instance_users')
 				.insert(dbAssignments);
 			if (assignError) throw new Error(assignError.message);
 		}
@@ -94,46 +121,89 @@ export async function getGlobalUsersAction() {
 			return { success: false, error: 'Empresa não selecionada' };
 		}
 
-		const { data: users, error } = await supabaseAdmin
-			.from('users')
-			.select(
-				`
+		// Busca os company_users desta empresa com os dados do usuário e seus acessos de instância
+		const { data: companyUsers, error } = await supabaseAdmin
+			.from('company_users')
+			.select(`
 				id,
-				email,
-				full_name,
-				is_super_admin,
-				company_users!inner (
-					company_id,
-					profile_id,
-					companies ( name ),
-					access_profiles ( name )
-				)
-			`,
-			)
-			.eq('company_users.company_id', companyId)
-			.order('full_name', { ascending: true });
+				is_company_admin,
+				users ( id, email, full_name, is_super_admin ),
+				user_id
+			`)
+			.eq('company_id', companyId);
 
 		if (error) throw error;
-		return { success: true, users };
+
+		// Busca instâncias e perfis para montar a resposta
+		const userIds = companyUsers?.map(cu => cu.user_id) || [];
+		
+		let instanceUsersData: any[] = [];
+		if (userIds.length > 0) {
+			const { data: iuData } = await supabaseAdmin
+				.from('instance_users')
+				.select(`
+					user_id,
+					instance_id,
+					profile_id,
+					construction_sites!inner(company_id, name),
+					access_profiles(name)
+				`)
+				.in('user_id', userIds)
+				.eq('construction_sites.company_id', companyId);
+			instanceUsersData = iuData || [];
+		}
+
+		// Mapear tudo para um formato limpo para a UI
+		const formattedUsers = companyUsers?.map(cu => {
+			const user = Array.isArray(cu.users) ? cu.users[0] : cu.users;
+			const assignments = instanceUsersData.filter(iu => iu.user_id === cu.user_id).map(iu => ({
+				instanceId: iu.instance_id,
+				instanceName: iu.construction_sites?.name || 'Obra',
+				profileId: iu.profile_id,
+				profileName: iu.access_profiles?.name || 'Sem Perfil'
+			}));
+
+			return {
+				id: user?.id,
+				email: user?.email,
+				full_name: user?.full_name,
+				is_super_admin: user?.is_super_admin,
+				is_company_admin: cu.is_company_admin,
+				assignments: assignments
+			};
+		}).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+
+		return { success: true, users: formattedUsers };
 	} catch (error: any) {
 		console.error('Error fetching global users:', error);
 		return { success: false, error: error.message };
 	}
 }
-export async function getAllCompaniesAction() {
+
+export async function getInstancesAction() {
+	const cookieStore = await cookies();
+	const companyId = cookieStore.get('selectedCompanyId')?.value;
+	if (!companyId) return { success: false, error: 'Empresa não selecionada' };
+
 	const { data, error } = await supabaseAdmin
-		.from('companies')
+		.from('construction_sites')
 		.select('id, name')
+		.eq('company_id', companyId)
 		.order('name', { ascending: true });
 		
 	if (error) throw error;
-	return { success: true, companies: data };
+	return { success: true, instances: data };
 }
 
 export async function getAllProfilesAction() {
+	const cookieStore = await cookies();
+	const companyId = cookieStore.get('selectedCompanyId')?.value;
+	if (!companyId) return { success: false, error: 'Empresa não selecionada' };
+
 	const { data, error } = await supabaseAdmin
 		.from('access_profiles')
-		.select('id, name, company_id')
+		.select('id, name')
+		.eq('company_id', companyId)
 		.order('name', { ascending: true });
 		
 	if (error) throw error;

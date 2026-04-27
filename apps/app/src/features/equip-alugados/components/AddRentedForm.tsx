@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/config/supabase';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import { createCategoryAdmin } from '@/app/actions/adminActions';
 
 import { X, Upload, Loader2, Info, Plus } from 'lucide-react';
 import { getActiveCompanyId } from '@/lib/utils';
 
 import { ManageSelectsModal } from '@/features/insumos/components/ManageSelectsModal';
 import { useToast } from '@/components/ui/toaster';
+import { useSupplyItems } from '@/features/insumos/hooks/useSupplyItems';
+import { useRentedEquipments } from '@/features/equip-alugados/hooks/useRentedEquipments';
 
 interface AddRentedFormProps {
 	siteId: string;
@@ -19,7 +20,12 @@ export function AddRentedForm({
 	siteId,
 	onCancel,
 	onSaved,
-}: AddRentedFormProps) {	const { addToast } = useToast();	const supabase = createClient();
+}: AddRentedFormProps) {
+	const { addToast } = useToast();
+	const supabase = createClient();
+	const { fetchCategories, createCategory } = useSupplyItems();
+	const { registerEquipment } = useRentedEquipments(siteId);
+
 	const [user, setUser] = useState<any>(null);
 	useEffect(() => {
 		supabase.auth.getUser().then(({ data }) => {
@@ -62,14 +68,8 @@ export function AddRentedForm({
 				
 				setCompanyId(currentCompanyId);
 
-				// Fetch categories
-				const { data: catData, error: catError } = await supabase
-					.from('categories')
-					.select('id, primary_category, secondary_category')
-					.eq('company_id', currentCompanyId)
-					.order('primary_category');
-
-				if (catError) throw catError;
+				// Fetch categories using client hook
+				const catData = await fetchCategories();
 
 				if (catData) {
 					setCategories(
@@ -103,11 +103,7 @@ export function AddRentedForm({
 				? `${newCategoryData.primary} - ${newCategoryData.secondary}`
 				: newCategoryData.primary;
 
-			const newId = await createCategoryAdmin({
-				company_id: companyId,
-				entry_type: 'PRODUTO',
-				primary_category: labelToSave,
-			});
+			const newId = await createCategory(labelToSave);
 
 			const newCat = {
 				id: newId,
@@ -171,77 +167,25 @@ export function AddRentedForm({
 			);
 			const categoryName = selectedCategory?.primary_category || 'Geral';
 
-			// Get a default unit (UN)
-			const { data: units } = await supabase
-				.from('measurement_units')
-				.select('id')
-				.eq('company_id', companyId)
-				.eq('abbreviation', 'UN')
-				.limit(1);
-
-			const unitId = units?.[0]?.id || null; // Fallback to null if not found
-
-			// 1. Create Catalog Item
-			const { data: catalogItem, error: catalogError } = await supabase
-				.from('catalogs')
-				.insert({
-					company_id: companyId,
-					category_id: categoryId,
-					unit_id: unitId,
-					name: `[ALUGADO] ${name}`,
-					is_stock_controlled: true,
-					is_rented_equipment: true,
-					is_tool: false,
-				})
-				.select('id')
-				.single();
-
-			if (catalogError) throw catalogError;
-			const catalogId = catalogItem.id;
-
-			// 2. Add to Site Inventory
-			const { data: inventoryItem, error: invError } = await supabase
-				.from('site_inventory')
-				.insert({
-					site_id: siteId,
-					catalog_id: catalogId,
-					quantity: Number(quantity),
-				})
-				.select('id')
-				.single();
-
-			if (invError) throw invError;
-			const inventoryId = inventoryItem.id;
-
-			// 3. Record Entry Movement
-			await supabase.from('site_movements').insert({
-				site_id: siteId,
-				inventory_id: inventoryId,
-				created_by: user.id,
-				type: 'IN',
-				quantity_delta: Number(quantity),
-				reason: 'PURCHASE',
+			// Chamar o hook para realizar as inserções
+			const result = await registerEquipment({
+				companyId,
+				userId: user.id,
+				name,
+				categoryId,
+				categoryName,
+				quantity: Number(quantity),
+				entryDate,
+				observations,
 			});
 
-			// 4. Record Rented Equipment
-			const { error: rentError } = await supabase
-				.from('rented_equipments')
-				.insert({
-					site_id: siteId,
-					name,
-					category: categoryName,
-					quantity: Number(quantity),
-					entry_date: new Date(entryDate).toISOString(),
-					status: 'ACTIVE',
-					description: observations,
-					inventory_id: inventoryId,
-				});
-
-			if (rentError) throw rentError;
+			if (!result.success) {
+				throw new Error(result.error);
+			}
 
 			onSaved();
 		} catch (err: any) {
-			console.error(err);
+			console.error('ERRO AO CADASTRAR EQUIPAMENTO:', err);
 			setError(err.message || 'Erro ao salvar o equipamento.');
 		} finally {
 			setIsSubmitting(false);
@@ -414,8 +358,12 @@ export function AddRentedForm({
 			</div>
 
 			{isCategoryModalOpen && (
-				<div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-					<div className="bg-white text-gray-900 rounded-xl shadow-2xl border border-gray-200 w-[500px] max-w-[95vw] p-6">
+				<div className="fixed inset-0 z-[999] flex items-center justify-center p-4 h-[100dvh] w-screen">
+					<div 
+						className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300" 
+						onClick={() => setIsCategoryModalOpen(false)}
+					/>
+					<div className="relative bg-white text-gray-900 rounded-xl shadow-2xl border border-gray-200 w-[500px] max-w-[95vw] p-6 animate-in fade-in zoom-in-95 duration-200">
 						<h3 className="text-xl font-bold mb-4">
 							Nova Categoria
 						</h3>
