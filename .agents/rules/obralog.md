@@ -22,7 +22,6 @@ Seu objetivo neste projeto é construir um sistema SaaS robusto, composto por um
     *   `instance_id` ou `site_id`: Refere-se sempre à Obra/Filial.
     *   Mantenha essa distinção rigorosa nos DTOs e Estados para evitar erros de "property missing" no build.
 5.  **Segurança e Overrides**: A seção `overrides` no `package.json` raiz deve ser preservada para corrigir vulnerabilidades críticas que o Next.js carrega internamente. **Nunca** use `npm audit fix --force`, pois ele tentará fazer o downgrade do Next.js para a versão 9, quebrando o App Router.
-6.  **Dependências de Build (Vercel/Linux)**: Pacotes como `@tailwindcss/postcss`, `tailwindcss` e `postcss` devem estar em `dependencies` (NÃO em `devDependencies`). Como o lockfile é gerado no Windows, binários nativos de Linux (ex: `lightningcss-linux-x64-gnu`) só são corretamente resolvidos se o pacote-pai estiver em `dependencies`. Colocá-los em `devDependencies` causa `Cannot find module` no Vercel.
 
 # Dicas/Sugestões de Contexto do Projeto:
 

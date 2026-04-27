@@ -3,6 +3,13 @@
 import { supabaseAdmin } from '@/config/supabaseAdmin';
 import { cookies } from 'next/headers';
 
+export interface SaveUserResponse {
+	success: boolean;
+	userId?: string;
+	tempPassword?: string | null;
+	error?: string;
+}
+
 export async function saveGlobalUserAction(
 	data: {
 		id?: string;
@@ -11,7 +18,7 @@ export async function saveGlobalUserAction(
 		isCompanyAdmin: boolean;
 		assignments: Array<{ instanceId: string; profileId: string }>;
 	}
-) {
+): Promise<SaveUserResponse> {
 	try {
 		const cookieStore = await cookies();
 		const companyId = cookieStore.get('selectedCompanyId')?.value;

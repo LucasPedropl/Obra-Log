@@ -14,6 +14,7 @@ import {
 	accessProfilesService,
 } from '@/features/admin/services/accessProfiles.service';
 import { usersService } from '@/features/admin/services/users.service';
+import { getParentCompanyId } from '@/lib/utils';
 import { Download, Loader2, Plus, ShieldCheck, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -37,14 +38,11 @@ export default function PerfisDeAcessoPage() {
 	const loadData = async () => {
 		try {
 			setIsLoading(true);
-			const companyCookie = document.cookie.match(
-				/(^| )selectedCompanyId=([^;]+)/,
-			);
-			if (!companyCookie)
+			const companyId = getParentCompanyId();
+			if (!companyId)
 				throw new Error(
-					'Instância não encontrada no cookie. Faça login novamente.',
+					'Instância não encontrada. Faça login novamente.',
 				);
-			const companyId = companyCookie[2];
 
 			const data = await accessProfilesService.getProfiles(companyId);
 			setPerfis(data);
@@ -98,18 +96,15 @@ export default function PerfisDeAcessoPage() {
 	const handleSaveUser = async (data: LocalUserFormData) => {
 		try {
 			setIsSaving(true);
-			const companyCookie = document.cookie.match(
-				/(^| )selectedCompanyId=([^;]+)/,
-			);
-			if (!companyCookie) throw new Error('Instância não encontrada.');
-			const companyId = companyCookie[2];
+			const companyId = getParentCompanyId();
+			if (!companyId) throw new Error('Instância não encontrada.');
 
 			const response = await usersService.createUser({
 				...data,
 				company_id: companyId,
 			});
 
-			setGeneratedPassword(response.tempPassword);
+			setGeneratedPassword(response.tempPassword ?? null);
 			addToast('Usuário criado com sucesso!', 'success');
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : 'Erro desconhecido ao criar usuário';

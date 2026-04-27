@@ -1,12 +1,16 @@
-import { saveGlobalUserAction } from '@/app/actions/globalUsers';
+import { saveGlobalUserAction, SaveUserResponse } from '@/app/actions/globalUsers';
 
 export const usersService = {
-	async createUser(data: any) {
+	async createUser(data: {
+		email: string;
+		full_name: string;
+		profile_id: string;
+	}): Promise<SaveUserResponse> {
 		const result = await saveGlobalUserAction({
 			email: data.email,
 			fullName: data.full_name,
-			isCompanyAdmin: false, // Por padrão usuários criados aqui não são admins globais da empresa
-			assignments: data.profile_id ? [{ instanceId: '', profileId: data.profile_id }] : [], // Simplificado para o contexto atual
+			isCompanyAdmin: false,
+			assignments: data.profile_id ? [{ instanceId: '', profileId: data.profile_id }] : [],
 		});
 
 		if (!result.success) {
