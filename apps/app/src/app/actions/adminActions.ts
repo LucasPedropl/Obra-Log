@@ -527,7 +527,7 @@ export async function getEPIItemsAdmin(siteId: string) {
 		return {
 			id: t.id,
 			inventoryId: t.inventory_id,
-			catalogId: t.site_inventory?.catalog_id,
+			catalogId: t.site_inventory?.catalog_id || '',
 			name: catalog?.name || 'EPI Desconhecido',
 			category: catalog?.categories?.primary_category || 'Sem Categoria',
 			code: catalog?.code || '-',

@@ -119,17 +119,15 @@ export default function PerfisDeAcessoPage() {
 		name: string;
 		scope: 'ALL_SITES' | 'SPECIFIC_SITES';
 		permissions: Record<string, any>;
+		allowed_sites: string[];
 		company_id?: string;
 	}
 
 	const handleSave = async (data: LocalProfileFormData) => {
 		try {
 			setIsSaving(true);
-			const companyCookie = document.cookie.match(
-				/(^| )selectedCompanyId=([^;]+)/,
-			);
-			if (!companyCookie) throw new Error('Instância não encontrada.');
-			const companyId = companyCookie[2];
+			const companyId = getParentCompanyId();
+			if (!companyId) throw new Error('Instância não encontrada.');
 
 			data.company_id = companyId;
 
@@ -137,7 +135,8 @@ export default function PerfisDeAcessoPage() {
 				await accessProfilesService.updateProfile(editingItem.id, data);
 				addToast('Perfil atualizado com sucesso.', 'success');
 			} else {
-				await accessProfilesService.createProfile(data);
+				// Certificamos que company_id está presente para satisfazer o tipo Omit<AccessProfile, 'id'>
+				await accessProfilesService.createProfile(data as Required<LocalProfileFormData>);
 				addToast('Perfil criado com sucesso.', 'success');
 			}
 			await loadData();

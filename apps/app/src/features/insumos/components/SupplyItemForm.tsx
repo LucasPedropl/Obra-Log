@@ -522,7 +522,7 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 					items={categories.map((c) => ({
 						id: c.id,
 						title: c.primary_category,
-						subtitle: c.secondary_category,
+						subtitle: c.secondary_category || undefined,
 						isInUse: Math.random() > 0.7, // Mocking randomly some items in use
 					}))}
 					onClose={() => setIsManageCategoriesOpen(false)}
@@ -542,7 +542,7 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 					items={units.map((u) => ({
 						id: u.id,
 						title: u.name,
-						subtitle: u.abbreviation,
+						subtitle: u.abbreviation || undefined,
 						isInUse: Math.random() > 0.7, // Mocking randomly some items in use
 					}))}
 					onClose={() => setIsManageUnitsOpen(false)}
