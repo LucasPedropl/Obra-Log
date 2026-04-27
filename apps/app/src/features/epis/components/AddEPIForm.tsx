@@ -23,6 +23,27 @@ interface AddEPIFormProps {
 	siteId: string;
 }
 
+interface RawEPIItem {
+	inventory_id: string;
+}
+
+interface RawInventoryItem {
+	id: string;
+	quantity: number;
+	catalogs: {
+		name: string;
+		code: string | null;
+		is_tool: boolean | null;
+		measurement_units: {
+			abbreviation: string;
+		} | null;
+		categories: {
+			primary_category: string;
+			secondary_category: string | null;
+		} | null;
+	} | null;
+}
+
 export function AddEPIForm({ onCancel, onSaved, siteId }: AddEPIFormProps) {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -43,16 +64,16 @@ export function AddEPIForm({ onCancel, onSaved, siteId }: AddEPIFormProps) {
 				]);
 
 				const existingIds = new Set(
-					existingEPIs?.map((t: any) => t.inventory_id) || [],
+					(existingEPIs as unknown as RawEPIItem[])?.map((t) => t.inventory_id) || [],
 				);
 
-				const formatted: InventoryItem[] = (inventoryData || [])
+				const formatted: InventoryItem[] = (inventoryData as unknown as RawInventoryItem[] || [])
 					.filter(
-						(item: any) =>
+						(item) =>
 							!existingIds.has(item.id) &&
 							item.catalogs?.is_tool !== true,
 					)
-					.map((item: any) => {
+					.map((item) => {
 						const catalog = item.catalogs ?? null;
 						return {
 							id: item.id,
@@ -71,9 +92,10 @@ export function AddEPIForm({ onCancel, onSaved, siteId }: AddEPIFormProps) {
 					});
 
 				setInventoryItems(formatted);
-			} catch (err: any) {
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : 'Erro ao carregar dados do inventário';
 				console.error('Error fetching inventory for EPIs:', err);
-				setError(err.message || 'Erro ao carregar dados');
+				setError(message);
 			} finally {
 				setIsLoading(false);
 			}
@@ -110,9 +132,10 @@ export function AddEPIForm({ onCancel, onSaved, siteId }: AddEPIFormProps) {
 			await addSiteEpisAdmin(siteId, selectedItems);
 
 			onSaved();
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao salvar EPIs';
 			console.error('Error adding EPIs:', err);
-			setError(err.message || 'Erro ao salvar EPIs');
+			setError(message);
 		} finally {
 			setIsSaving(false);
 		}

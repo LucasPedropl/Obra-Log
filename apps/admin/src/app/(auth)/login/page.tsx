@@ -8,11 +8,47 @@ import { createClient } from '@/config/supabase';
 export default function LoginPage() {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
+	const [rememberMe, setRememberMe] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
+	const [checkingSession, setCheckingSession] = useState(true);
 	const [error, setError] = useState('');
 	const router = useRouter();
 	const supabase = createClient();
+
+	React.useEffect(() => {
+		async function checkSession() {
+			try {
+				const { data: { session } } = await supabase.auth.getSession();
+				if (session) {
+					// Verificar se ainda é super admin
+					const { data: userData } = await supabase
+						.from('users')
+						.select('is_super_admin')
+						.eq('id', session.user.id)
+						.maybeSingle();
+
+					if (userData?.is_super_admin) {
+						router.push('/dashboard');
+						return;
+					}
+				}
+				
+				// Carregar email lembrado
+				const savedEmail = localStorage.getItem('obralog_admin_remember_email');
+				if (savedEmail) {
+					setEmail(savedEmail);
+					setRememberMe(true);
+				}
+			} catch (err) {
+				console.error('Erro ao verificar sessão:', err);
+			} finally {
+				setCheckingSession(false);
+			}
+		}
+
+		checkSession();
+	}, [router, supabase]);
 
 	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -38,6 +74,13 @@ export default function LoginPage() {
 				throw new Error('Acesso negado. Você não é um Super-Admin.');
 			}
 
+			// Salvar email se Lembrar de mim estiver marcado
+			if (rememberMe) {
+				localStorage.setItem('obralog_admin_remember_email', email);
+			} else {
+				localStorage.removeItem('obralog_admin_remember_email');
+			}
+
 			router.push('/dashboard');
 			router.refresh();
 		} catch (err: unknown) {
@@ -48,6 +91,14 @@ export default function LoginPage() {
 			setLoading(false);
 		}
 	};
+
+	if (checkingSession) {
+		return (
+			<div className="min-h-screen bg-slate-50 flex items-center justify-center">
+				<Loader2 className="animate-spin w-8 h-8 text-indigo-600" />
+			</div>
+		);
+	}
 
 	return (
 		<div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -110,6 +161,23 @@ export default function LoginPage() {
 							</button>
 						</div>
 					</div>
+
+					<div className="flex items-center">
+						<input
+							id="remember-me"
+							type="checkbox"
+							checked={rememberMe}
+							onChange={(e) => setRememberMe(e.target.checked)}
+							className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded cursor-pointer"
+						/>
+						<label
+							htmlFor="remember-me"
+							className="ml-2 block text-sm text-slate-700 cursor-pointer select-none"
+						>
+							Lembrar de mim
+						</label>
+					</div>
+
 					<button
 						disabled={loading}
 						className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium py-2.5 rounded-lg transition-colors mt-6 flex items-center justify-center"

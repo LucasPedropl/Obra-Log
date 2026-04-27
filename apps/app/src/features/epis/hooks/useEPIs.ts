@@ -23,9 +23,10 @@ export function useEPIs(siteId: string) {
 			setError(null);
 			const formattedEPIs = await getEPIItemsAdmin(siteId);
 			setEPIs(formattedEPIs);
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao buscar EPIs da obra';
 			console.error('Error fetching EPIs:', err);
-			setError(err.message);
+			setError(message);
 		} finally {
 			setIsLoading(false);
 		}

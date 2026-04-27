@@ -1,26 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { SearchableSelect } from '@/components/ui/searchable-select';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Trash2, Pencil, X, Layers, Ruler } from 'lucide-react';
-import {
-	useSupplyItems,
-	supplyItemSchema,
-	SupplyItemFormData,
-} from '../hooks/useSupplyItems';
-import { useToast } from '@/components/ui/toaster';
-import { ManageSelectsModal } from './ManageSelectsModal';
-import { ImportModal } from '@/components/shared/ImportModal';
-import { createClient } from '@/config/supabase';
-import { getActiveCompanyId } from '@/lib/utils';
 import {
 	importCategoriesAdmin,
 	importUnitsAdmin,
 } from '@/app/actions/adminActions';
+import { ImportModal } from '@/components/shared/ImportModal';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { useToast } from '@/components/ui/toaster';
+import { createClient } from '@/config/supabase';
+import { getActiveCompanyId } from '@/lib/utils';
+import { zodResolver } from '@hookform/resolvers/zod';
+import React, { useEffect, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import {
+	SupplyItemFormData,
+	supplyItemSchema,
+	useSupplyItems,
+} from '../hooks/useSupplyItems';
+import { ManageSelectsModal } from './ManageSelectsModal';
+
+interface SimpleCategory {
+	id: string;
+	primary_category: string;
+	secondary_category: string | null;
+}
+
+interface SimpleUnit {
+	id: string;
+	name: string;
+	abbreviation: string;
+}
 
 interface SupplyItemFormProps {
 	onCancel?: () => void;
-	initialData?: any;
+	initialData?: {
+		id?: string;
+		name?: string;
+		category_id?: string;
+		unit_id?: string;
+		min_threshold?: number;
+		is_stock_controlled?: boolean;
+	};
 }
 
 export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
@@ -42,7 +60,7 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 		watch,
 		formState: { errors },
 	} = useForm<SupplyItemFormData>({
-		resolver: zodResolver(supplyItemSchema) as any,
+		resolver: zodResolver(supplyItemSchema),
 		defaultValues: initialData
 			? {
 					name: initialData.name || '',
@@ -63,8 +81,8 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 
 	const isStockControlled = watch('is_stock_controlled');
 
-	const [categories, setCategories] = useState<any[]>([]);
-	const [units, setUnits] = useState<any[]>([]);
+	const [categories, setCategories] = useState<SimpleCategory[]>([]);
+	const [units, setUnits] = useState<SimpleUnit[]>([]);
 
 	// State for the Modals
 	const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -92,10 +110,10 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 			]);
 
 			if (catRes) {
-				setCategories(catRes);
+				setCategories(catRes as unknown as SimpleCategory[]);
 			}
 			if (unRes) {
-				setUnits(unRes);
+				setUnits(unRes as unknown as SimpleUnit[]);
 			}
 		};
 		loadData();
@@ -126,7 +144,8 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 			setValue('category_id', newId, { shouldValidate: true });
 			addToast('Categoria cadastrada com sucesso!', 'success');
 			setIsCategoryModalOpen(false);
-		} catch (err) {
+		} catch (err: unknown) {
+			console.error(err);
 			addToast('Erro ao criar categoria.', 'error');
 		}
 	};
@@ -159,14 +178,14 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 			setValue('unit_id', newId, { shouldValidate: true });
 			addToast('Unidade de medida cadastrada com sucesso!', 'success');
 			setIsUnitModalOpen(false);
-		} catch (err) {
+		} catch (err: unknown) {
+			console.error(err);
 			addToast('Erro ao criar unidade de medida.', 'error');
 		}
 	};
 
 	const handleDeleteCategories = async (ids: string[]) => {
 		// Mock API call to delete categories
-		console.log('Deleting categories', ids);
 		setCategories((prev) => prev.filter((c) => !ids.includes(c.id)));
 	};
 
@@ -183,7 +202,6 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 
 	const handleDeleteUnits = async (ids: string[]) => {
 		// Mock API call to delete units
-		console.log('Deleting units', ids);
 		setUnits((prev) => prev.filter((u) => !ids.includes(u.id)));
 	};
 
@@ -201,7 +219,6 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 	const onSubmit = async (data: SupplyItemFormData) => {
 		let success;
 		if (initialData?.id) {
-			console.log('Editar Insumo', { ...data, id: initialData.id });
 			// TODO: Update logic here once API route is there
 			// success = await updateSupplyItem({ ...data, id: initialData.id });
 			success = true;

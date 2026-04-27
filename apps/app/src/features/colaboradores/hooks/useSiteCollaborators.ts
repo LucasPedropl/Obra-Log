@@ -9,6 +9,16 @@ export interface SiteCollaborator {
 	cpf: string;
 }
 
+interface RawSiteCollaborator {
+	id: string;
+	collaborator_id: string;
+	collaborators: {
+		name: string | null;
+		role_title: string | null;
+		cpf: string | null;
+	} | null;
+}
+
 export function useSiteCollaborators(siteId: string) {
 	const [collaborators, setCollaborators] = useState<SiteCollaborator[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -19,7 +29,7 @@ export function useSiteCollaborators(siteId: string) {
 			setIsLoading(true);
 			setError(null);
 			const rawData = await getSiteCollaboratorsAdmin(siteId);
-			const formatted: SiteCollaborator[] = rawData.map((item: any) => ({
+			const formatted: SiteCollaborator[] = (rawData as unknown as RawSiteCollaborator[]).map((item) => ({
 				id: item.id,
 				collaboratorId: item.collaborator_id,
 				name: item.collaborators?.name || 'Vazio',
@@ -27,9 +37,10 @@ export function useSiteCollaborators(siteId: string) {
 				cpf: item.collaborators?.cpf || 'Sem CPF',
 			}));
 			setCollaborators(formatted);
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao carregar colaboradores da obra';
 			console.error('Error fetching site collaborators:', err);
-			setError(err.message);
+			setError(message);
 		} finally {
 			setIsLoading(false);
 		}

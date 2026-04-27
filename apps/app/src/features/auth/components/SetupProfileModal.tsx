@@ -8,8 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/config/supabase';
 
+interface SetupProfileUser {
+	id: string;
+	email?: string;
+}
+
 interface SetupProfileModalProps {
-	user: any;
+	user: SetupProfileUser;
 	onComplete: () => void;
 }
 
@@ -79,8 +84,9 @@ export function SetupProfileModal({
 			if (updateDbError) throw updateDbError;
 
 			onComplete();
-		} catch (err: any) {
-			setError(err.message || 'Erro ao configurar perfil');
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao configurar perfil';
+			setError(message);
 		} finally {
 			setLoading(false);
 		}

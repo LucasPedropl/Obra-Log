@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { Pagination } from '@/components/shared/Pagination';
-import { Hammer, Upload, Download, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConstructionSiteForm } from '@/features/obras/components/ConstructionSiteForm';
 import { useConstructionSites } from '@/features/obras/hooks/useConstructionSites';
+import { Download, Hammer, Loader2, Upload, X } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 export default function ObrasPage() {
 	const [obras, setObras] = useState<any[]>([]);
@@ -132,7 +132,7 @@ export default function ObrasPage() {
 			<div className="flex items-center justify-end gap-3 w-full mt-4">
 				<Button
 					variant="outline"
-					onClick={() => console.log('Importar obras')}
+					onClick={() => {}}
 					className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
 				>
 					<Upload className="h-4 w-4" />
@@ -142,7 +142,7 @@ export default function ObrasPage() {
 				{obras.length > 0 && (
 					<Button
 						variant="outline"
-						onClick={() => console.log('Exportar obras')}
+						onClick={() => {}}
 						className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
 					>
 						<Download className="h-4 w-4" />

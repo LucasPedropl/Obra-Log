@@ -13,6 +13,24 @@ export interface ActiveLoanItem {
 	status: string;
 }
 
+interface RawActiveLoan {
+	id: string;
+	quantity: number;
+	loan_date: string;
+	status: string;
+	inventory_id: string;
+	site_inventory: {
+		catalogs: {
+			name: string;
+			code: string | null;
+		} | null;
+	} | null;
+	collaborators: {
+		id: string;
+		name: string;
+	} | null;
+}
+
 export function useActiveLoans(siteId: string) {
 	const [loans, setLoans] = useState<ActiveLoanItem[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +68,7 @@ export function useActiveLoans(siteId: string) {
 
 			if (loansError) throw loansError;
 
-			const formatted = (data || []).map((loan: any) => ({
+			const formatted = ((data as unknown as RawActiveLoan[]) || []).map((loan) => ({
 				id: loan.id,
 				inventoryId: loan.inventory_id,
 				toolName: loan.site_inventory?.catalogs?.name || 'Sem nome',
@@ -63,9 +81,10 @@ export function useActiveLoans(siteId: string) {
 			}));
 
 			setLoans(formatted);
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao buscar empréstimos ativos';
 			console.error('Error fetching active loans:', err);
-			setError(err.message);
+			setError(message);
 		} finally {
 			setIsLoading(false);
 		}

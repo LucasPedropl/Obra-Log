@@ -55,9 +55,10 @@ export function useCollaborators() {
 			await createCollaboratorAdmin(payload);
 
 			return true;
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao cadastrar o colaborador';
 			console.error('Error creating collaborator:', err);
-			setError(err.message || 'Erro ao cadastrar o colaborador');
+			setError(message);
 			return false;
 		} finally {
 			setIsLoading(false);
@@ -73,9 +74,10 @@ export function useCollaborators() {
 
 			const data = await getCollaboratorsAdmin(companyId);
 			return data || [];
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao buscar os colaboradores';
 			console.error('Error fetching collaborators:', err);
-			setError(err.message || 'Erro ao buscar os colaboradores');
+			setError(message);
 			return [];
 		} finally {
 			setIsLoading(false);
@@ -91,9 +93,10 @@ export function useCollaborators() {
 
 			await deleteCollaboratorAdmin(id, companyId);
 			return true;
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao excluir o colaborador';
 			console.error('Error deleting collaborator:', err);
-			setError(err.message || 'Erro ao excluir o colaborador');
+			setError(message);
 			return false;
 		} finally {
 			setIsLoading(false);

@@ -23,6 +23,26 @@ interface AddToolFormProps {
 	siteId: string;
 }
 
+interface RawSiteTool {
+	inventory_id: string;
+}
+
+interface RawInventoryItem {
+	id: string;
+	quantity: number;
+	catalogs: {
+		name: string;
+		code: string | null;
+		measurement_units: {
+			abbreviation: string;
+		} | null;
+		categories: {
+			primary_category: string;
+			secondary_category: string | null;
+		} | null;
+	} | null;
+}
+
 export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -43,12 +63,12 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 				]);
 
 				const existingIds = new Set(
-					existingTools?.map((t: any) => t.inventory_id) || [],
+					(existingTools as unknown as RawSiteTool[])?.map((t) => t.inventory_id) || [],
 				);
 
-				const formatted: InventoryItem[] = (inventoryData || [])
-					.filter((item: any) => !existingIds.has(item.id))
-					.map((item: any) => {
+				const formatted: InventoryItem[] = (inventoryData as unknown as RawInventoryItem[] || [])
+					.filter((item) => !existingIds.has(item.id))
+					.map((item) => {
 						const catalog = item.catalogs ?? null;
 						return {
 							id: item.id,
@@ -67,9 +87,10 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 					});
 
 				setInventoryItems(formatted);
-			} catch (err: any) {
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : 'Erro ao carregar dados do inventário';
 				console.error('Error fetching inventory for tools:', err);
-				setError(err.message || 'Erro ao carregar dados');
+				setError(message);
 			} finally {
 				setIsLoading(false);
 			}
@@ -106,9 +127,10 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 			await addSiteToolsAdmin(siteId, selectedItems);
 
 			onSaved();
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao salvar ferramentas';
 			console.error('Error saving tools:', err);
-			setError(err.message || 'Erro ao salvar ferramentas');
+			setError(message);
 		} finally {
 			setIsSaving(false);
 		}

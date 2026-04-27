@@ -1,16 +1,28 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import {
-	useCollaborators,
-	collaboratorSchema,
-	CollaboratorFormData,
-} from '../hooks/useCollaborators';
 import { useToast } from '@/components/ui/toaster';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import {
+	CollaboratorFormData,
+	collaboratorSchema,
+	useCollaborators,
+} from '../hooks/useCollaborators';
 
 interface CollaboratorFormProps {
 	onCancel?: () => void;
-	initialData?: any;
+	initialData?: {
+		id?: string;
+		name?: string;
+		role_title?: string;
+		cpf?: string;
+		rg?: string;
+		birth_date?: string | Date;
+		cellphone?: string;
+		email?: string;
+		cep?: string;
+		street?: string;
+		number?: string;
+		neighborhood?: string;
+	};
 }
 
 export function CollaboratorForm({
@@ -50,7 +62,6 @@ export function CollaboratorForm({
 		let success;
 		if (initialData?.id) {
 			// TODO: Add edit API properly
-			console.log('Editar', { ...data, id: initialData.id });
 			// success = await editCollaborator({ ...data, id: initialData.id });
 			success = true; // placeholder until we verify API backend
 			addToast('Colaborador atualizado com sucesso!', 'success');

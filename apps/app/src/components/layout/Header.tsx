@@ -83,8 +83,8 @@ export function Header({
 						? collab.access_profiles[0]
 						: collab?.access_profiles;
 
-					if (accessProfile && 'name' in accessProfile) {
-						roleTitle = (accessProfile as any).name;
+					if (accessProfile && typeof accessProfile === 'object' && 'name' in accessProfile) {
+						roleTitle = String(accessProfile.name);
 					}
 
 					// Load Obras

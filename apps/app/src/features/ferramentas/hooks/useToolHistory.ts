@@ -16,6 +16,27 @@ export interface ToolHistoryItem {
 	notesOnReturn: string;
 }
 
+interface RawToolLoan {
+	id: string;
+	quantity: number;
+	loan_date: string;
+	returned_date: string | null;
+	status: string;
+	notes_on_loan: string | null;
+	notes_on_return: string | null;
+	inventory_id: string;
+	site_inventory: {
+		catalogs: {
+			name: string;
+			code: string | null;
+		} | null;
+	} | null;
+	collaborators: {
+		id: string;
+		name: string;
+	} | null;
+}
+
 export function useToolHistory(siteId: string) {
 	const [history, setHistory] = useState<ToolHistoryItem[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +76,7 @@ export function useToolHistory(siteId: string) {
 
 			if (loansError) throw loansError;
 
-			const formatted = (data || []).map((loan: any) => ({
+			const formatted = ((data as unknown as RawToolLoan[]) || []).map((loan) => ({
 				id: loan.id,
 				inventoryId: loan.inventory_id,
 				toolName:
@@ -74,9 +95,10 @@ export function useToolHistory(siteId: string) {
 			}));
 
 			setHistory(formatted);
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao buscar histórico de ferramentas';
 			console.error('Error fetching history:', err);
-			setError(err.message);
+			setError(message);
 		} finally {
 			setIsLoading(false);
 		}

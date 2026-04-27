@@ -7,7 +7,8 @@
 			"request": "launch",
 			"url": "http://localhost:3010",
 			"webRoot": "${workspaceFolder}/apps/admin",
-			"preLaunchTask": "Start Admin"
+			"preLaunchTask": "Start Admin",
+			"userDataDir": false
 		},
 		{
 			"name": "ERP (3005)",
@@ -15,14 +16,16 @@
 			"request": "launch",
 			"url": "http://localhost:3005",
 			"webRoot": "${workspaceFolder}/apps/app",
-			"preLaunchTask": "Start ERP"
+			"preLaunchTask": "Start ERP",
+			"userDataDir": false
 		},
 		{
 			"name": "Debug All",
 			"type": "pwa-chrome",
 			"request": "launch",
 			"url": "http://localhost:3010",
-			"preLaunchTask": "Start All"
+			"preLaunchTask": "Start All",
+			"userDataDir": false
 		}
 	]
 }

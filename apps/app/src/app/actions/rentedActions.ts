@@ -124,17 +124,31 @@ export async function registerRentedEquipmentAction(
 		}
 
 		return { success: true };
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : 'Falha ao registrar equipamento alugado.';
 		console.error('ERRO NA SERVER ACTION (registerRentedEquipment):', error);
-		throw new Error(error.message || 'Falha ao registrar equipamento alugado.');
+		throw new Error(message);
 	}
+}
+
+interface RentedEquipment {
+	id: string;
+	site_id: string;
+	name: string;
+	category: string;
+	quantity: number;
+	entry_date: string;
+	return_date: string | null;
+	status: 'ACTIVE' | 'RETURNED';
+	description: string | null;
+	inventory_id: string | null;
 }
 
 /**
  * Busca a lista de equipamentos alugados de uma obra.
  * Utiliza o supabaseAdmin para garantir que os dados sejam retornados independente de RLS no browser.
  */
-export async function getRentedEquipmentsAction(siteId: string) {
+export async function getRentedEquipmentsAction(siteId: string): Promise<RentedEquipment[]> {
 	try {
 		const { data, error } = await supabaseAdmin
 			.from('rented_equipments')
@@ -147,8 +161,8 @@ export async function getRentedEquipmentsAction(siteId: string) {
 			throw error;
 		}
 
-		return data as any[];
-	} catch (error) {
+		return (data as unknown as RentedEquipment[]) || [];
+	} catch (error: unknown) {
 		console.error('ERRO NA SERVER ACTION (getRentedEquipments):', error);
 		return [];
 	}

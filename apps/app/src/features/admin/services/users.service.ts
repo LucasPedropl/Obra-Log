@@ -1,20 +1,18 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3005';
+import { saveGlobalUserAction } from '@/app/actions/globalUsers';
 
 export const usersService = {
 	async createUser(data: any) {
-		const response = await fetch(`${API_URL}/api/tenant/users`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify(data),
+		const result = await saveGlobalUserAction({
+			email: data.email,
+			fullName: data.full_name,
+			isCompanyAdmin: false, // Por padrão usuários criados aqui não são admins globais da empresa
+			assignments: data.profile_id ? [{ instanceId: '', profileId: data.profile_id }] : [], // Simplificado para o contexto atual
 		});
 
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({}));
-			throw new Error(errorData.error || 'Erro ao criar usuário');
+		if (!result.success) {
+			throw new Error(result.error || 'Erro ao criar usuário');
 		}
 
-		return response.json();
+		return result;
 	},
 };

@@ -10,3 +10,9 @@ export function getActiveCompanyId(): string | null {
 	const match = document.cookie.match(/(^| )selectedCompanyId=([^;]+)/);
 	return match ? match[2] : null;
 }
+
+export function getParentCompanyId(): string | null {
+	if (typeof document === 'undefined') return null;
+	const match = document.cookie.match(/(^| )parentCompanyId=([^;]+)/);
+	return match ? match[2] : null;
+}

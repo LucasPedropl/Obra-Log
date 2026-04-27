@@ -37,6 +37,18 @@ export async function middleware(request: NextRequest) {
 		data: { user },
 	} = await supabase.auth.getUser();
 
+	// Verificação adicional: Se o banco de dados public foi resetado mas o Auth não,
+	// o token ainda pode ser válido mas o usuário não existe mais no nosso esquema.
+	let userExistsInDb = false;
+	if (user) {
+		const { data: dbUser } = await supabase
+			.from('users')
+			.select('id')
+			.eq('id', user.id)
+			.maybeSingle();
+		userExistsInDb = !!dbUser;
+	}
+
 	const isAuthRoute = request.nextUrl.pathname.startsWith('/auth');
 	const isLoginRoute = request.nextUrl.pathname === '/auth/login';
 	const isSelectInstanceRoute =
@@ -54,9 +66,21 @@ export async function middleware(request: NextRequest) {
 		return supabaseResponse;
 	}
 
+	// Situação 0: Usuário "fantasma" (logado no Auth mas removido do DB/resetado)
+	if (user && !userExistsInDb && !isAuthRoute) {
+		// Se ele está no Auth mas não no banco público, forçamos o logout e redirect
+		await supabase.auth.signOut();
+		const url = request.nextUrl.clone();
+		url.pathname = '/auth/login';
+		// Limpar o cookie de empresa também por segurança
+		const response = NextResponse.redirect(url);
+		response.cookies.delete('selectedCompanyId');
+		return response;
+	}
+
 	// Permite que pule a rota de instâncias
 	if (request.nextUrl.pathname === '/selecionar-instancia') {
-		if (!user) {
+		if (!user || !userExistsInDb) {
 			const url = request.nextUrl.clone();
 			url.pathname = '/auth/login';
 			return NextResponse.redirect(url);
@@ -66,7 +90,7 @@ export async function middleware(request: NextRequest) {
 	}
 
 	// Situação 1: O usuário NÃO está logado mas tentando acessar o sistema fechado (raíz)
-	if (!user && !isAuthRoute && !isSelectInstanceRoute && !isAdminRoute) {
+	if ((!user || !userExistsInDb) && !isAuthRoute && !isSelectInstanceRoute && !isAdminRoute) {
 		const url = request.nextUrl.clone();
 		url.pathname = '/auth/login';
 		return NextResponse.redirect(url);
@@ -75,6 +99,7 @@ export async function middleware(request: NextRequest) {
 	// Situação 2: O usuário JÁ está logado mas não escolheu a filial ainda
 	if (
 		user &&
+		userExistsInDb &&
 		!selectedCompanyId &&
 		!isSelectInstanceRoute &&
 		!isLoginRoute &&
@@ -86,7 +111,7 @@ export async function middleware(request: NextRequest) {
 	}
 
 	// Situação 3: O usuário JÁ está logado mas tentando acessar a tela de Login novamente
-	if (user && isLoginRoute) {
+	if (user && userExistsInDb && isLoginRoute) {
 		if (selectedCompanyId) {
 			const url = request.nextUrl.clone();
 			url.pathname = '/obras';

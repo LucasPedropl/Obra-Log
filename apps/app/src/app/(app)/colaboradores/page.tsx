@@ -1,20 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { PageHeader } from '@/components/shared/PageHeader';
+import { importCollaboratorsAdmin } from '@/app/actions/adminActions';
+import { DataTable } from '@/components/shared/DataTable';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { FilterPanel } from '@/components/shared/FilterPanel';
+import { ImportModal } from '@/components/shared/ImportModal';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { Pagination } from '@/components/shared/Pagination';
-import { Users, Upload, Download, X, Loader2 } from 'lucide-react';
+import { TableSearch } from '@/components/shared/TableSearch';
 import { Button } from '@/components/ui/button';
 import { CollaboratorForm } from '@/features/colaboradores/components/CollaboratorForm';
 import { useCollaborators } from '@/features/colaboradores/hooks/useCollaborators';
-import { TableSearch } from '@/components/shared/TableSearch';
-import { FilterPanel } from '@/components/shared/FilterPanel';
-import { DataTable } from '@/components/shared/DataTable';
-import { ImportModal } from '@/components/shared/ImportModal';
-import { createClient } from '@/config/supabase';
-import { importCollaboratorsAdmin } from '@/app/actions/adminActions';
 import { getActiveCompanyId } from '@/lib/utils';
+import { Download, Loader2, Upload, Users, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function ColaboradoresPage() {
 	const [colaboradores, setColaboradores] = useState<any[]>([]);
@@ -284,7 +283,7 @@ export default function ColaboradoresPage() {
 				{colaboradores.length > 0 && (
 					<Button
 						variant="outline"
-						onClick={() => console.log('Exportar colaboradores')}
+						onClick={() => {}}
 						className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
 					>
 						<Download className="h-4 w-4" />

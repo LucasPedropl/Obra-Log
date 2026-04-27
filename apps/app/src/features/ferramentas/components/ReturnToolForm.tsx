@@ -46,9 +46,10 @@ export function ReturnToolForm({
 			if (updateError) throw updateError;
 
 			onSaved();
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao realizar a devolução';
 			console.error('Error returning tool:', err);
-			setError(err.message);
+			setError(message);
 		} finally {
 			setIsSaving(false);
 		}

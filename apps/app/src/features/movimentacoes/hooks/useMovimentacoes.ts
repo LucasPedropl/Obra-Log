@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
 import { createClient } from '@/config/supabase';
+import { useCallback, useEffect, useState } from 'react';
 
 export interface Movimentacao {
 	id: string; // generated unique id for the combined list
@@ -14,6 +14,48 @@ export interface Movimentacao {
 	collaborator_name?: string;
 	reason?: string;
 	status?: string;
+}
+
+interface RawMovement {
+	id: string;
+	type: string;
+	reason: string | null;
+	quantity_delta: number;
+	action_date: string;
+	users: { full_name: string | null } | null;
+	site_inventory: {
+		catalogs: { name: string; is_tool: boolean } | null;
+	} | null;
+}
+
+interface RawToolLoanMov {
+	id: string;
+	quantity: number;
+	loan_date: string;
+	returned_date: string | null;
+	status: string;
+	collaborators: { name: string } | null;
+	site_inventory: {
+		catalogs: { name: string } | null;
+	} | null;
+}
+
+interface RawEpiWithdrawalMov {
+	id: string;
+	quantity: number;
+	withdrawal_date: string;
+	users: { full_name: string | null } | null;
+	collaborators: { name: string } | null;
+	catalogs: { name: string } | null;
+}
+
+interface RawRentedEquipmentMov {
+	id: string;
+	name: string;
+	quantity: number;
+	entry_date: string;
+	exit_date: string | null;
+	status: string;
 }
 
 export function useMovimentacoes(siteId: string) {
@@ -103,7 +145,7 @@ export function useMovimentacoes(siteId: string) {
 			const combinedList: Movimentacao[] = [];
 
 			// Process site_movements
-			(movementsData || []).forEach((mov: any) => {
+			(movementsData as unknown as RawMovement[] || []).forEach((mov) => {
 				const isTool = mov.site_inventory?.catalogs?.is_tool;
 				const moduleName: Movimentacao['module'] = isTool
 					? 'FERRAMENTAS'
@@ -129,13 +171,13 @@ export function useMovimentacoes(siteId: string) {
 					action,
 					item_name: itemName,
 					quantity: mov.quantity_delta,
-					user_name: mov.users?.full_name,
-					reason: mov.reason,
+					user_name: mov.users?.full_name || undefined,
+					reason: mov.reason || undefined,
 				});
 			});
 
 			// Process tool_loans
-			(toolLoansData || []).forEach((loan: any) => {
+			(toolLoansData as unknown as RawToolLoanMov[] || []).forEach((loan) => {
 				const itemName =
 					loan.site_inventory?.catalogs?.name ||
 					'Ferramenta Desconhecida';
@@ -172,11 +214,7 @@ export function useMovimentacoes(siteId: string) {
 			});
 
 			// Process epi_withdrawals
-			// (Note: Some EPI withdrawals might also trigger site_movements, so we need to be careful to not show it twice? The prompt mentioned "cadastro de almoxarifado, devolução de... tem que ser listado aqui tudo", users will want to see everything.)
-			// We can filter out 'EPI' from site_movements if they match?
-			// Wait, the Provide EPI form triggers a site_movement. Thus, it will show up as APPLICATION in ALMOXARIFADO.
-			// Let's add EPI specifically to identify it was an EPI withdrawal.
-			(epiData || []).forEach((epi: any) => {
+			(epiData as unknown as RawEpiWithdrawalMov[] || []).forEach((epi) => {
 				combinedList.push({
 					id: `epi-${epi.id}`,
 					original_id: epi.id,
@@ -186,13 +224,13 @@ export function useMovimentacoes(siteId: string) {
 					action: 'Entrega de EPI',
 					item_name: epi.catalogs?.name || 'EPI Desconhecido',
 					quantity: epi.quantity,
-					user_name: epi.users?.full_name,
+					user_name: epi.users?.full_name || undefined,
 					collaborator_name: epi.collaborators?.name,
 				});
 			});
 
 			// Process rented equipments
-			(rentedData || []).forEach((rent: any) => {
+			(rentedData as unknown as RawRentedEquipmentMov[] || []).forEach((rent) => {
 				combinedList.push({
 					id: `rented-in-${rent.id}`,
 					original_id: rent.id,
@@ -225,7 +263,7 @@ export function useMovimentacoes(siteId: string) {
 			);
 
 			setMovimentacoes(combinedList);
-		} catch (error) {
+		} catch (error: unknown) {
 			console.error('Error fetching movimentacoes:', error);
 		} finally {
 			setIsLoading(false);

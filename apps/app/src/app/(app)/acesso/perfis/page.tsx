@@ -1,29 +1,30 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { EmptyState } from '@/components/shared/EmptyState';
-import { Pagination } from '@/components/shared/Pagination';
-import { ShieldCheck, Upload, Download, X, Loader2, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { TableSearch } from '@/components/shared/TableSearch';
-import { FilterPanel } from '@/components/shared/FilterPanel';
 import { DataTable } from '@/components/shared/DataTable';
+import { FilterPanel } from '@/components/shared/FilterPanel';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { Pagination } from '@/components/shared/Pagination';
+import { TableSearch } from '@/components/shared/TableSearch';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toaster';
-import {
-	accessProfilesService,
-	AccessProfile,
-} from '@/features/admin/services/accessProfiles.service';
 import { AccessProfileForm } from '@/features/admin/components/AccessProfileForm';
 import { UserForm } from '@/features/admin/components/UserForm';
+import {
+	AccessProfile,
+	accessProfilesService,
+} from '@/features/admin/services/accessProfiles.service';
 import { usersService } from '@/features/admin/services/users.service';
+import { Download, Loader2, Plus, ShieldCheck, Upload, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function PerfisDeAcessoPage() {
 	const [perfis, setPerfis] = useState<AccessProfile[]>([]);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [isUserFormOpen, setIsUserFormOpen] = useState(false);
-	const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+	const [generatedPassword, setGeneratedPassword] = useState<string | null>(
+		null,
+	);
 	const [editingItem, setEditingItem] = useState<AccessProfile | null>(null);
 	const [searchTerm, setSearchTerm] = useState('');
 	const [showFilters, setShowFilters] = useState(false);
@@ -47,8 +48,9 @@ export default function PerfisDeAcessoPage() {
 
 			const data = await accessProfilesService.getProfiles(companyId);
 			setPerfis(data);
-		} catch (error: any) {
-			addToast('Erro ao carregar perfis: ' + error.message, 'error');
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : 'Erro desconhecido ao carregar perfis';
+			addToast('Erro ao carregar perfis: ' + message, 'error');
 		} finally {
 			setIsLoading(false);
 		}
@@ -86,7 +88,14 @@ export default function PerfisDeAcessoPage() {
 		setGeneratedPassword(null);
 	};
 
-	const handleSaveUser = async (data: any) => {
+	interface LocalUserFormData {
+		full_name: string;
+		email: string;
+		profile_id: string;
+		allowed_sites?: string[];
+	}
+
+	const handleSaveUser = async (data: LocalUserFormData) => {
 		try {
 			setIsSaving(true);
 			const companyCookie = document.cookie.match(
@@ -99,17 +108,25 @@ export default function PerfisDeAcessoPage() {
 				...data,
 				company_id: companyId,
 			});
-			
+
 			setGeneratedPassword(response.tempPassword);
 			addToast('Usuário criado com sucesso!', 'success');
-		} catch (error: any) {
-			addToast('Erro ao criar usuário: ' + error.message, 'error');
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : 'Erro desconhecido ao criar usuário';
+			addToast('Erro ao criar usuário: ' + message, 'error');
 		} finally {
 			setIsSaving(false);
 		}
 	};
 
-	const handleSave = async (data: any) => {
+	interface LocalProfileFormData {
+		name: string;
+		scope: 'ALL_SITES' | 'SPECIFIC_SITES';
+		permissions: Record<string, any>;
+		company_id?: string;
+	}
+
+	const handleSave = async (data: LocalProfileFormData) => {
 		try {
 			setIsSaving(true);
 			const companyCookie = document.cookie.match(
@@ -129,8 +146,9 @@ export default function PerfisDeAcessoPage() {
 			}
 			await loadData();
 			handleFormClose();
-		} catch (error: any) {
-			addToast('Erro ao salvar: ' + error.message, 'error');
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : 'Erro desconhecido ao salvar perfil';
+			addToast('Erro ao salvar: ' + message, 'error');
 		} finally {
 			setIsSaving(false);
 		}
@@ -143,8 +161,9 @@ export default function PerfisDeAcessoPage() {
 			await accessProfilesService.deleteProfile(item.id);
 			addToast('Perfil excluído.', 'success');
 			await loadData();
-		} catch (error: any) {
-			addToast('Erro ao excluir: ' + error.message, 'error');
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : 'Erro desconhecido ao excluir perfil';
+			addToast('Erro ao excluir: ' + message, 'error');
 			setIsLoading(false);
 		}
 	};
@@ -218,20 +237,29 @@ export default function PerfisDeAcessoPage() {
 						>
 							<X size={20} />
 						</button>
-						
+
 						{generatedPassword ? (
 							<div className="text-center space-y-4 py-8">
 								<div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
 									<ShieldCheck className="w-8 h-8 text-green-600" />
 								</div>
-								<h3 className="text-xl font-medium text-gray-900">Usuário Criado com Sucesso!</h3>
+								<h3 className="text-xl font-medium text-gray-900">
+									Usuário Criado com Sucesso!
+								</h3>
 								<p className="text-gray-500 max-w-sm mx-auto">
-									A senha temporária do usuário foi gerada. Copie-a agora, pois não será mostrada novamente.
+									A senha temporária do usuário foi gerada.
+									Copie-a agora, pois não será mostrada
+									novamente.
 								</p>
 								<div className="bg-gray-100 p-4 rounded-lg flex items-center justify-center gap-3 max-w-xs mx-auto my-6">
-									<code className="text-xl font-mono font-bold tracking-wider">{generatedPassword}</code>
+									<code className="text-xl font-mono font-bold tracking-wider">
+										{generatedPassword}
+									</code>
 								</div>
-								<Button onClick={handleUserFormClose} className="w-full max-w-xs">
+								<Button
+									onClick={handleUserFormClose}
+									className="w-full max-w-xs"
+								>
 									Concluir
 								</Button>
 							</div>
@@ -366,7 +394,7 @@ export default function PerfisDeAcessoPage() {
 			<div className="flex items-center justify-end gap-3 w-full mt-4">
 				<Button
 					variant="outline"
-					onClick={() => console.log('Importar perfis')}
+					onClick={() => {}}
 					className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
 				>
 					<Upload className="h-4 w-4" />
@@ -376,7 +404,7 @@ export default function PerfisDeAcessoPage() {
 				{perfis.length > 0 && (
 					<Button
 						variant="outline"
-						onClick={() => console.log('Exportar perfis')}
+						onClick={() => {}}
 						className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
 					>
 						<Download className="h-4 w-4" />

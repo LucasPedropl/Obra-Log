@@ -13,6 +13,11 @@ interface LoanToolFormProps {
 	availableQuantity: number;
 }
 
+interface SimpleCollaborator {
+	id: string;
+	name: string;
+}
+
 export function LoanToolForm({
 	onCancel,
 	onSaved,
@@ -22,14 +27,14 @@ export function LoanToolForm({
 	availableQuantity,
 }: LoanToolFormProps) {
 	const { fetchCollaborators } = useCollaborators();
-	const [collaborators, setCollaborators] = useState<any[]>([]);
+	const [collaborators, setCollaborators] = useState<SimpleCollaborator[]>([]);
 	const [loadingCollabs, setLoadingCollabs] = useState(true);
 
 	useEffect(() => {
 		const load = async () => {
 			setLoadingCollabs(true);
 			const data = await fetchCollaborators();
-			setCollaborators(data);
+			setCollaborators(data as unknown as SimpleCollaborator[]);
 			setLoadingCollabs(false);
 		};
 		load();
@@ -76,9 +81,10 @@ export function LoanToolForm({
 			if (insertError) throw insertError;
 
 			onSaved();
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao realizar o empréstimo';
 			console.error('Error creating loan:', err);
-			setError(err.message);
+			setError(message);
 		} finally {
 			setIsSaving(false);
 		}
@@ -133,7 +139,7 @@ export function LoanToolForm({
 						className="w-full bg-white border border-gray-300 rounded-[5px] py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#101828]/20 focus:border-[#101828] shadow-sm transition-all"
 					>
 						<option value="">Selecione um colaborador...</option>
-						{collaborators.map((collab: any) => (
+						{collaborators.map((collab) => (
 							<option key={collab.id} value={collab.id}>
 								{collab.name}
 							</option>

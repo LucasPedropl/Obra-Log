@@ -1,6 +1,5 @@
 import { createClient } from '@/config/supabase';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005';
 
 export interface AccessProfile {
 	id: string;
@@ -22,42 +21,28 @@ export interface AccessProfile {
 export const accessProfilesService = {
 	async getProfiles(companyId: string): Promise<AccessProfile[]> {
 		const supabase = createClient();
-		const {
-			data: { session },
-		} = await supabase.auth.getSession();
+		const { data, error } = await supabase
+			.from('access_profiles')
+			.select('*')
+			.eq('company_id', companyId)
+			.order('name', { ascending: true });
 
-		const response = await fetch(
-			`${API_URL}/api/access_profiles?company_id=${companyId}`,
-			{
-				headers: {
-					Authorization: `Bearer ${session?.access_token}`,
-				},
-			},
-		);
-
-		if (!response.ok) throw new Error('Falha ao buscar perfis de acesso');
-		return response.json();
+		if (error) throw error;
+		return (data as any[]) || [];
 	},
 
 	async createProfile(
 		data: Omit<AccessProfile, 'id'>,
 	): Promise<AccessProfile> {
 		const supabase = createClient();
-		const {
-			data: { session },
-		} = await supabase.auth.getSession();
+		const { data: profile, error } = await supabase
+			.from('access_profiles')
+			.insert(data)
+			.select()
+			.single();
 
-		const response = await fetch(`${API_URL}/api/access_profiles`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${session?.access_token}`,
-			},
-			body: JSON.stringify(data),
-		});
-
-		if (!response.ok) throw new Error('Falha ao criar perfil de acesso');
-		return response.json();
+		if (error) throw error;
+		return profile as AccessProfile;
 	},
 
 	async updateProfile(
@@ -65,42 +50,24 @@ export const accessProfilesService = {
 		data: Partial<AccessProfile>,
 	): Promise<AccessProfile> {
 		const supabase = createClient();
-		const {
-			data: { session },
-		} = await supabase.auth.getSession();
+		const { data: profile, error } = await supabase
+			.from('access_profiles')
+			.update(data)
+			.eq('id', id)
+			.select()
+			.single();
 
-		const response = await fetch(`${API_URL}/api/access_profiles/${id}`, {
-			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${session?.access_token}`,
-			},
-			body: JSON.stringify(data),
-		});
-
-		if (!response.ok)
-			throw new Error('Falha ao atualizar perfil de acesso');
-		return response.json();
+		if (error) throw error;
+		return profile as AccessProfile;
 	},
 
 	async deleteProfile(id: string): Promise<void> {
 		const supabase = createClient();
-		const {
-			data: { session },
-		} = await supabase.auth.getSession();
+		const { error } = await supabase
+			.from('access_profiles')
+			.delete()
+			.eq('id', id);
 
-		const response = await fetch(`${API_URL}/api/access_profiles/${id}`, {
-			method: 'DELETE',
-			headers: {
-				Authorization: `Bearer ${session?.access_token}`,
-			},
-		});
-
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({}));
-			throw new Error(
-				errorData.error || 'Falha ao deletar perfil de acesso',
-			);
-		}
+		if (error) throw error;
 	},
 };

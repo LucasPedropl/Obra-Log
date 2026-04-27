@@ -13,6 +13,24 @@ export interface EPIHistoryItem {
 	notes: string;
 }
 
+interface RawEPIWithdrawal {
+	id: string;
+	quantity: number;
+	withdrawal_date: string;
+	notes: string | null;
+	catalogs: {
+		name: string;
+		code: string | null;
+	} | null;
+	collaborators: {
+		name: string;
+		cpf: string | null;
+	} | null;
+	users: {
+		full_name: string;
+	} | null;
+}
+
 export function useEPIHistory(siteId: string) {
 	const [history, setHistory] = useState<EPIHistoryItem[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +68,7 @@ export function useEPIHistory(siteId: string) {
 
 			if (fetchError) throw fetchError;
 
-			const formatted: EPIHistoryItem[] = (data || []).map((t: any) => ({
+			const formatted: EPIHistoryItem[] = ((data as unknown as RawEPIWithdrawal[]) || []).map((t) => ({
 				id: t.id,
 				epiName: t.catalogs?.name || 'EPI Desconhecido',
 				epiCode: t.catalogs?.code || '-',
@@ -64,9 +82,10 @@ export function useEPIHistory(siteId: string) {
 			}));
 
 			setHistory(formatted);
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao buscar histórico de EPIs';
 			console.error('Error fetching epi history:', err);
-			setError(err.message);
+			setError(message);
 		} finally {
 			setIsLoading(false);
 		}

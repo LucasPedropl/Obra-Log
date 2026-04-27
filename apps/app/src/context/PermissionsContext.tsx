@@ -118,7 +118,7 @@ export function PermissionsProvider({
 				const permMap: ResourcePermissions = {};
 				
 				if (permsData) {
-					permsData.forEach((p: any) => {
+					permsData.forEach((p: { permission_key: string }) => {
 						const parts = p.permission_key.split('.');
 						if (parts.length === 2) {
 							const resource = parts[0];

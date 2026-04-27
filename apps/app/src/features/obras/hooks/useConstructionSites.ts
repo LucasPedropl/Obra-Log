@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { getActiveCompanyId } from '@/lib/utils';
-import { z } from 'zod';
 import {
 	createConstructionSiteAdmin,
 	getConstructionSitesAdmin,
 } from '@/app/actions/adminActions';
+import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
+import { useState } from 'react';
+import { z } from 'zod';
 
 export const constructionSiteSchema = z.object({
 	name: z.string().min(1, 'O nome da obra é obrigatório'),
@@ -20,7 +20,7 @@ export function useConstructionSites() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getActiveCompanyId();
+			const companyId = getParentCompanyId();
 
 			if (!companyId) {
 				throw new Error('Nenhuma empresa selecionada.');
@@ -32,9 +32,10 @@ export function useConstructionSites() {
 			});
 
 			return true;
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao cadastrar a obra';
 			console.error('Error creating construction site:', err);
-			setError(err.message || 'Erro ao cadastrar a obra');
+			setError(message);
 			return false;
 		} finally {
 			setIsLoading(false);
@@ -45,7 +46,7 @@ export function useConstructionSites() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getActiveCompanyId();
+			const companyId = getParentCompanyId();
 
 			if (!companyId) {
 				throw new Error('Nenhuma empresa selecionada.');
@@ -53,9 +54,10 @@ export function useConstructionSites() {
 
 			const data = await getConstructionSitesAdmin(companyId);
 			return data || [];
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao buscar as obras';
 			console.error('Error fetching construction sites:', err);
-			setError(err.message || 'Erro ao buscar as obras');
+			setError(message);
 			return [];
 		} finally {
 			setIsLoading(false);

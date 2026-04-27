@@ -22,9 +22,10 @@ export function useTools(siteId: string) {
 			setError(null);
 			const formattedTools = await getToolItemsAdmin(siteId);
 			setTools(formattedTools);
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao buscar ferramentas da obra';
 			console.error('Error fetching tools:', err);
-			setError(err.message);
+			setError(message);
 		} finally {
 			setIsLoading(false);
 		}

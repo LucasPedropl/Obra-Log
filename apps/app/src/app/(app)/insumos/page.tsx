@@ -1,20 +1,19 @@
-﻿'use client';
+'use client';
 
-import React, { useState, useEffect } from 'react';
-import { PageHeader } from '@/components/shared/PageHeader';
+import { importCatalogsAdmin } from '@/app/actions/adminActions';
+import { DataTable } from '@/components/shared/DataTable';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { FilterPanel } from '@/components/shared/FilterPanel';
+import { ImportModal } from '@/components/shared/ImportModal';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { Pagination } from '@/components/shared/Pagination';
-import { PackageOpen, Upload, Download, X, Loader2 } from 'lucide-react';
+import { TableSearch } from '@/components/shared/TableSearch';
 import { Button } from '@/components/ui/button';
 import { SupplyItemForm } from '@/features/insumos/components/SupplyItemForm';
 import { useSupplyItems } from '@/features/insumos/hooks/useSupplyItems';
-import { TableSearch } from '@/components/shared/TableSearch';
-import { FilterPanel } from '@/components/shared/FilterPanel';
-import { DataTable } from '@/components/shared/DataTable';
-import { ImportModal } from '@/components/shared/ImportModal';
-import { createClient } from '@/config/supabase';
 import { getActiveCompanyId } from '@/lib/utils';
-import { importCatalogsAdmin } from '@/app/actions/adminActions';
+import { Download, Loader2, PackageOpen, Upload, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function InsumosPage() {
 	const [insumos, setInsumos] = useState<any[]>([]);
@@ -314,7 +313,7 @@ export default function InsumosPage() {
 				{insumos.length > 0 && (
 					<Button
 						variant="outline"
-						onClick={() => console.log('Exportar insumos')}
+						onClick={() => {}}
 						className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
 					>
 						<Download className="h-4 w-4" />

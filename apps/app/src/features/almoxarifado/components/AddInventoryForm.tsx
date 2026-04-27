@@ -26,6 +26,24 @@ interface SupplyItemOption {
 	subcategory: string;
 }
 
+interface RawSupplyItem {
+	id: string;
+	name: string;
+	code: string | null;
+	measurement_units: {
+		abbreviation: string;
+	} | null;
+	categories: {
+		primary_category: string;
+		secondary_category: string | null;
+	} | null;
+}
+
+interface RawInventoryResult {
+	id: string;
+	catalog_id: string;
+}
+
 export function AddInventoryForm({
 	onCancel,
 	onSaved,
@@ -47,7 +65,7 @@ export function AddInventoryForm({
 
 	useEffect(() => {
 		fetchSupplyItems().then((res) => {
-			const mapped = (res || []).map((item: any) => ({
+			const mapped = (res as unknown as RawSupplyItem[] || []).map((item) => ({
 				id: item.id,
 				name: item.name,
 				code: item.code || '-',
@@ -120,10 +138,10 @@ export function AddInventoryForm({
 			if (inventoryError) throw inventoryError;
 
 			// 2. Separar Ferramentas e EPIs
-			const epiData: any[] = [];
-			const toolData: any[] = [];
+			const epiData: { site_id: string; inventory_id: string }[] = [];
+			const toolData: { site_id: string; inventory_id: string }[] = [];
 
-			(inventoryResults || []).forEach((invRow: any) => {
+			(inventoryResults as unknown as RawInventoryResult[] || []).forEach((invRow) => {
 				const originalItem = payload.find(
 					(i) => i.catalogId === invRow.catalog_id,
 				);
@@ -167,9 +185,10 @@ export function AddInventoryForm({
 			}
 
 			onSaved();
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao salvar inventário';
 			console.error('Erro ao salvar:', err);
-			alert('Erro ao salvar inventário: ' + (err?.message || JSON.stringify(err)));
+			alert('Erro ao salvar inventário: ' + message);
 		} finally {
 			setIsSaving(false);
 		}

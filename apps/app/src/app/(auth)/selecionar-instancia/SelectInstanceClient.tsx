@@ -13,6 +13,12 @@ import {
 	Globe,
 } from 'lucide-react';
 import { createClient } from '@/config/supabase';
+import { 
+	getUserCompaniesAction, 
+	getCompanyInstancesAction, 
+	createCompanyInstanceAction 
+} from '@/app/actions/authData';
+import { SetupProfileModal } from '@/features/auth/components/SetupProfileModal';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -27,17 +33,13 @@ import {
 interface Company {
 	id: string;
 	name: string;
-	fantasy_name: string;
-	cnpj: string;
-	parent_tenant_id?: string | null;
-	parent_id?: string | null;
+	active?: boolean;
 	max_instances?: number;
 }
 
 interface Instance {
 	id: string;
 	name: string;
-	cnpj: string;
 }
 
 export function SelectInstanceClient() {
@@ -65,6 +67,8 @@ export function SelectInstanceClient() {
 	const [defaultInstanceId, setDefaultInstanceId] = useState<string | null>(
 		null,
 	);
+	const [requireSetup, setRequireSetup] = useState(false);
+	const [authUser, setAuthUser] = useState<any | null>(null);
 
 	useEffect(() => {
 		const loadUserAndCompanies = async () => {
@@ -92,6 +96,7 @@ export function SelectInstanceClient() {
 				const {
 					data: { session },
 				} = await supabase.auth.getSession();
+				
 				if (!session?.user) {
 					router.push('/auth/login');
 					return;
@@ -99,6 +104,14 @@ export function SelectInstanceClient() {
 
 				const currentUserId = session.user.id;
 				setUserId(currentUserId);
+				setAuthUser(session.user);
+
+				// Verifica se precisa configurar perfil (trocar senha temporária)
+				if (session.user.user_metadata?.require_password_change) {
+					setRequireSetup(true);
+					setLoading(false);
+					return;
+				}
 
 				// Verifica se é Super Admin
 				const { data: userData } = await supabase
@@ -111,43 +124,17 @@ export function SelectInstanceClient() {
 					setIsSuperAdmin(userData.is_super_admin);
 				}
 
-				const response = await fetch(
-					`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005'}/api/users/${currentUserId}/companies`,
-					{
-						headers: {
-							Authorization: `Bearer ${session.access_token}`,
-						},
-					},
-				);
+				const result = await getUserCompaniesAction(currentUserId);
 
-				if (!response.ok) {
-					console.error(
-						'Erro na resposta da API:',
-						response.status,
-						response.statusText,
-					);
-					throw new Error('Falha ao buscar empresas');
-				}
+				if (!result.success) throw new Error(result.error);
 
-				const data = await response.json();
+				const mappedCompanies = result.companies || [];
 
-				// Extraí a empresa (`companies`) do join do banco se vier aninhado, caso contrário usa o próprio objeto
-				const mappedCompanies: Company[] = data.map(
-					(item: Company | { companies: Company }) =>
-						'companies' in item ? item.companies : item,
-				);
+				setCompanies(mappedCompanies);
 
-				// Filtra valores nulos/vazios
-				const validCompanies = mappedCompanies.filter(Boolean);
-
-				setCompanies(validCompanies);
-
-				// Se tiver pelo menos uma empresa raiz, seleciona automaticamente a primeira
-				const parentCompanies = validCompanies.filter(
-					(c) => !c.parent_tenant_id,
-				);
-				if (parentCompanies.length > 0) {
-					handleSelectCompany(parentCompanies[0]);
+				if (mappedCompanies.length > 0) {
+					// Aguardamos o carregamento das instâncias da primeira empresa antes de tirar o loading
+					await handleSelectCompany(mappedCompanies[0]);
 				}
 			} catch (err: unknown) {
 				console.error(err);
@@ -164,23 +151,13 @@ export function SelectInstanceClient() {
 		setSelectedParentCompany(company);
 		setLoadingInstances(true);
 		try {
-			const {
-				data: { session },
-			} = await supabase.auth.getSession();
+			const result = await getCompanyInstancesAction(company.id);
 
-			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005'}/api/companies/${company.id}/instances`,
-				{
-					headers: {
-						Authorization: `Bearer ${session?.access_token}`,
-					},
-				},
-			);
-			if (!response.ok) throw new Error('Falha ao buscar instâncias');
-
-			const data = await response.json();
-			setInstances(data);
-			if (data.length === 0) {
+			if (!result.success) throw new Error(result.error);
+			
+			const instancesData = result.instances || [];
+			setInstances(instancesData);
+			if (instancesData.length === 0) {
 				setIsCreating(true);
 			}
 		} catch (err: unknown) {
@@ -197,26 +174,10 @@ export function SelectInstanceClient() {
 
 		setSavingInstance(true);
 		try {
-			const {
-				data: { session },
-			} = await supabase.auth.getSession();
+			const result = await createCompanyInstanceAction(selectedParentCompany.id, newInstanceName);
 
-			const response = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005'}/api/companies/${selectedParentCompany.id}/instances`,
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: `Bearer ${session?.access_token}`,
-					},
-					body: JSON.stringify({ name: newInstanceName }),
-				},
-			);
+			if (!result.success) throw new Error(result.error);
 
-			if (!response.ok)
-				throw new Error('Erro ao criar instância da empresa');
-
-			const data = await response.json();
 			setNewInstanceName('');
 			setIsCreating(false);
 
@@ -312,6 +273,19 @@ export function SelectInstanceClient() {
 			.substring(0, 2)
 			.toUpperCase();
 	};
+	
+	if (requireSetup && authUser) {
+		return (
+			<SetupProfileModal
+				user={authUser}
+				onComplete={() => {
+					setRequireSetup(false);
+					// Recarrega os dados do usuário para atualizar metadados
+					window.location.reload();
+				}}
+			/>
+		);
+	}
 
 	if (isCreating) {
 		return (
@@ -497,7 +471,7 @@ export function SelectInstanceClient() {
 					<h2 className="text-4xl md:text-5xl font-bold tracking-tighter text-foreground">
 						{!selectedParentCompany
 							? 'Carregando instâncias...'
-							: `Selecione a filial de ${selectedParentCompany.fantasy_name || selectedParentCompany.name}`}
+							: `Selecione a filial de ${selectedParentCompany.name}`}
 					</h2>
 					<p className="text-muted-foreground text-lg max-w-xl mx-auto">
 						{!selectedParentCompany
@@ -657,11 +631,6 @@ export function SelectInstanceClient() {
 												<span className="text-foreground/90 group-hover:text-blue-600 dark:group-hover:text-blue-400 font-semibold text-sm md:text-base transition-colors max-w-[140px] md:max-w-[160px] truncate text-center">
 													{instance.name}
 												</span>
-												{instance.cnpj && (
-													<span className="text-muted-foreground/60 font-medium text-[10px] md:text-xs mt-1 bg-secondary/50 px-2 py-0.5 rounded-full border border-border/40">
-														{instance.cnpj}
-													</span>
-												)}
 											</div>
 										</div>
 									))}

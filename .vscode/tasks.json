@@ -6,16 +6,38 @@
 			"type": "npm",
 			"script": "dev:admin",
 			"isBackground": true,
-			"problemMatcher": [],
-			"group": "build"
+			"problemMatcher": {
+				"owner": "typescript",
+				"pattern": "$tsc",
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "compiled",
+					"endsPattern": "ready"
+				}
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
 		},
 		{
 			"label": "Start ERP",
 			"type": "npm",
 			"script": "dev:erp-next",
 			"isBackground": true,
-			"problemMatcher": [],
-			"group": "build"
+			"problemMatcher": {
+				"owner": "typescript",
+				"pattern": "$tsc",
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "compiled",
+					"endsPattern": "ready"
+				}
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			}
 		},
 		{
 			"label": "Start All",

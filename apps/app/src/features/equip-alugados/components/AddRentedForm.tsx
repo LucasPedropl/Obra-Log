@@ -16,6 +16,17 @@ interface AddRentedFormProps {
 	onSaved: () => void;
 }
 
+interface SimpleUser {
+	id: string;
+	email?: string;
+}
+
+interface CategoryItem {
+	id: string;
+	primary_category: string;
+	secondary_category: string;
+}
+
 export function AddRentedForm({
 	siteId,
 	onCancel,
@@ -26,10 +37,10 @@ export function AddRentedForm({
 	const { fetchCategories, createCategory } = useSupplyItems();
 	const { registerEquipment } = useRentedEquipments(siteId);
 
-	const [user, setUser] = useState<any>(null);
+	const [user, setUser] = useState<SimpleUser | null>(null);
 	useEffect(() => {
 		supabase.auth.getUser().then(({ data }) => {
-			if (data?.user) setUser(data.user);
+			if (data?.user) setUser(data.user as unknown as SimpleUser);
 		});
 	}, [supabase]);
 	const [name, setName] = useState('');
@@ -41,7 +52,7 @@ export function AddRentedForm({
 		'FERRAMENTA',
 	);
 
-	const [categories, setCategories] = useState<any[]>([]);
+	const [categories, setCategories] = useState<CategoryItem[]>([]);
 	const [companyId, setCompanyId] = useState<string | null>(null);
 
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,16 +84,17 @@ export function AddRentedForm({
 
 				if (catData) {
 					setCategories(
-						catData.map((c: any) => ({
+						catData.map((c) => ({
 							id: c.id,
 							primary_category: c.primary_category,
 							secondary_category: c.secondary_category || '',
-						})),
+						})) as CategoryItem[],
 					);
 				}
-			} catch (err: any) {
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : 'Erro ao carregar dados do sistema';
 				console.error('Error fetching context:', err);
-				setError('Erro ao carregar os dados. Tente novamente.');
+				setError(message);
 			}
 		}
 		fetchContext();
@@ -105,7 +117,7 @@ export function AddRentedForm({
 
 			const newId = await createCategory(labelToSave);
 
-			const newCat = {
+			const newCat: CategoryItem = {
 				id: newId,
 				primary_category: newCategoryData.primary,
 				secondary_category: newCategoryData.secondary,
@@ -120,9 +132,10 @@ export function AddRentedForm({
 			addToast('Categoria cadastrada com sucesso!', 'success');
 			setIsCategoryModalOpen(false);
 			setNewCategoryData({ primary: '', secondary: '' });
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao criar categoria';
 			console.error(err);
-			addToast(err.message || 'Erro ao criar categoria.', 'error');
+			addToast(message, 'error');
 		} finally {
 			setIsCreatingCat(false);
 		}
@@ -184,9 +197,10 @@ export function AddRentedForm({
 			}
 
 			onSaved();
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao salvar equipamento alugado';
 			console.error('ERRO AO CADASTRAR EQUIPAMENTO:', err);
-			setError(err.message || 'Erro ao salvar o equipamento.');
+			setError(message);
 		} finally {
 			setIsSubmitting(false);
 		}

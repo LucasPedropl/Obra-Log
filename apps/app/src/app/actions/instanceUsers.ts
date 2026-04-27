@@ -34,9 +34,10 @@ export async function getInstanceUsersAction(instanceId: string) {
 		});
 
 		return { success: true, users: formattedUsers };
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : 'Erro ao buscar usuários da instância';
 		console.error('Error fetching instance users:', error);
-		return { success: false, error: error.message };
+		return { success: false, error: message };
 	}
 }
 
@@ -60,28 +61,58 @@ export async function saveInstanceUserAction(instanceId: string, data: {
 			// Atualiza o nome se foi fornecido
 			await supabaseAdmin.from('users').update({ full_name: data.fullName }).eq('id', userId);
 		} else {
-			const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
-			const { data: authUser, error: authError } =
-				await supabaseAdmin.auth.admin.createUser({
+			try {
+				const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
+				const { data: authUser, error: authError } =
+					await supabaseAdmin.auth.admin.createUser({
+						email: data.email,
+						password: tempPassword,
+						email_confirm: true,
+						user_metadata: {
+							require_password_change: true,
+							full_name: data.fullName,
+							temp_password: tempPassword,
+						},
+					});
+
+				if (authError) {
+					// Detectar órfão
+					if (authError.message.toLowerCase().includes('already been registered')) {
+						const { data: { users: allUsers } } = await supabaseAdmin.auth.admin.listUsers();
+						const existingAuthUser = allUsers.find(u => u.email === data.email);
+
+						if (existingAuthUser) {
+							const { data: profile } = await supabaseAdmin.from('users').select('id').eq('id', existingAuthUser.id).maybeSingle();
+							const { data: links } = await supabaseAdmin.from('company_users').select('id').eq('user_id', existingAuthUser.id).limit(1);
+
+							if (!profile && (!links || links.length === 0)) {
+								await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id);
+								return saveInstanceUserAction(instanceId, data); // Tentar novamente
+							}
+						}
+					}
+					throw new Error(authError.message);
+				}
+
+				userId = authUser.user.id;
+
+				const { error: profileError } = await supabaseAdmin.from('users').insert({
+					id: userId,
 					email: data.email,
-					password: tempPassword,
-					email_confirm: true,
-					user_metadata: {
-						require_password_change: true,
-						full_name: data.fullName,
-						temp_password: tempPassword,
-					},
+					full_name: data.fullName,
+					is_super_admin: false,
+					require_password_change: true,
+					temp_password: tempPassword,
 				});
 
-			if (authError) throw new Error(authError.message);
-			userId = authUser.user.id;
-
-			await supabaseAdmin.from('users').insert({
-				id: userId,
-				email: data.email,
-				full_name: data.fullName,
-				is_super_admin: false,
-			});
+				if (profileError) {
+					await supabaseAdmin.auth.admin.deleteUser(userId);
+					throw profileError;
+				}
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : 'Erro ao criar usuário no Auth';
+				throw new Error(message);
+			}
 		}
 
 		// 2. Garantir vínculo global na empresa
@@ -107,8 +138,9 @@ export async function saveInstanceUserAction(instanceId: string, data: {
 		if (assignError) throw new Error(assignError.message);
 
 		return { success: true };
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : 'Erro ao salvar usuário na instância';
 		console.error('Error saving instance user:', error);
-		return { success: false, error: error.message };
+		return { success: false, error: message };
 	}
 }

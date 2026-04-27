@@ -139,42 +139,76 @@ export async function listCompanyUsersAction(companyId: string): Promise<Company
 /** Cria um novo admin para a empresa (cria o auth user + perfil + vínculo) */
 export async function createCompanyAdminAction(companyId: string, email: string) {
 	const tempPassword = generateTempPassword();
+	let userId: string | null = null;
 
-	// 1. Criar usuário no Auth
-	const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-		email,
-		password: tempPassword,
-		email_confirm: true,
-	});
-
-	if (authError) throw new Error(authError.message);
-
-	const userId = authData.user.id;
-
-	// 2. Criar perfil na tabela users
-	const { error: profileError } = await supabaseAdmin
-		.from('users')
-		.upsert({
-			id: userId,
+	try {
+		// 1. Criar usuário no Auth
+		const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
 			email,
-			full_name: '',
-			temp_password: tempPassword,
-			require_password_change: true,
+			password: tempPassword,
+			email_confirm: true,
+			user_metadata: {
+				require_password_change: true,
+				temp_password: tempPassword,
+			},
 		});
 
-	if (profileError) throw new Error(profileError.message);
+		if (authError) {
+			// Se o e-mail já existe, verificamos se é um usuário órfão (sem perfil ou sem vínculos)
+			if (authError.message.toLowerCase().includes('already been registered')) {
+				const { data: { users: allUsers } } = await supabaseAdmin.auth.admin.listUsers();
+				const existingAuthUser = allUsers.find(u => u.email === email);
 
-	// 3. Vincular à empresa via company_users
-	const { error: linkError } = await supabaseAdmin
-		.from('company_users')
-		.insert({
-			company_id: companyId,
-			user_id: userId,
-			is_company_admin: true,
-			status: 'ACTIVE',
-		});
+				if (existingAuthUser) {
+					// Verificar se ele tem perfil em public.users ou vínculos em company_users
+					const { data: profile } = await supabaseAdmin.from('users').select('id').eq('id', existingAuthUser.id).maybeSingle();
+					const { data: links } = await supabaseAdmin.from('company_users').select('id').eq('user_id', existingAuthUser.id).limit(1);
 
-	if (linkError) throw new Error(linkError.message);
+					if (!profile && (!links || links.length === 0)) {
+						// É um órfão! Removemos para tentar novamente de forma limpa
+						await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id);
+						// Tentamos criar novamente após a limpeza
+						return createCompanyAdminAction(companyId, email);
+					}
+				}
+			}
+			throw new Error(authError.message);
+		}
 
-	return { email, tempPassword };
+		userId = authData.user.id;
+
+		// 2. Criar perfil na tabela users
+		const { error: profileError } = await supabaseAdmin
+			.from('users')
+			.upsert({
+				id: userId,
+				email,
+				full_name: '',
+				temp_password: tempPassword,
+				require_password_change: true,
+			});
+
+		if (profileError) throw profileError;
+
+		// 3. Vincular à empresa via company_users
+		const { error: linkError } = await supabaseAdmin
+			.from('company_users')
+			.insert({
+				company_id: companyId,
+				user_id: userId,
+				is_company_admin: true,
+				status: 'ACTIVE',
+			});
+
+		if (linkError) throw linkError;
+
+		return { email, tempPassword };
+	} catch (err: unknown) {
+		// Rollback: Se criamos no Auth mas algo falhou depois, removemos para não deixar órfão
+		if (userId) {
+			await supabaseAdmin.auth.admin.deleteUser(userId);
+		}
+		const message = err instanceof Error ? err.message : 'Erro desconhecido ao criar administrador';
+		throw new Error(message);
+	}
 }

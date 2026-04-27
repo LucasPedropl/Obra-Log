@@ -33,7 +33,7 @@ export function useRentedEquipments(siteId: string) {
 
 			if (error) throw error;
 			setEquipments(data || []);
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error('Unexpected error:', err);
 		} finally {
 			setIsLoading(false);
@@ -125,9 +125,10 @@ export function useRentedEquipments(siteId: string) {
 
 			fetchEquipments();
 			return { success: true };
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : 'Erro ao registrar equipamento alugado';
 			console.error('Erro ao registrar equipamento alugado:', error);
-			return { success: false, error: error.message };
+			return { success: false, error: message };
 		}
 	};
 

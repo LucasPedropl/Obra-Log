@@ -4,9 +4,14 @@ import { createClient } from '@/config/supabase';
 import { X, Upload, Loader2 } from 'lucide-react';
 import { RentedEquipment } from '../hooks/useRentedEquipments';
 
+interface SimpleUser {
+	id: string;
+	email?: string;
+}
+
 interface ReturnRentedFormProps {
 	siteId: string;
-	equipment: any; // Relaxed type bound for ReturnRentedForm
+	equipment: RentedEquipment;
 	onCancel: () => void;
 	onSaved: () => void;
 }
@@ -18,10 +23,10 @@ export function ReturnRentedForm({
 	onSaved,
 }: ReturnRentedFormProps) {
 	const supabase = createClient();
-	const [user, setUser] = useState<any>(null);
+	const [user, setUser] = useState<SimpleUser | null>(null);
 	useEffect(() => {
 		supabase.auth.getUser().then(({ data }) => {
-			if (data?.user) setUser(data.user);
+			if (data?.user) setUser(data.user as unknown as SimpleUser);
 		});
 	}, [supabase]);
 	const [exitDate, setExitDate] = useState('');
@@ -47,7 +52,7 @@ export function ReturnRentedForm({
 					status: 'RETURNED',
 					exit_date: new Date(exitDate).toISOString(),
 					description: observations
-						? `\${equipment.description || ''}\n[Devolução]: \${observations}`
+						? `${equipment.description || ''}\n[Devolução]: ${observations}`
 						: equipment.description,
 				})
 				.eq('id', equipment.id);
@@ -86,9 +91,10 @@ export function ReturnRentedForm({
 			}
 
 			onSaved();
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao registrar devolução';
 			console.error(err);
-			setError(err.message || 'Erro ao registrar devolução.');
+			setError(message);
 		} finally {
 			setIsSubmitting(false);
 		}

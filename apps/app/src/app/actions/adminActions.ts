@@ -25,6 +25,19 @@ export async function getConstructionSitesAdmin(company_id: string) {
 	return data;
 }
 
+interface RawCompanyUser {
+	id: string;
+	status: string;
+	users: {
+		full_name: string | null;
+		email: string;
+		last_login: string | null;
+	} | null;
+	access_profiles: {
+		name: string;
+	} | null;
+}
+
 export async function ensureAdminProfileAndFetchUsers(companyId: string) {
 	try {
 		if (!companyId) return [];
@@ -77,7 +90,7 @@ export async function ensureAdminProfileAndFetchUsers(companyId: string) {
 			return [];
 		}
 
-		return companyUsers.map((cu: any) => ({
+		return (companyUsers as unknown as RawCompanyUser[]).map((cu) => ({
 			id: cu.id,
 			status: cu.status,
 			full_name: cu.users?.full_name || '',
@@ -85,7 +98,7 @@ export async function ensureAdminProfileAndFetchUsers(companyId: string) {
 			last_login: cu.users?.last_login || null,
 			profile: cu.access_profiles,
 		}));
-	} catch (error) {
+	} catch (error: unknown) {
 		console.error('Error fetching users:', error);
 		return [];
 	}
@@ -220,13 +233,13 @@ export async function deleteSupplyItemAdmin(id: string, company_id: string) {
 	return true;
 }
 
-export async function importCategoriesAdmin(data: any[]) {
+export async function importCategoriesAdmin(data: Record<string, unknown>[]) {
 	const { error } = await supabaseAdmin.from('categories').insert(data);
 	if (error) throw error;
 	return true;
 }
 
-export async function importUnitsAdmin(data: any[]) {
+export async function importUnitsAdmin(data: Record<string, unknown>[]) {
 	const { error } = await supabaseAdmin
 		.from('measurement_units')
 		.insert(data);
@@ -234,13 +247,13 @@ export async function importUnitsAdmin(data: any[]) {
 	return true;
 }
 
-export async function importCollaboratorsAdmin(data: any[]) {
+export async function importCollaboratorsAdmin(data: Record<string, unknown>[]) {
 	const { error } = await supabaseAdmin.from('collaborators').insert(data);
 	if (error) throw error;
 	return true;
 }
 
-export async function importCatalogsAdmin(data: any[]) {
+export async function importCatalogsAdmin(data: Record<string, unknown>[]) {
 	const { error } = await supabaseAdmin.from('catalogs').insert(data);
 	if (error) throw error;
 	return true;
@@ -290,6 +303,11 @@ export async function getSiteInventoryAdmin(siteId: string) {
 	return data || [];
 }
 
+interface RawInventoryResultAdmin {
+	id: string;
+	catalog_id: string;
+}
+
 export async function addInventoryItemsAdmin(
 	siteId: string,
 	items: Array<{
@@ -315,10 +333,10 @@ export async function addInventoryItemsAdmin(
 
 	if (inventoryError) throw inventoryError;
 
-	const epiData: any[] = [];
-	const toolData: any[] = [];
+	const epiData: { site_id: string; inventory_id: string }[] = [];
+	const toolData: { site_id: string; inventory_id: string }[] = [];
 
-	(inventoryResults || []).forEach((invRow: any) => {
+	(inventoryResults as unknown as RawInventoryResultAdmin[] || []).forEach((invRow) => {
 		const originalItem = items.find(
 			(i) => i.catalogId === invRow.catalog_id,
 		);
@@ -340,7 +358,7 @@ export async function addInventoryItemsAdmin(
 			);
 
 		const existingEpiIds = new Set(
-			existingEpis?.map((e) => e.inventory_id) || [],
+			existingEpis?.map((e: any) => e.inventory_id) || [],
 		);
 		const newEpis = epiData.filter(
 			(e) => !existingEpiIds.has(e.inventory_id),
@@ -365,7 +383,7 @@ export async function addInventoryItemsAdmin(
 			);
 
 		const existingToolIds = new Set(
-			existingTools?.map((t) => t.inventory_id) || [],
+			existingTools?.map((t: any) => t.inventory_id) || [],
 		);
 		const newTools = toolData.filter(
 			(t) => !existingToolIds.has(t.inventory_id),
@@ -423,6 +441,21 @@ export async function addSiteEpisAdmin(siteId: string, inventoryIds: string[]) {
 	return true;
 }
 
+interface RawToolItemAdmin {
+	id: string;
+	inventory_id: string;
+	site_inventory: {
+		quantity: number;
+		catalogs: {
+			name: string;
+			code: string | null;
+			categories: {
+				primary_category: string;
+			} | null;
+		} | null;
+	} | null;
+}
+
 export async function getToolItemsAdmin(siteId: string) {
 	const { data: toolsData, error: toolsError } = await supabaseAdmin
 		.from('site_tools')
@@ -439,12 +472,12 @@ export async function getToolItemsAdmin(siteId: string) {
 		.eq('status', 'OPEN');
 	if (loansError) throw loansError;
 
-	const loansByInventory = (loansData || []).reduce((acc: any, loan) => {
+	const loansByInventory = (loansData || []).reduce((acc: Record<string, number>, loan: any) => {
 		acc[loan.inventory_id] = (acc[loan.inventory_id] || 0) + loan.quantity;
 		return acc;
 	}, {});
 
-	return (toolsData || []).map((t: any) => {
+	return (toolsData as unknown as RawToolItemAdmin[] || []).map((t) => {
 		const totalQty = t.site_inventory?.quantity || 0;
 		const loanedQty = loansByInventory[t.inventory_id] || 0;
 		const catalog = t.site_inventory?.catalogs;
@@ -461,6 +494,23 @@ export async function getToolItemsAdmin(siteId: string) {
 	});
 }
 
+interface RawEpiItemAdmin {
+	id: string;
+	inventory_id: string;
+	site_inventory: {
+		catalog_id: string;
+		quantity: number;
+		min_threshold: number;
+		catalogs: {
+			name: string;
+			code: string | null;
+			categories: {
+				primary_category: string;
+			} | null;
+		} | null;
+	} | null;
+}
+
 export async function getEPIItemsAdmin(siteId: string) {
 	const { data: episData, error: episError } = await supabaseAdmin
 		.from('site_epis')
@@ -470,7 +520,7 @@ export async function getEPIItemsAdmin(siteId: string) {
 		.eq('site_id', siteId);
 	if (episError) throw episError;
 
-	return (episData || []).map((t: any) => {
+	return (episData as unknown as RawEpiItemAdmin[] || []).map((t) => {
 		const totalQty = t.site_inventory?.quantity || 0;
 		const catalog = t.site_inventory?.catalogs;
 

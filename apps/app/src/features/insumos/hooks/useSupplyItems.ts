@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { getActiveCompanyId } from '@/lib/utils';
-import { z } from 'zod';
 import { createClient } from '@/config/supabase';
+import { getActiveCompanyId } from '@/lib/utils';
+import { useState } from 'react';
+import { z } from 'zod';
 
 export const supplyItemSchema = z.object({
 	name: z.string().min(1, 'O nome do insumo é obrigatório'),
@@ -23,13 +23,19 @@ export function useSupplyItems() {
 	const createCategory = async (name: string) => {
 		const companyId = getActiveCompanyId();
 		if (!companyId) throw new Error('Empresa não selecionada.');
-		
+
 		const { data, error } = await supabase
 			.from('categories')
-			.insert([{ company_id: companyId, primary_category: name, entry_type: 'PRODUTO' }])
+			.insert([
+				{
+					company_id: companyId,
+					primary_category: name,
+					entry_type: 'PRODUTO',
+				},
+			])
 			.select('id')
 			.single();
-			
+
 		if (error) throw error;
 		return data.id;
 	};
@@ -37,13 +43,13 @@ export function useSupplyItems() {
 	const createUnit = async (name: string, abbreviation: string) => {
 		const companyId = getActiveCompanyId();
 		if (!companyId) throw new Error('Empresa não selecionada.');
-		
+
 		const { data, error } = await supabase
 			.from('measurement_units')
 			.insert([{ company_id: companyId, name, abbreviation }])
 			.select('id')
 			.single();
-			
+
 		if (error) throw error;
 		return data.id;
 	};
@@ -52,13 +58,13 @@ export function useSupplyItems() {
 		try {
 			const companyId = getActiveCompanyId();
 			if (!companyId) return [];
-			
+
 			const { data, error } = await supabase
 				.from('categories')
 				.select('*')
 				.eq('company_id', companyId)
 				.order('primary_category', { ascending: true });
-				
+
 			if (error) throw error;
 			return data || [];
 		} catch (err) {
@@ -71,13 +77,13 @@ export function useSupplyItems() {
 		try {
 			const companyId = getActiveCompanyId();
 			if (!companyId) return [];
-			
+
 			const { data, error } = await supabase
 				.from('measurement_units')
 				.select('*')
 				.eq('company_id', companyId)
 				.order('name', { ascending: true });
-				
+
 			if (error) throw error;
 			return data || [];
 		} catch (err) {
@@ -96,21 +102,24 @@ export function useSupplyItems() {
 
 			const { error: insertError } = await supabase
 				.from('catalogs')
-				.insert([{
-					company_id: companyId,
-					name: data.name,
-					category_id: data.category_id,
-					unit_id: data.unit_id,
-					min_threshold: data.min_threshold,
-					is_stock_controlled: data.is_stock_controlled,
-				}]);
+				.insert([
+					{
+						company_id: companyId,
+						name: data.name,
+						category_id: data.category_id,
+						unit_id: data.unit_id,
+						min_threshold: data.min_threshold,
+						is_stock_controlled: data.is_stock_controlled,
+					},
+				]);
 
 			if (insertError) throw insertError;
 
 			return true;
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao cadastrar o insumo';
 			console.error('Error creating supply item:', err);
-			setError(err.message || 'Erro ao cadastrar o insumo');
+			setError(message);
 			return false;
 		} finally {
 			setIsLoading(false);
@@ -133,9 +142,10 @@ export function useSupplyItems() {
 
 			if (fetchError) throw fetchError;
 			return data || [];
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao buscar os insumos';
 			console.error('Error fetching supply items:', err);
-			setError(err.message || 'Erro ao buscar os insumos');
+			setError(message);
 			return [];
 		} finally {
 			setIsLoading(false);
@@ -154,12 +164,13 @@ export function useSupplyItems() {
 				.delete()
 				.eq('id', id)
 				.eq('company_id', companyId);
-				
+
 			if (deleteError) throw deleteError;
 			return true;
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao excluir o insumo';
 			console.error('Error deleting supply item:', err);
-			setError(err.message || 'Erro ao excluir o insumo');
+			setError(message);
 			return false;
 		} finally {
 			setIsLoading(false);

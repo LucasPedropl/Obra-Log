@@ -14,6 +14,12 @@ interface GiveEPIFormProps {
 	availableQuantity: number;
 }
 
+interface SimpleCollaborator {
+	id: string;
+	name: string;
+	role?: string;
+}
+
 export function GiveEPIForm({
 	onCancel,
 	onSaved,
@@ -24,14 +30,14 @@ export function GiveEPIForm({
 	availableQuantity,
 }: GiveEPIFormProps) {
 	const { fetchCollaborators } = useCollaborators();
-	const [collaborators, setCollaborators] = useState<any[]>([]);
+	const [collaborators, setCollaborators] = useState<SimpleCollaborator[]>([]);
 	const [loadingCollabs, setLoadingCollabs] = useState(true);
 
 	useEffect(() => {
 		const load = async () => {
 			setLoadingCollabs(true);
 			const data = await fetchCollaborators();
-			setCollaborators(data);
+			setCollaborators(data as unknown as SimpleCollaborator[]);
 			setLoadingCollabs(false);
 		};
 		load();
@@ -104,9 +110,10 @@ export function GiveEPIForm({
 			if (updateError) throw updateError;
 
 			onSaved();
-		} catch (err: any) {
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao realizar a entrega de EPI';
 			console.error('Error giving EPI:', err);
-			setError(err.message);
+			setError(message);
 		} finally {
 			setIsSaving(false);
 		}

@@ -232,6 +232,8 @@ CREATE TABLE public.users (
   full_name character varying NOT NULL,
   is_super_admin boolean DEFAULT false,
   last_login timestamp with time zone,
+  temp_password text,
+  require_password_change boolean DEFAULT false,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );

@@ -18,35 +18,65 @@ export async function saveGlobalUserAction(
 		if (!companyId) return { success: false, error: 'Empresa não selecionada' };
 
 		let userId = data.id;
+		let generatedPassword: string | null = null;
 
 		// 1. Create or Update Auth User
 		if (!userId) {
-			const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
-			const { data: authUser, error: authError } =
-				await supabaseAdmin.auth.admin.createUser({
+			try {
+				const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
+				generatedPassword = tempPassword;
+				const { data: authUser, error: authError } =
+					await supabaseAdmin.auth.admin.createUser({
+						email: data.email,
+						password: tempPassword,
+						email_confirm: true,
+						user_metadata: {
+							require_password_change: true,
+							full_name: data.fullName,
+							temp_password: tempPassword,
+						},
+					});
+
+				if (authError) {
+					// Detectar órfão
+					if (authError.message.toLowerCase().includes('already been registered')) {
+						const { data: { users: allUsers } } = await supabaseAdmin.auth.admin.listUsers();
+						const existingAuthUser = allUsers.find(u => u.email === data.email);
+
+						if (existingAuthUser) {
+							const { data: profile } = await supabaseAdmin.from('users').select('id').eq('id', existingAuthUser.id).maybeSingle();
+							const { data: links } = await supabaseAdmin.from('company_users').select('id').eq('user_id', existingAuthUser.id).limit(1);
+
+							if (!profile && (!links || links.length === 0)) {
+								await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id);
+								return saveGlobalUserAction(data); // Tentar novamente
+							}
+						}
+					}
+					throw new Error(authError.message);
+				}
+
+				userId = authUser.user.id;
+
+				// Garante a tabela publica de usuários
+				const { error: profileError } = await supabaseAdmin.from('users').upsert({
+					id: userId,
 					email: data.email,
-					password: tempPassword,
-					email_confirm: true,
-					user_metadata: {
-						require_password_change: true,
-						full_name: data.fullName,
-						temp_password: tempPassword,
-					},
+					full_name: data.fullName,
+					is_super_admin: false,
+					require_password_change: true,
+					temp_password: tempPassword,
 				});
 
-			if (authError) {
-				throw new Error(authError.message);
+				if (profileError) {
+					// Rollback Auth user on profile failure
+					await supabaseAdmin.auth.admin.deleteUser(userId);
+					throw profileError;
+				}
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : 'Erro ao criar usuário no Auth';
+				throw new Error(message);
 			}
-
-			userId = authUser.user.id;
-
-			// Garante a tabela publica de usuários
-			await supabaseAdmin.from('users').upsert({
-				id: userId,
-				email: data.email,
-				full_name: data.fullName,
-				is_super_admin: false, // Só o painel Super Admin pode criar super admins
-			});
 		} else {
 			// Atualizando apenas o que for permitido localmente
 			await supabaseAdmin
@@ -102,14 +132,28 @@ export async function saveGlobalUserAction(
 			if (assignError) throw new Error(assignError.message);
 		}
 
-		return { success: true, userId };
-	} catch (error: any) {
+		return { success: true, userId, tempPassword: generatedPassword };
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : 'Ocorreu um erro desconhecido.';
 		console.error('Error saving global user:', error);
 		return {
 			success: false,
-			error: error.message || 'Ocorreu um erro desconhecido.',
+			error: message,
 		};
 	}
+}
+
+interface RawInstanceUserData {
+	user_id: string;
+	instance_id: string;
+	profile_id: string;
+	construction_sites: {
+		company_id: string;
+		name: string;
+	} | null;
+	access_profiles: {
+		name: string;
+	} | null;
 }
 
 export async function getGlobalUsersAction() {
@@ -137,7 +181,7 @@ export async function getGlobalUsersAction() {
 		// Busca instâncias e perfis para montar a resposta
 		const userIds = companyUsers?.map(cu => cu.user_id) || [];
 		
-		let instanceUsersData: any[] = [];
+		let instanceUsersData: RawInstanceUserData[] = [];
 		if (userIds.length > 0) {
 			const { data: iuData } = await supabaseAdmin
 				.from('instance_users')
@@ -150,12 +194,12 @@ export async function getGlobalUsersAction() {
 				`)
 				.in('user_id', userIds)
 				.eq('construction_sites.company_id', companyId);
-			instanceUsersData = iuData || [];
+			instanceUsersData = (iuData as unknown as RawInstanceUserData[]) || [];
 		}
 
 		// Mapear tudo para um formato limpo para a UI
-		const formattedUsers = companyUsers?.map(cu => {
-			const user = Array.isArray(cu.users) ? cu.users[0] : cu.users;
+		const formattedUsers = (companyUsers || []).map(cu => {
+			const user: any = Array.isArray(cu.users) ? cu.users[0] : cu.users;
 			const assignments = instanceUsersData.filter(iu => iu.user_id === cu.user_id).map(iu => ({
 				instanceId: iu.instance_id,
 				instanceName: iu.construction_sites?.name || 'Obra',
@@ -174,9 +218,10 @@ export async function getGlobalUsersAction() {
 		}).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
 		return { success: true, users: formattedUsers };
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : 'Erro ao buscar usuários';
 		console.error('Error fetching global users:', error);
-		return { success: false, error: error.message };
+		return { success: false, error: message };
 	}
 }
 

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { GoogleLoginButton } from './GoogleLoginButton';
-import { SetupProfileModal } from './SetupProfileModal';
+import { Eye, EyeOff } from 'lucide-react';
 
 import { useRouter } from 'next/navigation';
 
@@ -17,8 +17,7 @@ import { createClient } from '@/config/supabase';
 export function LoginForm() {
 	const router = useRouter();
 	const supabase = createClient();
-	const [requireSetup, setRequireSetup] = useState(false);
-	const [authUser, setAuthUser] = useState<any>(null);
+	const [showPassword, setShowPassword] = useState(false);
 
 	const {
 		register,
@@ -31,46 +30,35 @@ export function LoginForm() {
 
 	const onSubmit = async (data: LoginFormData) => {
 		try {
-			const { data: authData, error } =
-				await supabase.auth.signInWithPassword({
-					email: data.email,
-					password: data.password,
-				});
+			const { error } = await supabase.auth.signInWithPassword({
+				email: data.email,
+				password: data.password,
+			});
 
 			if (error) {
 				throw error;
 			}
 
-			if (authData.user?.user_metadata?.require_password_change) {
-				setAuthUser(authData.user);
-				setRequireSetup(true);
-				return;
-			}
-
-			// Login redireciona para a seleção de instância/filial (Netflix Style)
+			// Redireciona para a seleção de instância. 
+			// Se precisar mudar senha, a página de destino cuidará disso de forma persistente.
 			router.push('/selecionar-instancia');
-			router.refresh(); // Força o layout a atualizar
-		} catch (error: any) {
-			console.error('Erro de login:', error.message);
-			setError('root', {
-				message: 'E-mail ou senha incorretos. Tente novamente!',
-			});
+			router.refresh();
+		} catch (error: unknown) {
+			console.error('Login error:', error);
+			let message = 'E-mail ou senha incorretos. Tente novamente!';
+			
+			if (error instanceof Error) {
+				message = error.message;
+			} else if (error && typeof error === 'object' && 'message' in error) {
+				message = String((error as any).message);
+			}
+			
+			setError('root', { message });
 		}
 	};
 
 	return (
 		<div className="w-full max-w-md space-y-8">
-			{requireSetup && authUser && (
-				<SetupProfileModal
-					user={authUser}
-					onComplete={() => {
-						setRequireSetup(false);
-						router.push('/selecionar-instancia');
-						router.refresh();
-					}}
-				/>
-			)}
-
 			<div className="text-center sm:text-left">
 				<h2 className="text-3xl font-bold tracking-tight text-gray-900">
 					Bem-vindo(a) de volta!
@@ -99,12 +87,26 @@ export function LoginForm() {
 
 					<div className="space-y-2">
 						<Label htmlFor="password">Senha</Label>
-						<Input
-							id="password"
-							type="password"
-							placeholder="••••••••"
-							{...register('password')}
-						/>
+						<div className="relative">
+							<Input
+								id="password"
+								type={showPassword ? 'text' : 'password'}
+								placeholder="••••••••"
+								className="pr-10"
+								{...register('password')}
+							/>
+							<button
+								type="button"
+								onClick={() => setShowPassword(!showPassword)}
+								className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+							>
+								{showPassword ? (
+									<EyeOff className="h-4 w-4" />
+								) : (
+									<Eye className="h-4 w-4" />
+								)}
+							</button>
+						</div>
 						{errors.password && (
 							<p className="text-sm text-red-500">
 								{errors.password.message}

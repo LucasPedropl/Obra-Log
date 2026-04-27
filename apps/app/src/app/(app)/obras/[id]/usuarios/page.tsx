@@ -14,13 +14,28 @@ import { getAllProfilesAction } from '@/app/actions/globalUsers';
 import { getActiveCompanyId } from '@/lib/utils';
 import { useToast } from '@/components/ui/toaster';
 
+interface SimpleProfile {
+	id: string;
+	name: string;
+}
+
+interface InstanceUser {
+	instanceUserId: string;
+	full_name: string;
+	email: string;
+	status: string;
+	profile?: {
+		name: string;
+	};
+}
+
 export default function InstanceUsuariosPage({ params }: { params: Promise<{ id: string }> }) {
 	const resolvedParams = use(params);
 	const siteId = resolvedParams.id;
 	const { addToast } = useToast();
 
-	const [usuarios, setUsuarios] = useState<any[]>([]);
-	const [profiles, setProfiles] = useState<any[]>([]);
+	const [usuarios, setUsuarios] = useState<InstanceUser[]>([]);
+	const [profiles, setProfiles] = useState<SimpleProfile[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	
 	const [currentPage, setCurrentPage] = useState(1);
@@ -47,9 +62,9 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 				getInstanceUsersAction(siteId),
 				getAllProfilesAction()
 			]);
-			if (usersRes.success) setUsuarios(usersRes.users || []);
-			if (profRes.success) setProfiles(profRes.profiles || []);
-		} catch (error) {
+			if (usersRes.success) setUsuarios((usersRes.users as unknown as InstanceUser[]) || []);
+			if (profRes.success) setProfiles((profRes.profiles as unknown as SimpleProfile[]) || []);
+		} catch (error: unknown) {
 			console.error(error);
 		} finally {
 			setIsLoading(false);
@@ -96,8 +111,9 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 			} else {
 				addToast(res.error || 'Erro ao salvar', 'error');
 			}
-		} catch (err: any) {
-			addToast(err.message, 'error');
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro ao vincular usuário';
+			addToast(message, 'error');
 		} finally {
 			setIsSaving(false);
 		}
