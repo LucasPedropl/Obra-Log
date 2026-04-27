@@ -41,27 +41,33 @@ export async function middleware(request: NextRequest) {
 	// o token ainda pode ser válido mas o usuário não existe mais no nosso esquema.
 	let userExistsInDb = false;
 	if (user) {
-		const { data: dbUser } = await supabase
-			.from('users')
-			.select('id')
-			.eq('id', user.id)
-			.maybeSingle();
-		userExistsInDb = !!dbUser;
+		try {
+			const { data: dbUser, error: dbError } = await supabase
+				.from('users')
+				.select('id')
+				.eq('id', user.id)
+				.maybeSingle();
+			
+			// Se houver erro de tabela inexistente ou o usuário for nulo, consideramos que não existe
+			userExistsInDb = !!dbUser && !dbError;
+		} catch (err) {
+			userExistsInDb = false;
+		}
 	}
 
-	const isAuthRoute = request.nextUrl.pathname.startsWith('/auth');
-	const isLoginRoute = request.nextUrl.pathname === '/auth/login';
-	const isSelectInstanceRoute =
-		request.nextUrl.pathname === '/selecionar-instancia';
-	const isAdminRoute = request.nextUrl.pathname.startsWith('/admin');
+	const pathname = request.nextUrl.pathname;
+	const isAuthRoute = pathname.startsWith('/auth');
+	const isLoginRoute = pathname === '/auth/login';
+	const isSelectInstanceRoute = pathname === '/selecionar-instancia';
+	const isAdminRoute = pathname.startsWith('/admin');
+	const isPublicApi = pathname.startsWith('/api/public') || pathname.startsWith('/api/webhooks');
 
 	const selectedCompanyId = request.cookies.get('selectedCompanyId')?.value;
 
-	// Permitir o Next carregar scripts internos e API publico
+	// Permitir o Next carregar scripts internos e assets
 	if (
-		request.nextUrl.pathname.startsWith('/api') ||
-		request.nextUrl.pathname.startsWith('/_next') ||
-		request.nextUrl.pathname.includes('.')
+		pathname.startsWith('/_next') ||
+		pathname.includes('.')
 	) {
 		return supabaseResponse;
 	}
@@ -72,25 +78,26 @@ export async function middleware(request: NextRequest) {
 		await supabase.auth.signOut();
 		const url = request.nextUrl.clone();
 		url.pathname = '/auth/login';
-		// Limpar o cookie de empresa também por segurança
+		
 		const response = NextResponse.redirect(url);
+		
+		// Limpar cookies de sessão e empresa por segurança
 		response.cookies.delete('selectedCompanyId');
+		response.cookies.delete('parentCompanyId');
+		
+		// Tentar remover cookies do Supabase Auth para garantir limpeza total no browser
+		const cookiesToClear = request.cookies.getAll();
+		cookiesToClear.forEach(cookie => {
+			if (cookie.name.includes('auth-token') || cookie.name.includes('supabase-auth')) {
+				response.cookies.delete(cookie.name);
+			}
+		});
+
 		return response;
 	}
 
-	// Permite que pule a rota de instâncias
-	if (request.nextUrl.pathname === '/selecionar-instancia') {
-		if (!user || !userExistsInDb) {
-			const url = request.nextUrl.clone();
-			url.pathname = '/auth/login';
-			return NextResponse.redirect(url);
-		}
-		// Se estiver logado, ele simplesmente cai no return supabaseResponse do final.
-		return supabaseResponse;
-	}
-
-	// Situação 1: O usuário NÃO está logado mas tentando acessar o sistema fechado (raíz)
-	if ((!user || !userExistsInDb) && !isAuthRoute && !isSelectInstanceRoute && !isAdminRoute) {
+	// Situação 1: O usuário NÃO está logado mas tentando acessar o sistema fechado
+	if ((!user || !userExistsInDb) && !isAuthRoute && !isPublicApi) {
 		const url = request.nextUrl.clone();
 		url.pathname = '/auth/login';
 		return NextResponse.redirect(url);
@@ -103,7 +110,8 @@ export async function middleware(request: NextRequest) {
 		!selectedCompanyId &&
 		!isSelectInstanceRoute &&
 		!isLoginRoute &&
-		!isAdminRoute
+		!isAdminRoute &&
+		!isPublicApi
 	) {
 		const url = request.nextUrl.clone();
 		url.pathname = '/selecionar-instancia';
@@ -112,16 +120,12 @@ export async function middleware(request: NextRequest) {
 
 	// Situação 3: O usuário JÁ está logado mas tentando acessar a tela de Login novamente
 	if (user && userExistsInDb && isLoginRoute) {
-		if (selectedCompanyId) {
-			const url = request.nextUrl.clone();
-			url.pathname = '/obras';
-			return NextResponse.redirect(url);
-		} else {
-			const url = request.nextUrl.clone();
-			url.pathname = '/selecionar-instancia';
-			return NextResponse.redirect(url);
-		}
+		const url = request.nextUrl.clone();
+		url.pathname = selectedCompanyId ? '/obras' : '/selecionar-instancia';
+		return NextResponse.redirect(url);
 	}
+
+	return supabaseResponse;
 
 	return supabaseResponse;
 }

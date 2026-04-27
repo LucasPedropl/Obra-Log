@@ -2,7 +2,7 @@ import {
 	createConstructionSiteAdmin,
 	getConstructionSitesAdmin,
 } from '@/app/actions/adminActions';
-import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
+import { getActiveCompanyId } from '@/lib/utils';
 import { useState } from 'react';
 import { z } from 'zod';
 
@@ -20,7 +20,7 @@ export function useConstructionSites() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 
 			if (!companyId) {
 				throw new Error('Nenhuma empresa selecionada.');
@@ -46,7 +46,7 @@ export function useConstructionSites() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 
 			if (!companyId) {
 				throw new Error('Nenhuma empresa selecionada.');

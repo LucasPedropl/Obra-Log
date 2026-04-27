@@ -71,6 +71,15 @@ export function PermissionsProvider({
 						: Promise.resolve({ data: null }),
 				]);
 
+				// DETECÇÃO DE USUÁRIO FANTASMA (Auth OK, mas DB resetado)
+				// Se o usuário não existe na tabela pública, deslogamos ele
+				if (!userRes.data && !userRes.error) {
+					console.warn('Usuário autenticado mas sem perfil no banco. Deslogando...');
+					await supabase.auth.signOut();
+					window.location.href = '/auth/login';
+					return;
+				}
+
 				const isSysSuper = userRes.data?.is_super_admin || false;
 				const isCompAdmin = companyUserRes.data?.is_company_admin || false;
 				
@@ -135,7 +144,13 @@ export function PermissionsProvider({
 
 			} catch (error) {
 				console.error('Error loading permissions:', error);
-				setPermissions({});
+				// Em caso de erro crítico (ex: tabela users não existe), deslogar por segurança
+				if (error && typeof error === 'object' && 'code' in error && error.code === 'PGRST116') {
+					await supabase.auth.signOut();
+					window.location.href = '/auth/login';
+				} else {
+					setPermissions({});
+				}
 			} finally {
 				setLoading(false);
 			}

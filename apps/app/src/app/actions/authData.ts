@@ -34,15 +34,15 @@ export async function getUserCompaniesAction(userId: string) {
 }
 
 /**
- * Verifica e retorna as instâncias (obras/filiais) atreladas à empresa.
+ * Verifica e retorna as instâncias (filiais/matriz) atreladas à empresa.
  * Bypassa o RLS usando supabaseAdmin.
  */
 export async function getCompanyInstancesAction(companyId: string) {
 	try {
 		const { data, error } = await supabaseAdmin
-			.from('construction_sites')
+			.from('companies')
 			.select('id, name')
-			.eq('company_id', companyId);
+			.or(`id.eq.${companyId},parent_id.eq.${companyId}`);
 
 		if (error) throw new Error(error.message);
 		
@@ -55,16 +55,16 @@ export async function getCompanyInstancesAction(companyId: string) {
 }
 
 /**
- * Cria de forma administrativa uma nova instância para a empresa do usuário logado.
+ * Cria de forma administrativa uma nova instância (filial) para a empresa do usuário logado.
  */
 export async function createCompanyInstanceAction(companyId: string, name: string) {
 	try {
 		const { data, error } = await supabaseAdmin
-			.from('construction_sites')
+			.from('companies')
 			.insert({
 				name,
-				company_id: companyId,
-				status: 'ACTIVE'
+				parent_id: companyId,
+				active: true
 			})
 			.select()
 			.single();
