@@ -14,6 +14,7 @@ interface SearchableSelectProps {
 	onCreate?: (inputValue: string) => void;
 	onManage?: () => void;
 	placeholder?: string;
+	disabled?: boolean;
 }
 
 export function SearchableSelect({
@@ -23,6 +24,7 @@ export function SearchableSelect({
 	onCreate,
 	onManage,
 	placeholder = 'Selecione...',
+	disabled = false,
 }: SearchableSelectProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [search, setSearch] = useState('');
@@ -50,8 +52,10 @@ export function SearchableSelect({
 	return (
 		<div className="relative" ref={containerRef}>
 			<div
-				className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground hover:bg-accent/30 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer transition-colors"
-				onClick={() => setIsOpen(!isOpen)}
+				className={`flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent/30 cursor-pointer'}`}
+				onClick={() => {
+					if (!disabled) setIsOpen(!isOpen);
+				}}
 			>
 				<span
 					className={`block truncate ${selectedOption ? '' : 'text-muted-foreground'}`}
@@ -61,7 +65,7 @@ export function SearchableSelect({
 				<ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
 			</div>
 
-			{isOpen && (
+			{isOpen && !disabled && (
 				<div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-lg outline-none animate-in fade-in-0 zoom-in-95">
 					<div className="flex items-center border-b border-border px-3 py-2 gap-2">
 						<Search className="h-4 w-4 opacity-50 shrink-0 text-gray-500" />
@@ -131,7 +135,7 @@ export function SearchableSelect({
 										}}
 									>
 										<Plus className="mr-2 h-4 w-4" />
-										Cadastrar "{search}"
+										Cadastrar &quot;{search}&quot;
 									</button>
 								)}
 							</div>

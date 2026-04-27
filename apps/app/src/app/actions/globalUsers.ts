@@ -121,29 +121,20 @@ export async function getGlobalUsersAction() {
 	}
 }
 export async function getAllCompaniesAction() {
-	const cookieStore = await cookies();
-	const companyId = cookieStore.get('selectedCompanyId')?.value;
-
-	if (!companyId) return { success: false, companies: [] };
-
 	const { data, error } = await supabaseAdmin
 		.from('companies')
 		.select('id, name')
-		.eq('id', companyId);
+		.order('name', { ascending: true });
 		
 	if (error) throw error;
 	return { success: true, companies: data };
 }
+
 export async function getAllProfilesAction() {
-	const cookieStore = await cookies();
-	const companyId = cookieStore.get('selectedCompanyId')?.value;
-
-	if (!companyId) return { success: false, profiles: [] };
-
 	const { data, error } = await supabaseAdmin
 		.from('access_profiles')
 		.select('id, name, company_id')
-		.eq('company_id', companyId);
+		.order('name', { ascending: true });
 		
 	if (error) throw error;
 	return { success: true, profiles: data };

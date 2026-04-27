@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
 	Mail,
 	Key,
@@ -455,89 +456,21 @@ export default function UsuariosPage() {
 														className="flex flex-col sm:flex-row gap-3 items-end sm:items-center bg-gray-50/80 p-3 rounded-xl border"
 													>
 														<div className="w-full flex-1">
-															<select
-																className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-																value={
-																	assignment.companyId
-																}
-																onChange={(e) =>
-																	handleAssignmentChange(
-																		assignment.id,
-																		'companyId',
-																		e.target
-																			.value,
-																	)
-																}
-															>
-																<option
-																	value=""
-																	disabled
-																>
-																	Selecione
-																	uma
-																	Filial...
-																</option>
-																{companies.map(
-																	(c) => (
-																		<option
-																			key={
-																				c.id
-																			}
-																			value={
-																				c.id
-																			}
-																		>
-																			{
-																				c.name
-																			}
-																		</option>
-																	),
-																)}
-															</select>
+															<SearchableSelect
+																options={companies.map(c => ({ value: c.id, label: c.name }))}
+																value={assignment.companyId}
+																onChange={(val) => handleAssignmentChange(assignment.id, 'companyId', val)}
+																placeholder="Selecione uma Filial..."
+															/>
 														</div>
 														<div className="w-full flex-1">
-															<select
-																className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-																value={
-																	assignment.profileId ||
-																	''
-																}
-																onChange={(e) =>
-																	handleAssignmentChange(
-																		assignment.id,
-																		'profileId',
-																		e.target
-																			.value,
-																	)
-																}
-																disabled={
-																	!assignment.companyId
-																}
-															>
-																<option
-																	value=""
-																	disabled
-																>
-																	Selecione o
-																	Perfil...
-																</option>
-																{filteredProfiles.map(
-																	(p) => (
-																		<option
-																			key={
-																				p.id
-																			}
-																			value={
-																				p.id
-																			}
-																		>
-																			{
-																				p.name
-																			}
-																		</option>
-																	),
-																)}
-															</select>
+															<SearchableSelect
+																options={filteredProfiles.map(p => ({ value: p.id, label: p.name }))}
+																value={assignment.profileId || ''}
+																onChange={(val) => handleAssignmentChange(assignment.id, 'profileId', val)}
+																placeholder="Selecione o Perfil..."
+																disabled={!assignment.companyId}
+															/>
 														</div>
 														<Button
 															variant="ghost"

@@ -6,7 +6,6 @@
 		"packages/*"
 	],
 	"scripts": {
-		"dev:erp": "npm run dev --workspace=@obralog/erp",
 		"dev:erp-next": "npm run dev --workspace=erp-next",
 		"dev:admin": "npm run dev --workspace=@obralog/admin",
 		"dev:api": "npm run dev --workspace=@obralog/api"
