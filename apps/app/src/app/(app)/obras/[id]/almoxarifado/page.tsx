@@ -5,7 +5,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { PackageOpen, Loader2, X } from 'lucide-react';
 import { TableSearch } from '@/components/shared/TableSearch';
 import { Pagination } from '@/components/shared/Pagination';
-import { DataTable } from '@/components/shared/DataTable';
+import { DataTable, DetailRow } from '@/components/shared/DataTable';
 import { AddInventoryForm } from '@/features/almoxarifado/components/AddInventoryForm';
 import { getSiteInventoryAdmin } from '@/app/actions/adminActions';
 
@@ -203,6 +203,16 @@ export default function AlmoxarifadoObraPage({
 											?.abbreviation || 'UN',
 								},
 							]}
+							detailsTitle="Detalhes do Item (Almoxarifado)"
+							renderDetails={(item) => (
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<DetailRow label="Insumo" value={item.catalogs?.name || '-'} className="sm:col-span-2" />
+									<DetailRow label="Categoria" value={item.catalogs?.category || '-'} />
+									<DetailRow label="Quantidade Disponível" value={item.quantity || 0} />
+									<DetailRow label="Unidade de Medida" value={item.catalogs?.measurement_units?.abbreviation || 'UN'} />
+									<DetailRow label="Estoque Mínimo" value={item.min_threshold || 0} />
+								</div>
+							)}
 							keyExtractor={(item) => item.id}
 						/>
 					</div>

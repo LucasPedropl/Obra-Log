@@ -1,10 +1,12 @@
 'use server';
 
 import { supabaseAdmin } from '@/config/supabaseAdmin';
+import { createServerSupabaseClient } from '@/config/supabaseServer';
 
 export async function getInstanceUsersAction(instanceId: string) {
+	const supabase = await createServerSupabaseClient();
 	try {
-		const { data, error } = await supabaseAdmin
+		const { data, error } = await supabase
 			.from('instance_users')
 			.select(`
 				id,
@@ -47,10 +49,11 @@ export async function saveInstanceUserAction(instanceId: string, data: {
 	profileId: string;
 	companyId: string;
 }) {
+	const supabase = await createServerSupabaseClient();
 	try {
 		// 1. Check if user exists or create
 		let userId;
-		const { data: existingUser } = await supabaseAdmin
+		const { data: existingUser } = await supabase
 			.from('users')
 			.select('id')
 			.eq('email', data.email)
@@ -59,7 +62,7 @@ export async function saveInstanceUserAction(instanceId: string, data: {
 		if (existingUser) {
 			userId = existingUser.id;
 			// Atualiza o nome se foi fornecido
-			await supabaseAdmin.from('users').update({ full_name: data.fullName }).eq('id', userId);
+			await supabase.from('users').update({ full_name: data.fullName }).eq('id', userId);
 		} else {
 			try {
 				const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
@@ -82,8 +85,8 @@ export async function saveInstanceUserAction(instanceId: string, data: {
 						const existingAuthUser = allUsers.find(u => u.email === data.email);
 
 						if (existingAuthUser) {
-							const { data: profile } = await supabaseAdmin.from('users').select('id').eq('id', existingAuthUser.id).maybeSingle();
-							const { data: links } = await supabaseAdmin.from('company_users').select('id').eq('user_id', existingAuthUser.id).limit(1);
+							const { data: profile } = await supabase.from('users').select('id').eq('id', existingAuthUser.id).maybeSingle();
+							const { data: links } = await supabase.from('company_users').select('id').eq('user_id', existingAuthUser.id).limit(1);
 
 							if (!profile && (!links || links.length === 0)) {
 								await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id);
@@ -96,7 +99,7 @@ export async function saveInstanceUserAction(instanceId: string, data: {
 
 				userId = authUser.user.id;
 
-				const { error: profileError } = await supabaseAdmin.from('users').insert({
+				const { error: profileError } = await supabase.from('users').insert({
 					id: userId,
 					email: data.email,
 					full_name: data.fullName,
@@ -116,7 +119,7 @@ export async function saveInstanceUserAction(instanceId: string, data: {
 		}
 
 		// 2. Garantir vínculo global na empresa
-		await supabaseAdmin
+		await supabase
 			.from('company_users')
 			.upsert({
 				company_id: data.companyId,
@@ -126,7 +129,7 @@ export async function saveInstanceUserAction(instanceId: string, data: {
 			}, { onConflict: 'user_id,company_id' });
 
 		// 3. Vincular na instância
-		const { error: assignError } = await supabaseAdmin
+		const { error: assignError } = await supabase
 			.from('instance_users')
 			.upsert({
 				user_id: userId,

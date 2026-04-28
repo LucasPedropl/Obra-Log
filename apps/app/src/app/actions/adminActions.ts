@@ -1,12 +1,14 @@
 'use server';
 
 import { supabaseAdmin } from '@/config/supabaseAdmin';
+import { createServerSupabaseClient } from '@/config/supabaseServer';
 
 export async function createConstructionSiteAdmin(data: {
 	name: string;
 	company_id: string;
 }) {
-	const { data: result, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data: result, error } = await supabase
 		.from('construction_sites')
 		.insert([data]);
 
@@ -15,7 +17,8 @@ export async function createConstructionSiteAdmin(data: {
 }
 
 export async function getConstructionSitesAdmin(company_id: string) {
-	const { data, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data, error } = await supabase
 		.from('construction_sites')
 		.select('*')
 		.eq('company_id', company_id)
@@ -23,6 +26,29 @@ export async function getConstructionSitesAdmin(company_id: string) {
 
 	if (error) throw error;
 	return data;
+}
+
+export async function getAccessProfilesAdmin(company_id: string) {
+	const supabase = await createServerSupabaseClient();
+	const { data, error } = await supabase
+		.from('access_profiles')
+		.select('*')
+		.eq('company_id', company_id)
+		.order('name', { ascending: true });
+	if (error) throw error;
+	return data;
+}
+
+export async function createAccessProfileAdmin(data: any) {
+	const supabase = await createServerSupabaseClient();
+	const { data: result, error } = await supabase
+		.from('access_profiles')
+		.insert([data])
+		.select()
+		.single();
+
+	if (error) throw error;
+	return result;
 }
 
 interface RawCompanyUser {
@@ -39,10 +65,11 @@ interface RawCompanyUser {
 }
 
 export async function ensureAdminProfileAndFetchUsers(companyId: string) {
+	const supabase = await createServerSupabaseClient();
 	try {
 		if (!companyId) return [];
 
-		const { data: adminProfile, error: profileErr } = await supabaseAdmin
+		const { data: adminProfile, error: profileErr } = await supabase
 			.from('access_profiles')
 			.select('id')
 			.eq('company_id', companyId)
@@ -52,7 +79,7 @@ export async function ensureAdminProfileAndFetchUsers(companyId: string) {
 		let profileId = adminProfile?.id;
 
 		if (!profileId) {
-			const { data: newProfile } = await supabaseAdmin
+			const { data: newProfile } = await supabase
 				.from('access_profiles')
 				.insert({
 					company_id: companyId,
@@ -66,14 +93,14 @@ export async function ensureAdminProfileAndFetchUsers(companyId: string) {
 		}
 
 		if (profileId) {
-			await supabaseAdmin
+			await supabase
 				.from('company_users')
 				.update({ profile_id: profileId, status: 'ACTIVE' })
 				.eq('company_id', companyId)
 				.is('profile_id', null);
 		}
 
-		const { data: companyUsers, error } = await supabaseAdmin
+		const { data: companyUsers, error } = await supabase
 			.from('company_users')
 			.select(
 				`
@@ -112,7 +139,8 @@ export async function createSupplyItemAdmin(data: {
 	is_stock_controlled: boolean;
 	company_id: string;
 }) {
-	const { data: result, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data: result, error } = await supabase
 		.from('catalogs')
 		.insert([data]);
 
@@ -120,10 +148,33 @@ export async function createSupplyItemAdmin(data: {
 	return result;
 }
 
-export async function getSupplyItemsAdmin(company_id: string) {
-	const { data, error } = await supabaseAdmin
+export async function updateSupplyItemAdmin(
+	id: string,
+	data: {
+		name: string;
+		category_id: string;
+		unit_id: string;
+		min_threshold: number;
+		is_stock_controlled: boolean;
+		company_id: string;
+	},
+) {
+	const supabase = await createServerSupabaseClient();
+	const { error } = await supabase
 		.from('catalogs')
-		.select('*, measurement_units(abbreviation)')
+		.update(data)
+		.eq('id', id)
+		.eq('company_id', data.company_id);
+
+	if (error) throw error;
+	return true;
+}
+
+export async function getSupplyItemsAdmin(company_id: string) {
+	const supabase = await createServerSupabaseClient();
+	const { data, error } = await supabase
+		.from('catalogs')
+		.select('*, categories(*), measurement_units(name, abbreviation)')
 		.eq('company_id', company_id)
 		.order('name', { ascending: true });
 
@@ -134,9 +185,11 @@ export async function getSupplyItemsAdmin(company_id: string) {
 export async function createCategoryAdmin(data: {
 	company_id: string;
 	primary_category: string;
+	secondary_category?: string | null;
 	entry_type: string;
 }) {
-	const { data: result, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data: result, error } = await supabase
 		.from('categories')
 		.insert([data])
 		.select('id')
@@ -151,7 +204,8 @@ export async function createUnitAdmin(data: {
 	name: string;
 	abbreviation: string;
 }) {
-	const { data: result, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data: result, error } = await supabase
 		.from('measurement_units')
 		.insert([data])
 		.select('id')
@@ -162,7 +216,8 @@ export async function createUnitAdmin(data: {
 }
 
 export async function getCategoriesAdmin(company_id: string) {
-	const { data, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data, error } = await supabase
 		.from('categories')
 		.select('*')
 		.eq('company_id', company_id)
@@ -172,7 +227,8 @@ export async function getCategoriesAdmin(company_id: string) {
 }
 
 export async function getUnitsAdmin(company_id: string) {
-	const { data, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data, error } = await supabase
 		.from('measurement_units')
 		.select('*')
 		.eq('company_id', company_id)
@@ -193,9 +249,14 @@ export async function createCollaboratorAdmin(data: {
 	cep?: string | null;
 	street?: string | null;
 	number?: string | null;
-	neighborhood?: string | null;
+	complement?: string | null;
+	state?: string | null;
+	city?: string | null;
+	profile_id?: string | null;
+	documents_json?: any[] | null;
 }) {
-	const { data: result, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data: result, error } = await supabase
 		.from('collaborators')
 		.insert([data]);
 
@@ -203,8 +264,41 @@ export async function createCollaboratorAdmin(data: {
 	return result;
 }
 
+export async function updateCollaboratorAdmin(
+	id: string,
+	data: {
+		company_id: string;
+		name: string;
+		role_title: string;
+		cpf?: string | null;
+		rg?: string | null;
+		birth_date?: string | null;
+		cellphone?: string | null;
+		email?: string | null;
+		cep?: string | null;
+		street?: string | null;
+		number?: string | null;
+		complement?: string | null;
+		state?: string | null;
+		city?: string | null;
+		profile_id?: string | null;
+		documents_json?: any[] | null;
+	},
+) {
+	const supabase = await createServerSupabaseClient();
+	const { error } = await supabase
+		.from('collaborators')
+		.update(data)
+		.eq('id', id)
+		.eq('company_id', data.company_id);
+
+	if (error) throw error;
+	return true;
+}
+
 export async function getCollaboratorsAdmin(company_id: string) {
-	const { data, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data, error } = await supabase
 		.from('collaborators')
 		.select('*')
 		.eq('company_id', company_id)
@@ -214,7 +308,8 @@ export async function getCollaboratorsAdmin(company_id: string) {
 }
 
 export async function deleteCollaboratorAdmin(id: string, company_id: string) {
-	const { error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { error } = await supabase
 		.from('collaborators')
 		.delete()
 		.eq('id', id)
@@ -224,7 +319,8 @@ export async function deleteCollaboratorAdmin(id: string, company_id: string) {
 }
 
 export async function deleteSupplyItemAdmin(id: string, company_id: string) {
-	const { error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { error } = await supabase
 		.from('catalogs')
 		.delete()
 		.eq('id', id)
@@ -234,13 +330,15 @@ export async function deleteSupplyItemAdmin(id: string, company_id: string) {
 }
 
 export async function importCategoriesAdmin(data: Record<string, unknown>[]) {
-	const { error } = await supabaseAdmin.from('categories').insert(data);
+	const supabase = await createServerSupabaseClient();
+	const { error } = await supabase.from('categories').insert(data);
 	if (error) throw error;
 	return true;
 }
 
 export async function importUnitsAdmin(data: Record<string, unknown>[]) {
-	const { error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { error } = await supabase
 		.from('measurement_units')
 		.insert(data);
 	if (error) throw error;
@@ -248,19 +346,22 @@ export async function importUnitsAdmin(data: Record<string, unknown>[]) {
 }
 
 export async function importCollaboratorsAdmin(data: Record<string, unknown>[]) {
-	const { error } = await supabaseAdmin.from('collaborators').insert(data);
+	const supabase = await createServerSupabaseClient();
+	const { error } = await supabase.from('collaborators').insert(data);
 	if (error) throw error;
 	return true;
 }
 
 export async function importCatalogsAdmin(data: Record<string, unknown>[]) {
-	const { error } = await supabaseAdmin.from('catalogs').insert(data);
+	const supabase = await createServerSupabaseClient();
+	const { error } = await supabase.from('catalogs').insert(data);
 	if (error) throw error;
 	return true;
 }
 
 export async function getSiteCollaboratorsAdmin(siteId: string) {
-	const { data, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data, error } = await supabase
 		.from('site_collaborators')
 		.select('id, collaborator_id, collaborators(name, role_title, cpf)')
 		.eq('site_id', siteId);
@@ -273,6 +374,7 @@ export async function addSiteCollaboratorsAdmin(
 	siteId: string,
 	collaboratorIds: string[],
 ) {
+	const supabase = await createServerSupabaseClient();
 	if (!collaboratorIds.length) return true;
 
 	const payload = collaboratorIds.map((id) => ({
@@ -280,7 +382,7 @@ export async function addSiteCollaboratorsAdmin(
 		collaborator_id: id,
 	}));
 
-	const { error } = await supabaseAdmin
+	const { error } = await supabase
 		.from('site_collaborators')
 		.insert(payload);
 
@@ -292,7 +394,8 @@ export async function addSiteCollaboratorsAdmin(
 }
 
 export async function getSiteInventoryAdmin(siteId: string) {
-	const { data, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data, error } = await supabase
 		.from('site_inventory')
 		.select(
 			'id, catalog_id, quantity, min_threshold, catalogs(name, categories(primary_category, secondary_category), measurement_units(abbreviation))',
@@ -316,6 +419,7 @@ export async function addInventoryItemsAdmin(
 		category: 'NONE' | 'TOOL' | 'EPI';
 	}>,
 ) {
+	const supabase = await createServerSupabaseClient();
 	if (!items.length) return true;
 
 	const inventoryData = items.map((item) => ({
@@ -326,7 +430,7 @@ export async function addInventoryItemsAdmin(
 	}));
 
 	const { data: inventoryResults, error: inventoryError } =
-		await supabaseAdmin
+		await supabase
 			.from('site_inventory')
 			.upsert(inventoryData, { onConflict: 'site_id,catalog_id' })
 			.select('id, catalog_id');
@@ -349,7 +453,7 @@ export async function addInventoryItemsAdmin(
 
 	if (epiData.length > 0) {
 		// Obter inventários de EPI que já existem nesta obra
-		const { data: existingEpis } = await supabaseAdmin
+		const { data: existingEpis } = await supabase
 			.from('site_epis')
 			.select('inventory_id')
 			.in(
@@ -365,7 +469,7 @@ export async function addInventoryItemsAdmin(
 		);
 
 		if (newEpis.length > 0) {
-			const { error: epiError } = await supabaseAdmin
+			const { error: epiError } = await supabase
 				.from('site_epis')
 				.insert(newEpis);
 			if (epiError) throw epiError;
@@ -374,7 +478,7 @@ export async function addInventoryItemsAdmin(
 
 	if (toolData.length > 0) {
 		// Obter inventários de Ferramentas que já existem nesta obra
-		const { data: existingTools } = await supabaseAdmin
+		const { data: existingTools } = await supabase
 			.from('site_tools')
 			.select('inventory_id')
 			.in(
@@ -390,7 +494,7 @@ export async function addInventoryItemsAdmin(
 		);
 
 		if (newTools.length > 0) {
-			const { error: toolError } = await supabaseAdmin
+			const { error: toolError } = await supabase
 				.from('site_tools')
 				.insert(newTools);
 			if (toolError) throw toolError;
@@ -401,7 +505,8 @@ export async function addInventoryItemsAdmin(
 }
 
 export async function getSiteToolsAdmin(siteId: string) {
-	const { data, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data, error } = await supabase
 		.from('site_tools')
 		.select('inventory_id')
 		.eq('site_id', siteId);
@@ -410,7 +515,8 @@ export async function getSiteToolsAdmin(siteId: string) {
 }
 
 export async function getSiteEpisAdmin(siteId: string) {
-	const { data, error } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data, error } = await supabase
 		.from('site_epis')
 		.select('inventory_id')
 		.eq('site_id', siteId);
@@ -422,21 +528,23 @@ export async function addSiteToolsAdmin(
 	siteId: string,
 	inventoryIds: string[],
 ) {
+	const supabase = await createServerSupabaseClient();
 	const inserts = inventoryIds.map((id) => ({
 		site_id: siteId,
 		inventory_id: id,
 	}));
-	const { error } = await supabaseAdmin.from('site_tools').insert(inserts);
+	const { error } = await supabase.from('site_tools').insert(inserts);
 	if (error) throw error;
 	return true;
 }
 
 export async function addSiteEpisAdmin(siteId: string, inventoryIds: string[]) {
+	const supabase = await createServerSupabaseClient();
 	const inserts = inventoryIds.map((id) => ({
 		site_id: siteId,
 		inventory_id: id,
 	}));
-	const { error } = await supabaseAdmin.from('site_epis').insert(inserts);
+	const { error } = await supabase.from('site_epis').insert(inserts);
 	if (error) throw error;
 	return true;
 }
@@ -457,7 +565,8 @@ interface RawToolItemAdmin {
 }
 
 export async function getToolItemsAdmin(siteId: string) {
-	const { data: toolsData, error: toolsError } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data: toolsData, error: toolsError } = await supabase
 		.from('site_tools')
 		.select(
 			'id, inventory_id, site_inventory(quantity, catalogs(name, code, categories(primary_category)))',
@@ -465,7 +574,7 @@ export async function getToolItemsAdmin(siteId: string) {
 		.eq('site_id', siteId);
 	if (toolsError) throw toolsError;
 
-	const { data: loansData, error: loansError } = await supabaseAdmin
+	const { data: loansData, error: loansError } = await supabase
 		.from('tool_loans')
 		.select('inventory_id, quantity')
 		.eq('site_id', siteId)
@@ -512,7 +621,8 @@ interface RawEpiItemAdmin {
 }
 
 export async function getEPIItemsAdmin(siteId: string) {
-	const { data: episData, error: episError } = await supabaseAdmin
+	const supabase = await createServerSupabaseClient();
+	const { data: episData, error: episError } = await supabase
 		.from('site_epis')
 		.select(
 			'id, inventory_id, site_inventory(catalog_id, quantity, min_threshold, catalogs(name, code, categories(primary_category)))',

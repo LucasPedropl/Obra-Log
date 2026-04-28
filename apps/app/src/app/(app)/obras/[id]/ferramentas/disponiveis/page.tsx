@@ -5,7 +5,7 @@ import { useTools, ToolItem } from '@/features/ferramentas/hooks/useTools';
 import { LoanToolForm } from '@/features/ferramentas/components/LoanToolForm';
 import { AddToolForm } from '@/features/ferramentas/components/AddToolForm';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { DataTable, ColumnDef } from '@/components/shared/DataTable';
+import { DataTable, ColumnDef, DetailRow } from '@/components/shared/DataTable';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { TableSearch } from '@/components/shared/TableSearch';
 import { Pagination } from '@/components/shared/Pagination';
@@ -315,6 +315,15 @@ export default function FerramentasDisponiveisPage({
 							<DataTable
 								data={currentTools}
 								columns={columns}
+								detailsTitle="Detalhes da Ferramenta"
+								renderDetails={(item) => (
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+										<DetailRow label="Ferramenta" value={item.name} className="sm:col-span-2" />
+										<DetailRow label="Código" value={item.code} />
+										<DetailRow label="Categoria" value={item.category} />
+										<DetailRow label="Disponível" value={`${item.availableQuantity} / ${item.totalQuantity}`} />
+									</div>
+								)}
 								keyExtractor={(item) => item.id}
 							/>
 						) : (

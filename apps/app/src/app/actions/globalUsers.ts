@@ -1,6 +1,7 @@
 'use server';
 
 import { supabaseAdmin } from '@/config/supabaseAdmin';
+import { createServerSupabaseClient } from '@/config/supabaseServer';
 import { cookies } from 'next/headers';
 
 export interface SaveUserResponse {
@@ -19,6 +20,7 @@ export async function saveGlobalUserAction(
 		assignments: Array<{ instanceId: string; profileId: string }>;
 	}
 ): Promise<SaveUserResponse> {
+	const supabase = await createServerSupabaseClient();
 	try {
 		const cookieStore = await cookies();
 		const companyId = cookieStore.get('selectedCompanyId')?.value;
@@ -51,8 +53,8 @@ export async function saveGlobalUserAction(
 						const existingAuthUser = allUsers.find(u => u.email === data.email);
 
 						if (existingAuthUser) {
-							const { data: profile } = await supabaseAdmin.from('users').select('id').eq('id', existingAuthUser.id).maybeSingle();
-							const { data: links } = await supabaseAdmin.from('company_users').select('id').eq('user_id', existingAuthUser.id).limit(1);
+							const { data: profile } = await supabase.from('users').select('id').eq('id', existingAuthUser.id).maybeSingle();
+							const { data: links } = await supabase.from('company_users').select('id').eq('user_id', existingAuthUser.id).limit(1);
 
 							if (!profile && (!links || links.length === 0)) {
 								await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id);
@@ -66,7 +68,7 @@ export async function saveGlobalUserAction(
 				userId = authUser.user.id;
 
 				// Garante a tabela publica de usuários
-				const { error: profileError } = await supabaseAdmin.from('users').upsert({
+				const { error: profileError } = await supabase.from('users').upsert({
 					id: userId,
 					email: data.email,
 					full_name: data.fullName,
@@ -86,7 +88,7 @@ export async function saveGlobalUserAction(
 			}
 		} else {
 			// Atualizando apenas o que for permitido localmente
-			await supabaseAdmin
+			await supabase
 				.from('users')
 				.update({
 					full_name: data.fullName,
@@ -96,7 +98,7 @@ export async function saveGlobalUserAction(
 
 		// 2. Garantir vínculo com a Empresa (Tenant) e definir se é Admin Global da Empresa
 		if (userId) {
-			await supabaseAdmin
+			await supabase
 				.from('company_users')
 				.upsert({
 					company_id: companyId,
@@ -109,7 +111,7 @@ export async function saveGlobalUserAction(
 		// 3. Clean existing instance assignments para esta empresa
 		if (userId) {
 			// Precisamos deletar apenas os acessos das instâncias desta empresa
-			const { data: companyInstances } = await supabaseAdmin
+			const { data: companyInstances } = await supabase
 				.from('construction_sites')
 				.select('id')
 				.eq('company_id', companyId);
@@ -117,7 +119,7 @@ export async function saveGlobalUserAction(
 			const instanceIds = companyInstances?.map(i => i.id) || [];
 			
 			if (instanceIds.length > 0) {
-				await supabaseAdmin
+				await supabase
 					.from('instance_users')
 					.delete()
 					.eq('user_id', userId)
@@ -133,7 +135,7 @@ export async function saveGlobalUserAction(
 				profile_id: a.profileId,
 				status: 'ACTIVE',
 			}));
-			const { error: assignError } = await supabaseAdmin
+			const { error: assignError } = await supabase
 				.from('instance_users')
 				.insert(dbAssignments);
 			if (assignError) throw new Error(assignError.message);
@@ -164,6 +166,7 @@ interface RawInstanceUserData {
 }
 
 export async function getGlobalUsersAction() {
+	const supabase = await createServerSupabaseClient();
 	try {
 		const cookieStore = await cookies();
 		const companyId = cookieStore.get('selectedCompanyId')?.value;
@@ -173,7 +176,7 @@ export async function getGlobalUsersAction() {
 		}
 
 		// Busca os company_users desta empresa com os dados do usuário e seus acessos de instância
-		const { data: companyUsers, error } = await supabaseAdmin
+		const { data: companyUsers, error } = await supabase
 			.from('company_users')
 			.select(`
 				id,
@@ -190,7 +193,7 @@ export async function getGlobalUsersAction() {
 		
 		let instanceUsersData: RawInstanceUserData[] = [];
 		if (userIds.length > 0) {
-			const { data: iuData } = await supabaseAdmin
+			const { data: iuData } = await supabase
 				.from('instance_users')
 				.select(`
 					user_id,
@@ -233,11 +236,12 @@ export async function getGlobalUsersAction() {
 }
 
 export async function getInstancesAction() {
+	const supabase = await createServerSupabaseClient();
 	const cookieStore = await cookies();
 	const companyId = cookieStore.get('selectedCompanyId')?.value;
 	if (!companyId) return { success: false, error: 'Empresa não selecionada' };
 
-	const { data, error } = await supabaseAdmin
+	const { data, error } = await supabase
 		.from('construction_sites')
 		.select('id, name')
 		.eq('company_id', companyId)
@@ -248,11 +252,12 @@ export async function getInstancesAction() {
 }
 
 export async function getAllProfilesAction() {
+	const supabase = await createServerSupabaseClient();
 	const cookieStore = await cookies();
 	const companyId = cookieStore.get('selectedCompanyId')?.value;
 	if (!companyId) return { success: false, error: 'Empresa não selecionada' };
 
-	const { data, error } = await supabaseAdmin
+	const { data, error } = await supabase
 		.from('access_profiles')
 		.select('id, name')
 		.eq('company_id', companyId)

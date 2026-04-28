@@ -23,7 +23,5 @@ Seu objetivo neste projeto é construir um sistema SaaS robusto, composto por um
     *   Mantenha essa distinção rigorosa nos DTOs e Estados para evitar erros de "property missing" no build.
 5.  **Segurança e Overrides**: A seção `overrides` no `package.json` raiz deve ser preservada para corrigir vulnerabilidades críticas que o Next.js carrega internamente. **Nunca** use `npm audit fix --force`, pois ele tentará fazer o downgrade do Next.js para a versão 9, quebrando o App Router.
 
-# Dicas/Sugestões de Contexto do Projeto:
-
-- **banco_atual.sql**: Em `/docs/banco_atual.sql` tem um dump do banco de dados atual. Use-o para entender a estrutura do banco e as relações entre as tabelas. Isso vai te ajudar a criar os hooks e services de forma mais eficiente. 
-- **Modificações de Banco**: Se for preciso modificar o banco para o que precisa ser feito, gere o código SQL correspondente e me passe diretamente no chat para que eu possa rodar no SQL Editor do Supabase.
+- **Supabase MCP**: Utilize as ferramentas do servidor MCP do Supabase (`mcp_supabase_execute_sql`, `mcp_supabase_list_tables`, etc.) para consultar a estrutura real do banco, verificar políticas de RLS e logs em tempo real.
+- **Modificações de Banco**: Para alterações de DDL (Schema), utilize `mcp_supabase_apply_migration`. Para consultas ou alterações de dados rápidas, utilize `mcp_supabase_execute_sql`. Sempre valide as mudanças antes de aplicar.

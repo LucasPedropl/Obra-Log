@@ -26,6 +26,7 @@ interface DataTableProps<T> {
 	onDelete?: (item: T) => void;
 	onDeleteBulk?: (items: T[]) => void;
 	renderDetails?: (item: T) => React.ReactNode;
+	detailsTitle?: string | ((item: T) => string);
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -36,6 +37,7 @@ export function DataTable<T extends Record<string, any>>({
 	onDelete,
 	onDeleteBulk,
 	renderDetails,
+	detailsTitle,
 }: DataTableProps<T>) {
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [detailItem, setDetailItem] = useState<T | null>(null);
@@ -176,7 +178,11 @@ export function DataTable<T extends Record<string, any>>({
 								<Info className="w-5 h-5" />
 							</div>
 							<h2 className="text-xl font-semibold text-gray-800">
-								Detalhes do Item
+								{detailsTitle
+									? typeof detailsTitle === 'function'
+										? detailsTitle(detailItem)
+										: detailsTitle
+									: 'Detalhes do Item'}
 							</h2>
 						</div>
 
@@ -399,21 +405,34 @@ function DefaultDetailsView({ item }: { item: Record<string, any> }) {
 	return (
 		<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 			{entries.map(([key, value]) => (
-				<div key={key} className="flex flex-col overflow-hidden">
-					<span
-						className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 truncate"
-						title={key.replace(/_/g, ' ')}
-					>
-						{key.replace(/_/g, ' ')}
-					</span>
-					<div
-						className="text-sm text-gray-900 font-medium bg-gray-50 px-3 py-2 rounded-[5px] border border-gray-100 break-all whitespace-normal"
-						title={String(value)}
-					>
-						{String(value)}
-					</div>
-				</div>
+				<DetailRow key={key} label={key.replace(/_/g, ' ')} value={String(value)} />
 			))}
+		</div>
+	);
+}
+
+export function DetailRow({ label, value, className }: { label: string; value: React.ReactNode; className?: string }) {
+	const [isExpanded, setIsExpanded] = useState(false);
+	const stringValue = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+	
+	return (
+		<div className={cn("flex flex-col overflow-hidden group", className)}>
+			<span
+				className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 truncate transition-colors group-hover:text-blue-500"
+				title={label}
+			>
+				{label}
+			</span>
+			<div
+				onClick={() => setIsExpanded(!isExpanded)}
+				className={cn(
+					"text-sm text-gray-900 font-medium bg-gray-50/50 px-3 py-2.5 rounded-lg border border-gray-100 transition-all hover:bg-white hover:border-blue-200 active:bg-blue-50 cursor-help",
+					!isExpanded && "truncate"
+				)}
+				title={stringValue}
+			>
+				{value || '-'}
+			</div>
 		</div>
 	);
 }

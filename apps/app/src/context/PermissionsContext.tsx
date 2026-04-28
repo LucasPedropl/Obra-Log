@@ -76,6 +76,7 @@ export function PermissionsProvider({
 				if (!userRes.data && !userRes.error) {
 					console.warn('Usuário autenticado mas sem perfil no banco. Deslogando...');
 					await supabase.auth.signOut();
+					document.cookie = 'selectedCompanyId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 					window.location.href = '/auth/login';
 					return;
 				}

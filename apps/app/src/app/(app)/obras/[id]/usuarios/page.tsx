@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { TableSearch } from '@/components/shared/TableSearch';
-import { DataTable } from '@/components/shared/DataTable';
+import { DataTable, DetailRow } from '@/components/shared/DataTable';
 import { getInstanceUsersAction, saveInstanceUserAction } from '@/app/actions/instanceUsers';
 import { getAllProfilesAction } from '@/app/actions/globalUsers';
 import { getActiveCompanyId } from '@/lib/utils';
@@ -209,6 +209,15 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 									)
 								},
 							]}
+							detailsTitle="Detalhes do Usuário"
+							renderDetails={(item) => (
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<DetailRow label="Nome" value={item.full_name} className="sm:col-span-2" />
+									<DetailRow label="E-mail" value={item.email} />
+									<DetailRow label="Perfil" value={item.profile?.name || 'Sem Perfil'} />
+									<DetailRow label="Status" value={item.status === 'ACTIVE' ? 'Ativo' : 'Inativo'} />
+								</div>
+							)}
 							keyExtractor={(item) => item.instanceUserId}
 						/>
 

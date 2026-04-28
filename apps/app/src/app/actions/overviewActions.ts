@@ -1,11 +1,12 @@
 'use server';
 
-import { supabaseAdmin } from '@/config/supabaseAdmin';
+import { createServerSupabaseClient } from '@/config/supabaseServer';
 
 export async function getObraOverviewStats(siteId: string) {
+	const supabase = await createServerSupabaseClient();
 	try {
 		// 1. Estoque Baixo (Quantidade <= Min_threshold) E Quantidade real
-		const { data: inventory } = await supabaseAdmin
+		const { data: inventory } = await supabase
 			.from('site_inventory')
 			.select('quantity, min_threshold, catalogs(name)')
 			.eq('site_id', siteId);
@@ -21,27 +22,27 @@ export async function getObraOverviewStats(siteId: string) {
 		}
 
 		// 2. Ferramentas Em Uso (tool_loans com status = 'OPEN')
-		const { count: toolsInUseCount } = await supabaseAdmin
+		const { count: toolsInUseCount } = await supabase
 			.from('tool_loans')
 			.select('*', { count: 'exact', head: true })
 			.eq('site_id', siteId)
 			.eq('status', 'OPEN');
 
 		// 3. Equipamentos Alugados Ativos (rented_equipments com status = 'ACTIVE')
-		const { count: activeRentedCount } = await supabaseAdmin
+		const { count: activeRentedCount } = await supabase
 			.from('rented_equipments')
 			.select('*', { count: 'exact', head: true })
 			.eq('site_id', siteId)
 			.eq('status', 'ACTIVE');
 
 		// 4. Colaboradores na Obra (site_collaborators)
-		const { count: activeCollaboratorsCount } = await supabaseAdmin
+		const { count: activeCollaboratorsCount } = await supabase
 			.from('site_collaborators')
 			.select('*', { count: 'exact', head: true })
 			.eq('site_id', siteId);
 
 		// 5. Últimas Movimentações (site_movements)
-		const { data: recentMovements } = await supabaseAdmin
+		const { data: recentMovements } = await supabase
 			.from('site_movements')
 			.select(
 				`
@@ -79,7 +80,7 @@ export async function getObraOverviewStats(siteId: string) {
 		});
 
 		// 5. Entradas Recentes de Equipamentos (rented_equipments ordenados por entry_date DESC limit 3)
-		const { data: recentEquipments } = await supabaseAdmin
+		const { data: recentEquipments } = await supabase
 			.from('rented_equipments')
 			.select('id, name, supplier, entry_date, status, catalogs(name)')
 			.eq('site_id', siteId)

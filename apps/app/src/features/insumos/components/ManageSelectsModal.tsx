@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, X, Trash2, Pencil, AlertCircle, Check } from 'lucide-react';
+import { Search, X, Trash2, Pencil, AlertCircle, Check, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toaster';
 
@@ -17,6 +17,7 @@ interface ManageSelectsModalProps {
 	onClose: () => void;
 	onDelete: (ids: string[]) => Promise<void>;
 	onEdit: (id: string) => void;
+	onAdd?: () => void;
 }
 
 export function ManageSelectsModal({
@@ -26,6 +27,7 @@ export function ManageSelectsModal({
 	onClose,
 	onDelete,
 	onEdit,
+	onAdd,
 	onImport,
 }: ManageSelectsModalProps & { onImport?: () => void }) {
 	const { addToast } = useToast();
@@ -118,6 +120,17 @@ export function ManageSelectsModal({
 						/>
 					</div>
 					<div className="flex items-center gap-2">
+						{onAdd && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={onAdd}
+								className="text-xs h-9 bg-white border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800"
+							>
+								<Plus size={14} className="mr-1" />
+								Novo
+							</Button>
+						)}
 						{onImport && (
 							<Button
 								variant="outline"

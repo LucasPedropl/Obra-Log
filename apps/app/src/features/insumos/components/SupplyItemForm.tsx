@@ -4,6 +4,7 @@ import {
 } from '@/app/actions/adminActions';
 import { ImportModal } from '@/components/shared/ImportModal';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { SearchableInput } from '@/components/ui/searchable-input';
 import { useToast } from '@/components/ui/toaster';
 import { createClient } from '@/config/supabase';
 import { getActiveCompanyId } from '@/lib/utils';
@@ -45,6 +46,7 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 	const { addToast } = useToast();
 	const {
 		createSupplyItem,
+		updateSupplyItem,
 		createCategory,
 		createUnit,
 		fetchCategories,
@@ -128,25 +130,30 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 	const confirmCreateCategory = async (e: React.FormEvent) => {
 		e.preventDefault();
 		try {
-			const labelToSave = newCategoryData.secondary
-				? `${newCategoryData.primary} - ${newCategoryData.secondary}`
-				: newCategoryData.primary;
-			// Pass this structured data if createCategory supports it, else combine them
-			const newId = await createCategory(labelToSave);
+			const newId = await createCategory({
+				primary: newCategoryData.primary,
+				secondary: newCategoryData.secondary || undefined,
+			});
 			setCategories([
 				...categories,
 				{
 					id: newId,
 					primary_category: newCategoryData.primary,
-					secondary_category: newCategoryData.secondary,
+					secondary_category: newCategoryData.secondary || null,
 				},
 			]);
 			setValue('category_id', newId, { shouldValidate: true });
 			addToast('Categoria cadastrada com sucesso!', 'success');
 			setIsCategoryModalOpen(false);
-		} catch (err: unknown) {
-			console.error(err);
-			addToast('Erro ao criar categoria.', 'error');
+		} catch (err: any) {
+			console.error('ERRO AO CRIAR CATEGORIA:', {
+				message: err?.message,
+				details: err?.details,
+				error: err
+			});
+			const message =
+				err?.message || err?.details || 'Erro ao criar categoria.';
+			addToast(message, 'error');
 		}
 	};
 
@@ -179,8 +186,10 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 			addToast('Unidade de medida cadastrada com sucesso!', 'success');
 			setIsUnitModalOpen(false);
 		} catch (err: unknown) {
-			console.error(err);
-			addToast('Erro ao criar unidade de medida.', 'error');
+			console.error('ERRO AO CRIAR UNIDADE:', err);
+			const message =
+				err instanceof Error ? err.message : 'Erro ao criar unidade de medida.';
+			addToast(message, 'error');
 		}
 	};
 
@@ -219,10 +228,12 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 	const onSubmit = async (data: SupplyItemFormData) => {
 		let success;
 		if (initialData?.id) {
-			// TODO: Update logic here once API route is there
-			// success = await updateSupplyItem({ ...data, id: initialData.id });
-			success = true;
-			addToast('Insumo atualizado com sucesso!', 'success');
+			success = await updateSupplyItem(initialData.id, data);
+			if (success) {
+				addToast('Insumo atualizado com sucesso!', 'success');
+			} else {
+				addToast('Erro ao atualizar o insumo', 'error');
+			}
 		} else {
 			success = await createSupplyItem(data);
 			if (success) {
@@ -238,7 +249,7 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 	};
 
 	return (
-		<div className="p-6 bg-card rounded-xl border border-border shadow-xl overflow-hidden">
+		<div className="p-6 bg-card rounded-xl border border-border shadow-xl">
 			<h2 className="text-2xl font-bold mb-6">
 				{initialData
 					? 'Editar Insumo do Catálogo'
@@ -284,7 +295,7 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 								}))}
 								value={field.value}
 								onChange={(val) => field.onChange(val)}
-								onCreate={handleCreateCategory}
+								onCreate={() => handleCreateCategory('')}
 								onManage={() => setIsManageCategoriesOpen(true)}
 								placeholder="Pesquise ou selecione uma categoria"
 							/>
@@ -313,7 +324,7 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 								}))}
 								value={field.value}
 								onChange={(val) => field.onChange(val)}
-								onCreate={handleCreateUnit}
+								onCreate={() => handleCreateUnit('')}
 								onManage={() => setIsManageUnitsOpen(true)}
 								placeholder="Pesquise ou selecione uma unidade (Ex: un, kg)"
 							/>
@@ -337,7 +348,7 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 					</label>
 				</div>
 
-				{!isStockControlled && (
+				{isStockControlled && (
 					<div className="grid grid-cols-2 gap-4">
 						<div>
 							<label className="block text-sm font-medium mb-1">
@@ -375,7 +386,13 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 						disabled={isLoading}
 						className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 flex items-center justify-center rounded-md font-medium transition-colors disabled:opacity-50"
 					>
-						{isLoading ? 'Cadastrando...' : 'Cadastrar Insumo'}
+						{isLoading
+							? initialData
+								? 'Atualizando...'
+								: 'Cadastrando...'
+							: initialData
+								? 'Atualizar Insumo'
+								: 'Cadastrar Insumo'}
 					</button>
 				</div>
 			</form>
@@ -414,16 +431,23 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 										(Opcional)
 									</span>
 								</label>
-								<input
-									type="text"
+								<SearchableInput
+									options={Array.from(
+										new Set(
+											categories
+												.map(
+													(c) => c.secondary_category,
+												)
+												.filter(Boolean) as string[],
+										),
+									).sort()}
 									value={newCategoryData.secondary}
-									onChange={(e) =>
+									onChange={(val) =>
 										setNewCategoryData({
 											...newCategoryData,
-											secondary: e.target.value,
+											secondary: val,
 										})
 									}
-									className="w-full flex h-10 rounded-[5px] border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#101828]/20 focus:border-[#101828]"
 									placeholder="Ex: Cimento e Argamassas"
 								/>
 							</div>
@@ -528,6 +552,10 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 					onClose={() => setIsManageCategoriesOpen(false)}
 					onDelete={handleDeleteCategories}
 					onEdit={handleEditCategory}
+					onAdd={() => {
+						setNewCategoryData({ primary: '', secondary: '' });
+						setIsCategoryModalOpen(true);
+					}}
 					onImport={() => {
 						setIsManageCategoriesOpen(false);
 						setIsImportCatsOpen(true);
@@ -548,6 +576,10 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 					onClose={() => setIsManageUnitsOpen(false)}
 					onDelete={handleDeleteUnits}
 					onEdit={handleEditUnit}
+					onAdd={() => {
+						setNewUnitData({ name: '', abbreviation: '' });
+						setIsUnitModalOpen(true);
+					}}
 					onImport={() => {
 						setIsManageUnitsOpen(false);
 						setIsImportUnitsOpen(true);

@@ -1,4 +1,13 @@
-import { createClient } from '@/config/supabase';
+import {
+	createCategoryAdmin,
+	createUnitAdmin,
+	getCategoriesAdmin,
+	getUnitsAdmin,
+	createSupplyItemAdmin,
+	updateSupplyItemAdmin,
+	getSupplyItemsAdmin,
+	deleteSupplyItemAdmin
+} from '@/app/actions/adminActions';
 import { getActiveCompanyId } from '@/lib/utils';
 import { useState } from 'react';
 import { z } from 'zod';
@@ -16,40 +25,81 @@ export type SupplyItemFormData = z.infer<typeof supplyItemSchema>;
 export function useSupplyItems() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const supabase = createClient();
 
-	const createCategory = async (name: string) => {
-		const companyId = getActiveCompanyId();
-		if (!companyId) throw new Error('Empresa não selecionada.');
+	const createCategory = async (params: { primary: string; secondary?: string; entryType?: 'PRODUTO' | 'SERVICO' }) => {
+		try {
+			setIsLoading(true);
+			setError(null);
+			const companyId = getActiveCompanyId();
+			if (!companyId) throw new Error('Empresa não selecionada.');
 
-		const { data, error } = await supabase
-			.from('categories')
-			.insert([
-				{
-					company_id: companyId,
-					primary_category: name,
-					entry_type: 'PRODUTO',
-				},
-			])
-			.select('id')
-			.single();
+			const newId = await createCategoryAdmin({
+				company_id: companyId,
+				primary_category: params.primary,
+				secondary_category: params.secondary || null,
+				entry_type: params.entryType || 'PRODUTO'
+			});
 
-		if (error) throw error;
-		return data.id;
+			return newId;
+		} catch (err: any) {
+			console.error('Error creating category:', {
+				message: err?.message || 'No message',
+				code: err?.code || 'No code',
+				details: err?.details || 'No details',
+				hint: err?.hint || 'No hint',
+				error: err
+			});
+
+			let message = 'Erro ao criar categoria';
+			if (err?.code === '23505') {
+				message = 'Esta categoria já existe para sua empresa.';
+			} else if (err?.message) {
+				message = err.message;
+			}
+
+			setError(message);
+			throw new Error(message);
+		} finally {
+			setIsLoading(false);
+		}
 	};
 
 	const createUnit = async (name: string, abbreviation: string) => {
-		const companyId = getActiveCompanyId();
-		if (!companyId) throw new Error('Empresa não selecionada.');
+		try {
+			setIsLoading(true);
+			setError(null);
+			const companyId = getActiveCompanyId();
+			if (!companyId) throw new Error('Empresa não selecionada.');
 
-		const { data, error } = await supabase
-			.from('measurement_units')
-			.insert([{ company_id: companyId, name, abbreviation }])
-			.select('id')
-			.single();
+			const newId = await createUnitAdmin({
+				company_id: companyId,
+				name,
+				abbreviation
+			});
 
-		if (error) throw error;
-		return data.id;
+			return newId;
+		} catch (err: any) {
+			console.error('Error creating unit:', {
+				message: err?.message || 'No message',
+				code: err?.code || 'No code',
+				details: err?.details || 'No details',
+				hint: err?.hint || 'No hint',
+				error: err
+			});
+			
+			let message = 'Erro ao criar unidade de medida';
+			
+			if (err?.code === '23505') {
+				message = 'Esta unidade de medida ou abreviação já existe para sua empresa.';
+			} else if (err?.message) {
+				message = err.message;
+			}
+			
+			setError(message);
+			throw new Error(message);
+		} finally {
+			setIsLoading(false);
+		}
 	};
 
 	const fetchCategories = async () => {
@@ -57,13 +107,7 @@ export function useSupplyItems() {
 			const companyId = getActiveCompanyId();
 			if (!companyId) return [];
 
-			const { data, error } = await supabase
-				.from('categories')
-				.select('*')
-				.eq('company_id', companyId)
-				.order('primary_category', { ascending: true });
-
-			if (error) throw error;
+			const data = await getCategoriesAdmin(companyId);
 			return data || [];
 		} catch (err) {
 			console.error('Error fetching categories:', err);
@@ -76,13 +120,7 @@ export function useSupplyItems() {
 			const companyId = getActiveCompanyId();
 			if (!companyId) return [];
 
-			const { data, error } = await supabase
-				.from('measurement_units')
-				.select('*')
-				.eq('company_id', companyId)
-				.order('name', { ascending: true });
-
-			if (error) throw error;
+			const data = await getUnitsAdmin(companyId);
 			return data || [];
 		} catch (err) {
 			console.error('Error fetching units:', err);
@@ -98,25 +136,43 @@ export function useSupplyItems() {
 
 			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
 
-			const { error: insertError } = await supabase
-				.from('catalogs')
-				.insert([
-					{
-						company_id: companyId,
-						name: data.name,
-						category_id: data.category_id,
-						unit_id: data.unit_id,
-						min_threshold: data.min_threshold,
-						is_stock_controlled: data.is_stock_controlled,
-					},
-				]);
-
-			if (insertError) throw insertError;
+			await createSupplyItemAdmin({
+				company_id: companyId,
+				name: data.name,
+				category_id: data.category_id,
+				unit_id: data.unit_id,
+				min_threshold: data.min_threshold,
+				is_stock_controlled: data.is_stock_controlled,
+			});
 
 			return true;
-		} catch (err: unknown) {
-			const message = err instanceof Error ? err.message : 'Erro ao cadastrar o insumo';
+		} catch (err: any) {
+			const message = err?.message || 'Erro ao cadastrar o insumo';
 			console.error('Error creating supply item:', err);
+			setError(message);
+			return false;
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const updateSupplyItem = async (id: string, data: SupplyItemFormData) => {
+		try {
+			setIsLoading(true);
+			setError(null);
+			const companyId = getActiveCompanyId();
+
+			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
+
+			await updateSupplyItemAdmin(id, {
+				...data,
+				company_id: companyId,
+			});
+
+			return true;
+		} catch (err: any) {
+			const message = err?.message || 'Erro ao atualizar o insumo';
+			console.error('Error updating supply item:', err);
 			setError(message);
 			return false;
 		} finally {
@@ -132,16 +188,10 @@ export function useSupplyItems() {
 
 			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
 
-			const { data, error: fetchError } = await supabase
-				.from('catalogs')
-				.select('*, measurement_units(abbreviation)')
-				.eq('company_id', companyId)
-				.order('name', { ascending: true });
-
-			if (fetchError) throw fetchError;
+			const data = await getSupplyItemsAdmin(companyId);
 			return data || [];
-		} catch (err: unknown) {
-			const message = err instanceof Error ? err.message : 'Erro ao buscar os insumos';
+		} catch (err: any) {
+			const message = err?.message || 'Erro ao buscar os insumos';
 			console.error('Error fetching supply items:', err);
 			setError(message);
 			return [];
@@ -157,16 +207,10 @@ export function useSupplyItems() {
 			const companyId = getActiveCompanyId();
 			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
 
-			const { error: deleteError } = await supabase
-				.from('catalogs')
-				.delete()
-				.eq('id', id)
-				.eq('company_id', companyId);
-
-			if (deleteError) throw deleteError;
+			await deleteSupplyItemAdmin(id, companyId);
 			return true;
-		} catch (err: unknown) {
-			const message = err instanceof Error ? err.message : 'Erro ao excluir o insumo';
+		} catch (err: any) {
+			const message = err?.message || 'Erro ao excluir o insumo';
 			console.error('Error deleting supply item:', err);
 			setError(message);
 			return false;
@@ -177,6 +221,7 @@ export function useSupplyItems() {
 
 	return {
 		createSupplyItem,
+		updateSupplyItem,
 		fetchSupplyItems,
 		deleteSupplyItem,
 		createCategory,

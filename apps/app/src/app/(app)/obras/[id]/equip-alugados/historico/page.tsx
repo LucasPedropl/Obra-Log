@@ -14,7 +14,7 @@ export interface RentedHistoryItem {
 	description: string;
 }
 import { PageHeader } from '@/components/shared/PageHeader';
-import { DataTable, ColumnDef } from '@/components/shared/DataTable';
+import { DataTable, ColumnDef, DetailRow } from '@/components/shared/DataTable';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Pagination } from '@/components/shared/Pagination';
 import { Loader2, Search, History } from 'lucide-react';
@@ -142,6 +142,17 @@ export default function RentedHistoryPage({ params }: RentedHistoryPageProps) {
 						<DataTable
 							data={currentHistory}
 							columns={columns}
+							detailsTitle="Detalhes da Devolução"
+							renderDetails={(item) => (
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<DetailRow label="Equipamento" value={item.name} className="sm:col-span-2" />
+									<DetailRow label="Categoria" value={item.category} />
+									<DetailRow label="Quantidade Devolvida" value={`${item.quantity} UN`} />
+									<DetailRow label="Data de Chegada" value={format(new Date(item.entryDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} />
+									<DetailRow label="Data de Devolução" value={format(new Date(item.exitDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} />
+									{item.description && <DetailRow label="Descrição / Observação" value={item.description} className="sm:col-span-2" />}
+								</div>
+							)}
 							keyExtractor={(item) => item.id}
 						/>
 

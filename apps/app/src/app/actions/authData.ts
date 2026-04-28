@@ -1,4 +1,5 @@
 'use server';
+import { createServerSupabaseClient } from '@/config/supabaseServer';
 
 import { supabaseAdmin } from '@/config/supabaseAdmin';
 
@@ -42,7 +43,7 @@ export async function getCompanyInstancesAction(companyId: string) {
 		const { data, error } = await supabaseAdmin
 			.from('companies')
 			.select('id, name')
-			.or(`id.eq.${companyId},parent_id.eq.${companyId}`);
+			.eq('parent_id', companyId);
 
 		if (error) throw new Error(error.message);
 		
@@ -84,7 +85,8 @@ export async function createCompanyInstanceAction(companyId: string, name: strin
  */
 export async function checkUserHasCompanyLinkAction(userId: string) {
 	try {
-		const { data, error } = await supabaseAdmin
+		const supabase = await createServerSupabaseClient();
+		const { data, error } = await supabase
 			.from('company_users')
 			.select('id')
 			.eq('user_id', userId)

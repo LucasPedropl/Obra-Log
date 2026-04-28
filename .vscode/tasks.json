@@ -18,6 +18,11 @@
 			"presentation": {
 				"reveal": "always",
 				"panel": "dedicated"
+			},
+			"serverReadyAction": {
+				"pattern": "ready",
+				"uriFormat": "http://localhost:3010",
+				"action": "openExternally"
 			}
 		},
 		{
@@ -37,6 +42,11 @@
 			"presentation": {
 				"reveal": "always",
 				"panel": "dedicated"
+			},
+			"serverReadyAction": {
+				"pattern": "ready",
+				"uriFormat": "http://localhost:3005",
+				"action": "openExternally"
 			}
 		},
 		{

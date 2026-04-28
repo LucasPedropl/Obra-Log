@@ -6,7 +6,7 @@ import {
 	Movimentacao,
 } from '@/features/movimentacoes/hooks/useMovimentacoes';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { DataTable, ColumnDef } from '@/components/shared/DataTable';
+import { DataTable, ColumnDef, DetailRow } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Loader2, ArrowDownRight, ArrowUpRight, Activity } from 'lucide-react';
@@ -144,6 +144,18 @@ export default function MovimentacoesPage({ params }: MovimentacoesPageProps) {
 						<DataTable
 							data={currentItems}
 							columns={columns}
+							detailsTitle="Detalhes da Movimentação"
+							renderDetails={(item: Movimentacao) => (
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<DetailRow label="Ação" value={item.action} />
+									<DetailRow label="Módulo" value={item.module} />
+									<DetailRow label="Item" value={item.item_name} className="sm:col-span-2" />
+									<DetailRow label="Quantidade" value={`${item.type === 'IN' ? '+' : '-'}${Math.abs(item.quantity) || 1} UN`} />
+									<DetailRow label="Colaborador Responsável" value={item.collaborator_name || 'N/A'} />
+									<DetailRow label="Registrado por (Usuário)" value={item.user_name || 'N/A'} />
+									<DetailRow label="Data / Hora" value={item.date ? format(new Date(item.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '-'} />
+								</div>
+							)}
 							keyExtractor={(item: Movimentacao) => item.id}
 						/>
 

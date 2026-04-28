@@ -11,10 +11,11 @@ interface SearchableSelectProps {
 	options: SearchableOption[];
 	value: string;
 	onChange: (value: string) => void;
-	onCreate?: (inputValue: string) => void;
+	onCreate?: () => void; // Alterado para não receber string, apenas disparar a ação
 	onManage?: () => void;
 	placeholder?: string;
 	disabled?: boolean;
+	onOpenChange?: (isOpen: boolean) => void;
 }
 
 export function SearchableSelect({
@@ -25,6 +26,7 @@ export function SearchableSelect({
 	onManage,
 	placeholder = 'Selecione...',
 	disabled = false,
+	onOpenChange,
 }: SearchableSelectProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [search, setSearch] = useState('');
@@ -36,7 +38,7 @@ export function SearchableSelect({
 				containerRef.current &&
 				!containerRef.current.contains(event.target as Node)
 			) {
-				setIsOpen(false);
+				handleClose();
 			}
 		}
 		document.addEventListener('mousedown', handleClickOutside);
@@ -44,33 +46,52 @@ export function SearchableSelect({
 			document.removeEventListener('mousedown', handleClickOutside);
 	}, []);
 
+	const handleOpen = () => {
+		if (!disabled) {
+			setIsOpen(true);
+			onOpenChange?.(true);
+		}
+	};
+
+	const handleClose = () => {
+		setIsOpen(false);
+		onOpenChange?.(false);
+	};
+
 	const filteredOptions = options.filter((opt) =>
 		opt.label.toLowerCase().includes(search.toLowerCase()),
 	);
 	const selectedOption = options.find((opt) => opt.value === value);
 
 	return (
-		<div className="relative" ref={containerRef}>
+		<div className="relative w-full" ref={containerRef}>
 			<div
-				className={`flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent/30 cursor-pointer'}`}
+				className={`flex w-full items-center justify-between rounded-2xl border-2 bg-slate-50/50 px-4 py-3.5 text-sm transition-all duration-200 ${
+					disabled 
+						? 'opacity-50 cursor-not-allowed border-slate-100' 
+						: isOpen 
+							? 'border-slate-900 bg-white shadow-sm cursor-pointer' 
+							: 'border-slate-100 hover:border-slate-200 cursor-pointer'
+				}`}
 				onClick={() => {
-					if (!disabled) setIsOpen(!isOpen);
+					if (!isOpen) handleOpen();
+					else handleClose();
 				}}
 			>
 				<span
-					className={`block truncate ${selectedOption ? '' : 'text-muted-foreground'}`}
+					className={`block truncate font-medium ${selectedOption ? 'text-slate-900' : 'text-slate-400'}`}
 				>
 					{selectedOption ? selectedOption.label : placeholder}
 				</span>
-				<ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+				<ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180 text-slate-900' : 'text-slate-400'}`} />
 			</div>
 
 			{isOpen && !disabled && (
-				<div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-lg outline-none animate-in fade-in-0 zoom-in-95">
-					<div className="flex items-center border-b border-border px-3 py-2 gap-2">
-						<Search className="h-4 w-4 opacity-50 shrink-0 text-gray-500" />
+				<div className="absolute z-[100] mt-2 w-full rounded-2xl border-2 border-slate-100 bg-white text-slate-900 shadow-2xl outline-none animate-in fade-in-0 zoom-in-95 duration-200 overflow-hidden">
+					<div className="flex items-center border-b border-slate-50 px-4 py-3 gap-3">
+						<Search className="h-4 w-4 text-slate-400 shrink-0" />
 						<input
-							className="flex h-8 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+							className="flex h-6 w-full bg-transparent text-sm font-medium outline-none placeholder:text-slate-400"
 							placeholder="Pesquisar..."
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
@@ -78,66 +99,73 @@ export function SearchableSelect({
 						/>
 						{onManage && (
 							<button
+								type="button"
 								onClick={(e) => {
 									e.stopPropagation();
-									setIsOpen(false);
+									handleClose();
 									onManage();
 								}}
-								className="shrink-0 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-[5px] transition-colors"
+								className="shrink-0 p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
 								title="Gerenciar itens"
 							>
 								<Settings2 size={16} />
 							</button>
 						)}
 					</div>
-					<div className="max-h-60 overflow-y-auto p-1">
+					<div className="max-h-64 overflow-y-auto p-1.5">
+						{onCreate && (
+							<div className="p-1 mb-1 border-b border-slate-50">
+								<button
+									type="button"
+									className="flex items-center justify-center w-full px-3 py-2.5 text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all font-bold text-[11px] uppercase tracking-wider gap-2 group"
+									onClick={() => {
+										onCreate();
+										handleClose();
+									}}
+								>
+									<Plus className="h-4 w-4 transition-transform group-hover:scale-110" />
+									Cadastrar Novo Perfil
+								</button>
+							</div>
+						)}
+
 						{filteredOptions.length > 0 ? (
 							filteredOptions.map((opt) => (
 								<div
 									key={opt.value}
-									className={`relative flex cursor-pointer select-none items-center rounded-[5px] px-2 py-2.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground transition-colors ${value === opt.value ? 'bg-primary/10 text-primary' : ''}`}
+									className={`relative flex cursor-pointer select-none items-center rounded-xl px-3 py-3 text-sm outline-none transition-all ${
+										value === opt.value 
+											? 'bg-slate-900 text-white' 
+											: 'hover:bg-slate-50 text-slate-700'
+									}`}
 									onClick={() => {
 										onChange(opt.value);
-										setIsOpen(false);
+										handleClose();
 										setSearch('');
 									}}
 								>
-									<Check
-										className={`mr-3 h-4 w-4 shrink-0 transition-opacity ${value === opt.value ? 'opacity-100 text-primary' : 'opacity-0'}`}
-									/>
-									<div className="flex flex-col gap-0.5 min-w-0">
+									<div className="flex flex-col gap-0.5 min-w-0 flex-1">
 										<span
-											className={`truncate font-medium ${value === opt.value ? 'text-primary' : 'text-gray-900'}`}
+											className={`truncate font-bold ${value === opt.value ? 'text-white' : 'text-slate-900'}`}
 										>
 											{opt.label}
 										</span>
 										{opt.subLabel && (
-											<span className="text-[11px] text-gray-500 truncate leading-tight">
+											<span className={`text-[10px] truncate font-medium uppercase tracking-tight ${value === opt.value ? 'text-slate-300' : 'text-slate-400'}`}>
 												{opt.subLabel}
 											</span>
 										)}
 									</div>
+									{value === opt.value && (
+										<Check className="ml-2 h-4 w-4 shrink-0 text-white" />
+									)}
 								</div>
 							))
 						) : (
-							<div className="py-6 text-center text-sm">
-								<p className="text-muted-foreground mb-3">
+							<div className="py-8 text-center text-sm">
+								<p className="text-slate-400 font-medium italic">
 									Nenhum resultado encontrado.
 								</p>
-								{onCreate && search && (
-									<button
-										type="button"
-										className="flex items-center justify-center w-[90%] mx-auto px-3 py-2 text-primary bg-primary/10 hover:bg-primary/20 rounded-md transition-colors font-medium"
-										onClick={() => {
-											onCreate(search);
-											setIsOpen(false);
-											setSearch('');
-										}}
-									>
-										<Plus className="mr-2 h-4 w-4" />
-										Cadastrar &quot;{search}&quot;
-									</button>
-								)}
 							</div>
 						)}
 					</div>

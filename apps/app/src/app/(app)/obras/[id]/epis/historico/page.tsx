@@ -3,7 +3,7 @@
 import { use, useState } from 'react';
 import { useEPIHistory } from '@/features/epis/hooks/useEPIHistory';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { DataTable, ColumnDef } from '@/components/shared/DataTable';
+import { DataTable, ColumnDef, DetailRow } from '@/components/shared/DataTable';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { TableSearch } from '@/components/shared/TableSearch';
 import { Pagination } from '@/components/shared/Pagination';
@@ -167,6 +167,16 @@ export default function EPIsHistoricoPage({ params }: EPIsHistoricoPageProps) {
 								}
 							})}
 							columns={columns}
+							detailsTitle="Detalhes da Entrega"
+							renderDetails={(item) => (
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<DetailRow label="Nome do EPI" value={item.epiName} className="sm:col-span-2" />
+									<DetailRow label="Colaborador" value={item.collaboratorName} />
+									<DetailRow label="Quantidade Entregue" value={`${item.quantity} UN`} />
+									<DetailRow label="Entregue Por" value={item.withdrawnByName} />
+									<DetailRow label="Data da Entrega" value={format(new Date(item.withdrawalDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} />
+								</div>
+							)}
 							keyExtractor={(item) => item.id}
 						/>
 

@@ -9,18 +9,14 @@ import {
   Database,
   LogOut
 } from 'lucide-react';
-import { createClient } from '@/config/supabase';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/providers/AuthContext';
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const supabase = createClient();
+  const { signOut } = useAuth();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
+    await signOut();
   };
 
   const navItems = [

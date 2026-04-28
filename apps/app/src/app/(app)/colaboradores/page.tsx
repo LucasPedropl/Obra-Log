@@ -1,7 +1,7 @@
 'use client';
 
 import { importCollaboratorsAdmin } from '@/app/actions/adminActions';
-import { DataTable } from '@/components/shared/DataTable';
+import { DataTable, DetailRow } from '@/components/shared/DataTable';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FilterPanel } from '@/components/shared/FilterPanel';
 import { ImportModal } from '@/components/shared/ImportModal';
@@ -235,6 +235,19 @@ export default function ColaboradoresPage() {
 											: 'N/A',
 								},
 							]}
+							detailsTitle="Detalhes do Colaborador"
+							renderDetails={(colab) => (
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<DetailRow label="Nome" value={colab.name} className="sm:col-span-2" />
+									<DetailRow label="Email" value={colab.email || '-'} />
+									<DetailRow label="Cargo/Função" value={colab.role_title} />
+									<DetailRow label="CPF" value={colab.cpf || '-'} />
+									<DetailRow label="RG" value={colab.rg || '-'} />
+									<DetailRow label="Telefone" value={colab.cellphone || '-'} />
+									<DetailRow label="Data de Nascimento" value={colab.birth_date ? new Date(colab.birth_date).toLocaleDateString('pt-BR') : '-'} />
+									<DetailRow label="Data de Admissão" value={colab.created_at ? new Date(colab.created_at).toLocaleDateString('pt-BR') : '-'} />
+								</div>
+							)}
 							keyExtractor={(item) => item.id}
 							onEdit={(item) => setEditingItem(item)}
 							onDelete={async (item) => {

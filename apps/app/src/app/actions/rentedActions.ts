@@ -1,4 +1,5 @@
 'use server';
+import { createServerSupabaseClient } from '@/config/supabaseServer';
 
 import { supabaseAdmin } from '@/config/supabaseAdmin';
 
@@ -150,7 +151,8 @@ interface RentedEquipment {
  */
 export async function getRentedEquipmentsAction(siteId: string): Promise<RentedEquipment[]> {
 	try {
-		const { data, error } = await supabaseAdmin
+		const supabase = await createServerSupabaseClient();
+		const { data, error } = await supabase
 			.from('rented_equipments')
 			.select('*')
 			.eq('site_id', siteId)

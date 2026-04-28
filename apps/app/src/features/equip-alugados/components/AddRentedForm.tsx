@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/config/supabase';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { SearchableInput } from '@/components/ui/searchable-input';
 
 import { X, Upload, Loader2, Info, Plus } from 'lucide-react';
 import { getActiveCompanyId } from '@/lib/utils';
@@ -111,11 +112,10 @@ export function AddRentedForm({
 		setIsCreatingCat(true);
 
 		try {
-			const labelToSave = newCategoryData.secondary
-				? `${newCategoryData.primary} - ${newCategoryData.secondary}`
-				: newCategoryData.primary;
-
-			const newId = await createCategory(labelToSave);
+			const newId = await createCategory({
+				primary: newCategoryData.primary,
+				secondary: newCategoryData.secondary || undefined,
+			});
 
 			const newCat: CategoryItem = {
 				id: newId,
@@ -133,8 +133,9 @@ export function AddRentedForm({
 			setIsCategoryModalOpen(false);
 			setNewCategoryData({ primary: '', secondary: '' });
 		} catch (err: unknown) {
-			const message = err instanceof Error ? err.message : 'Erro ao criar categoria';
-			console.error(err);
+			const message =
+				err instanceof Error ? err.message : 'Erro ao criar categoria';
+			console.error('ERRO AO CRIAR CATEGORIA:', err);
 			addToast(message, 'error');
 		} finally {
 			setIsCreatingCat(false);
@@ -268,7 +269,7 @@ export function AddRentedForm({
 								onChange={(val) => setCategoryId(val)}
 								placeholder="Selecionar categoria..."
 								onManage={() => setIsManageCategoriesOpen(true)}
-								onCreate={handleCreateCategory}
+								onCreate={() => handleCreateCategory('')}
 								/>
 							</div>
 						</div>
@@ -407,16 +408,23 @@ export function AddRentedForm({
 								<label className="block text-sm font-medium mb-1">
 									Categoria Secundária (Opcional)
 								</label>
-								<input
-									type="text"
+								<SearchableInput
+									options={Array.from(
+										new Set(
+											categories
+												.map(
+													(c) => c.secondary_category,
+												)
+												.filter(Boolean) as string[],
+										),
+									).sort()}
 									value={newCategoryData.secondary}
-									onChange={(e) =>
+									onChange={(val) =>
 										setNewCategoryData({
 											...newCategoryData,
-											secondary: e.target.value,
+											secondary: val,
 										})
 									}
-									className="w-full flex h-10 rounded-[5px] border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#101828]/20 focus:border-[#101828]"
 									placeholder="Ex: Metálicas"
 								/>
 							</div>

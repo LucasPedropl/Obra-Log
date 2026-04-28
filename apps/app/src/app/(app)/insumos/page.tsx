@@ -1,7 +1,7 @@
 'use client';
 
 import { importCatalogsAdmin } from '@/app/actions/adminActions';
-import { DataTable } from '@/components/shared/DataTable';
+import { DataTable, DetailRow } from '@/components/shared/DataTable';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FilterPanel } from '@/components/shared/FilterPanel';
 import { ImportModal } from '@/components/shared/ImportModal';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { SupplyItemForm } from '@/features/insumos/components/SupplyItemForm';
 import { useSupplyItems } from '@/features/insumos/hooks/useSupplyItems';
 import { getActiveCompanyId } from '@/lib/utils';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Download, Loader2, PackageOpen, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -24,8 +25,10 @@ export default function InsumosPage() {
 	const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 	const [showFilters, setShowFilters] = useState(false);
 
-	// Filtros especÃ­ficos
+	// Filtros específicos
 	const [unitFilter, setUnitFilter] = useState('');
+	const [categoryFilter, setCategoryFilter] = useState('');
+	const [subcategoryFilter, setSubcategoryFilter] = useState('');
 	const [stockControlFilter, setStockControlFilter] = useState('');
 
 	const { fetchSupplyItems, deleteSupplyItem, isLoading } = useSupplyItems();
@@ -42,7 +45,7 @@ export default function InsumosPage() {
 
 	const handleSearchChange = (val: string) => {
 		setSearchTerm(val);
-		setCurrentPage(1); // resolver bug de paginaÃ§Ã£o
+		setCurrentPage(1); // resolver bug de paginação
 	};
 
 	const filteredInsumos = insumos.filter((item) => {
@@ -61,23 +64,49 @@ export default function InsumosPage() {
 				unitFilter.toLowerCase()
 			: true;
 
+		const matchesCategory = categoryFilter
+			? item.categories?.primary_category?.toLowerCase() ===
+				categoryFilter.toLowerCase()
+			: true;
+
+		const matchesSubcategory = subcategoryFilter
+			? item.categories?.secondary_category?.toLowerCase() ===
+				subcategoryFilter.toLowerCase()
+			: true;
+
 		const matchesStockGroup = stockControlFilter
 			? stockControlFilter === 'yes'
 				? item.is_stock_controlled === true
 				: item.is_stock_controlled === false
 			: true;
 
-		return matchesSearch && matchesUnit && matchesStockGroup;
+		return matchesSearch && matchesUnit && matchesCategory && matchesSubcategory && matchesStockGroup;
 	});
 
-	// Get unique units for the filter dropdown
-	const availableUnits = Array.from(
+	// Get unique values for filters
+	const availableCategories = Array.from(
 		new Set(
 			insumos
-				.map((i) => i.measurement_units?.abbreviation)
+				.map((i) => i.categories?.primary_category)
 				.filter(Boolean),
 		),
-	);
+	).sort();
+
+	const availableSubcategories = Array.from(
+		new Set(
+			insumos
+				.map((i) => i.categories?.secondary_category)
+				.filter(Boolean),
+		),
+	).sort();
+
+	const availableUnits = Array.from(
+		new Map(
+			insumos
+				.filter((i) => i.measurement_units)
+				.map((i) => [i.measurement_units.abbreviation, i.measurement_units])
+		).values()
+	).sort((a, b) => a.name.localeCompare(b.name));
 
 	const totalPages = Math.max(
 		1,
@@ -135,7 +164,7 @@ export default function InsumosPage() {
 		<div className="w-full flex flex-col gap-6 relative">
 			<PageHeader
 				title="Insumos"
-				description="Gerenciamento de materiais, estoque e requisiÃ§Ãµes."
+				description="Gerenciamento de materiais, estoque e requisições."
 				onAdd={() => setIsFormOpen(true)}
 				addLabel="Cadastrar Insumo"
 			/>
@@ -179,8 +208,8 @@ export default function InsumosPage() {
 				</div>
 			) : insumos.length === 0 ? (
 				<EmptyState
-					title="Nenhum Insumo Cadasrado"
-					description="Este mÃ³dulo de almoxarifado global serÃ¡ construÃ­do e habitado pelos prÃ³ximos cadastros e deploys."
+					title="Nenhum Insumo Cadastrado"
+					description="Este módulo de almoxarifado global será construído e habitado pelos próximos cadastros e deploys."
 					icon={<PackageOpen className="w-8 h-8 text-gray-400" />}
 				/>
 			) : (
@@ -188,7 +217,7 @@ export default function InsumosPage() {
 					<TableSearch
 						value={searchTerm}
 						onChange={handleSearchChange}
-						placeholder="Pesquisar insumos por descriÃ§Ã£o ou unidade..."
+						placeholder="Pesquisar insumos por descrição ou unidade..."
 						onFilterClick={() => setShowFilters(!showFilters)}
 						className="w-full"
 					/>
@@ -198,49 +227,69 @@ export default function InsumosPage() {
 						onClose={() => setShowFilters(false)}
 						onClear={() => {
 							setUnitFilter('');
+							setCategoryFilter('');
+							setSubcategoryFilter('');
 							setStockControlFilter('');
 						}}
 					>
 						<div className="flex flex-col gap-1.5">
 							<label className="text-sm font-medium text-gray-700">
+								Categoria Principal
+							</label>
+							<SearchableSelect
+								options={availableCategories.map((cat) => ({
+									value: String(cat),
+									label: String(cat),
+								}))}
+								value={categoryFilter}
+								onChange={setCategoryFilter}
+								placeholder="Filtrar por categoria..."
+							/>
+						</div>
+
+						<div className="flex flex-col gap-1.5">
+							<label className="text-sm font-medium text-gray-700">
+								Subcategoria
+							</label>
+							<SearchableSelect
+								options={availableSubcategories.map((sub) => ({
+									value: String(sub),
+									label: String(sub),
+								}))}
+								value={subcategoryFilter}
+								onChange={setSubcategoryFilter}
+								placeholder="Filtrar por subcategoria..."
+							/>
+						</div>
+
+						<div className="flex flex-col gap-1.5">
+							<label className="text-sm font-medium text-gray-700">
 								Unidade de Medida
 							</label>
-							<select
+							<SearchableSelect
+								options={availableUnits.map((u) => ({
+									value: u.abbreviation,
+									label: `${u.name} (${u.abbreviation})`,
+								}))}
 								value={unitFilter}
-								onChange={(e) => setUnitFilter(e.target.value)}
-								className="h-10 px-3 py-2 rounded-[5px] border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-full"
-							>
-								<option value="">Todas as unidades</option>
-								{availableUnits.map((unit) => (
-									<option
-										key={String(unit)}
-										value={String(unit)}
-									>
-										{String(unit)}
-									</option>
-								))}
-							</select>
+								onChange={setUnitFilter}
+								placeholder="Filtrar por unidade..."
+							/>
 						</div>
 
 						<div className="flex flex-col gap-1.5">
 							<label className="text-sm font-medium text-gray-700">
 								Controle de Estoque
 							</label>
-							<select
+							<SearchableSelect
+								options={[
+									{ value: 'yes', label: 'Sim' },
+									{ value: 'no', label: 'Não' },
+								]}
 								value={stockControlFilter}
-								onChange={(e) =>
-									setStockControlFilter(e.target.value)
-								}
-								className="h-10 px-3 py-2 rounded-[5px] border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-full"
-							>
-								<option value="">Todos</option>
-								<option value="yes">
-									Controla Estoque = Sim
-								</option>
-								<option value="no">
-									Controla Estoque = NÃ£o
-								</option>
-							</select>
+								onChange={setStockControlFilter}
+								placeholder="Todos"
+							/>
 						</div>
 					</FilterPanel>
 
@@ -248,7 +297,27 @@ export default function InsumosPage() {
 						<DataTable
 							data={currentInsumos}
 							columns={[
-								{ header: 'DescriÃ§Ã£o', accessorKey: 'name' },
+								{ header: 'Nome', accessorKey: 'name' },
+								{
+									header: 'Categoria',
+									cell: (item) => (
+										<div className="flex flex-col">
+											<span className="font-medium text-gray-900">
+												{item.categories
+													?.primary_category || '-'}
+											</span>
+											{item.categories
+												?.secondary_category && (
+												<span className="text-[10px] text-gray-500 uppercase tracking-wider">
+													{
+														item.categories
+															.secondary_category
+													}
+												</span>
+											)}
+										</div>
+									),
+								},
 								{
 									header: 'Unidade',
 									cell: (item) =>
@@ -256,14 +325,21 @@ export default function InsumosPage() {
 										'-',
 								},
 								{
-									header: 'Estoque Atual',
-									cell: (item) => item.current_stock || 0,
-								},
-								{
-									header: 'Estoque MÃ­nimo',
+									header: 'Estoque Mínimo',
 									cell: (item) => item.min_threshold || 0,
 								},
 							]}
+							detailsTitle="Detalhes do Insumo"
+							renderDetails={(item) => (
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<DetailRow label="Nome" value={item.name} className="sm:col-span-2" />
+									<DetailRow label="Categoria Primária" value={item.categories?.primary_category || '-'} />
+									<DetailRow label="Categoria Secundária" value={item.categories?.secondary_category || '-'} />
+									<DetailRow label="Unidade de Medida" value={item.measurement_units?.name ? `${item.measurement_units.name} (${item.measurement_units.abbreviation})` : '-'} />
+									<DetailRow label="Estoque Mínimo" value={item.min_threshold || 0} />
+									<DetailRow label="Controla Estoque" value={item.is_stock_controlled ? 'Sim' : 'Não'} />
+								</div>
+							)}
 							keyExtractor={(item) => item.id}
 							onEdit={(item) => setEditingItem(item)}
 							onDelete={async (item) => {
@@ -326,7 +402,7 @@ export default function InsumosPage() {
 				isOpen={isImportModalOpen}
 				onClose={() => setIsImportModalOpen(false)}
 				title="Importar Insumos"
-				description="FaÃ§a o upload do seu arquivo .txt com os insumos (formato: Nome;Unidade;EstoqueMinimo;É_Ferramenta(S/N))"
+				description="Faça o upload do seu arquivo .txt com os insumos (formato: Nome;Unidade;EstoqueMinimo;É Ferramenta(S/N))"
 				onImportLines={handleImport}
 			/>
 		</div>

@@ -185,9 +185,9 @@ export function AddInventoryForm({
 			}
 
 			onSaved();
-		} catch (err: unknown) {
-			const message = err instanceof Error ? err.message : 'Erro ao salvar inventário';
-			console.error('Erro ao salvar:', err);
+		} catch (err: any) {
+			console.error('Erro detalhado ao salvar:', JSON.stringify(err, null, 2));
+			const message = err?.message || (err instanceof Error ? err.message : 'Erro desconhecido');
 			alert('Erro ao salvar inventário: ' + message);
 		} finally {
 			setIsSaving(false);

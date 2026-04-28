@@ -7,7 +7,7 @@ import {
 } from '@/features/ferramentas/hooks/useActiveLoans';
 import { ReturnToolForm } from '@/features/ferramentas/components/ReturnToolForm';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { DataTable, ColumnDef } from '@/components/shared/DataTable';
+import { DataTable, ColumnDef, DetailRow } from '@/components/shared/DataTable';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { TableSearch } from '@/components/shared/TableSearch';
 import { Pagination } from '@/components/shared/Pagination';
@@ -168,6 +168,16 @@ export default function FerramentasEmUsoPage({
 							<DataTable
 								data={currentLoans}
 								columns={columns}
+								detailsTitle="Detalhes do Empréstimo"
+								renderDetails={(item) => (
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+										<DetailRow label="Ferramenta" value={item.toolName} className="sm:col-span-2" />
+										<DetailRow label="Código da Ferramenta" value={item.toolCode} />
+										<DetailRow label="Colaborador" value={item.collaboratorName} />
+										<DetailRow label="Quantidade Emprestada" value={item.quantity} />
+										<DetailRow label="Data de Empréstimo" value={format(new Date(item.loanDate), 'dd/MM/yyyy HH:mm')} />
+									</div>
+								)}
 								keyExtractor={(item) => item.id}
 							/>
 						)}

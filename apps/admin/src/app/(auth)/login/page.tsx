@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, Loader2, Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/config/supabase';
+import { useAuth } from '@/components/providers/AuthContext';
 
 export default function LoginPage() {
 	const [email, setEmail] = useState('');
@@ -11,44 +12,29 @@ export default function LoginPage() {
 	const [rememberMe, setRememberMe] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
 	const [loading, setLoading] = useState(false);
-	const [checkingSession, setCheckingSession] = useState(true);
 	const [error, setError] = useState('');
+	const [checkingSession, setCheckingSession] = useState(true);
+	
+	const { user, loading: authLoading } = useAuth();
 	const router = useRouter();
 	const supabase = createClient();
 
 	React.useEffect(() => {
-		async function checkSession() {
-			try {
-				const { data: { session } } = await supabase.auth.getSession();
-				if (session) {
-					// Verificar se ainda é super admin
-					const { data: userData } = await supabase
-						.from('users')
-						.select('is_super_admin')
-						.eq('id', session.user.id)
-						.maybeSingle();
-
-					if (userData?.is_super_admin) {
-						router.push('/dashboard');
-						return;
-					}
-				}
-				
-				// Carregar email lembrado
-				const savedEmail = localStorage.getItem('obralog_admin_remember_email');
-				if (savedEmail) {
-					setEmail(savedEmail);
-					setRememberMe(true);
-				}
-			} catch (err) {
-				console.error('Erro ao verificar sessão:', err);
-			} finally {
-				setCheckingSession(false);
-			}
+		if (!authLoading && user) {
+			router.push('/dashboard');
 		}
 
-		checkSession();
-	}, [router, supabase]);
+		// Carregar email lembrado
+		const savedEmail = localStorage.getItem('obralog_admin_remember_email');
+		if (savedEmail) {
+			setEmail(savedEmail);
+			setRememberMe(true);
+		}
+		
+		if (!authLoading) {
+			setCheckingSession(false);
+		}
+	}, [user, authLoading, router]);
 
 	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault();

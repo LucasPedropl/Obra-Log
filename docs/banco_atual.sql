@@ -55,6 +55,7 @@ CREATE TABLE public.collaborators (
   state character varying,
   city character varying,
   profile_id uuid,
+  documents_json jsonb DEFAULT '[]'::jsonb,
   CONSTRAINT collaborators_pkey PRIMARY KEY (id),
   CONSTRAINT collaborators_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id)
 );

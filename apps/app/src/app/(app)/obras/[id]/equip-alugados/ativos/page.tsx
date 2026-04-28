@@ -8,7 +8,7 @@ import {
 import { AddRentedForm } from '@/features/equip-alugados/components/AddRentedForm';
 import { ReturnRentedForm } from '@/features/equip-alugados/components/ReturnRentedForm';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { DataTable, ColumnDef } from '@/components/shared/DataTable';
+import { DataTable, ColumnDef, DetailRow } from '@/components/shared/DataTable';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Pagination } from '@/components/shared/Pagination';
 import { Button } from '@/components/ui/button';
@@ -167,6 +167,16 @@ export default function RentedActivePage({ params }: RentedActivePageProps) {
 					<DataTable
 						data={currentEquipments}
 						columns={columns}
+						detailsTitle="Detalhes do Equipamento Alugado"
+						renderDetails={(item) => (
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<DetailRow label="Equipamento" value={item.name} className="sm:col-span-2" />
+								<DetailRow label="Categoria" value={item.category} />
+								<DetailRow label="Fornecedor" value={item.supplier || '-'} />
+								<DetailRow label="Quantidade Atual" value={`${item.quantity} UN`} />
+								<DetailRow label="Data/Hora de Chegada" value={format(new Date(item.entry_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} />
+							</div>
+						)}
 						keyExtractor={(item) => item.id}
 					/>
 
