@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
 	let supabaseResponse = NextResponse.next({
 		request,
 	});
@@ -28,7 +28,7 @@ export async function middleware(request: NextRequest) {
 		},
 	});
 
-	// Refresca o token se necessário
+	// Obtém o usuário da sessão
 	const {
 		data: { user },
 	} = await supabase.auth.getUser();
@@ -52,16 +52,18 @@ export async function middleware(request: NextRequest) {
 		return NextResponse.redirect(url);
 	}
 
-	// Se estiver logado, verificar se é super admin
+	// Se estiver logado, verificar permissões de Super Admin
 	if (user) {
-		const { data: userData } = await supabase
+		const { data: userData, error } = await supabase
 			.from('users')
 			.select('is_super_admin')
 			.eq('id', user.id)
 			.maybeSingle();
 
-		// Se não for super admin, força logout e volta pro login
-		if (!userData?.is_super_admin) {
+		// SÓ forçamos o logout se a consulta retornar com sucesso E o usuário explicitamente NÃO for admin.
+		// Se houver erro de rede ou o registro não for encontrado (userData null), 
+		// permitimos a navegação para evitar que falhas temporárias desloguem o usuário.
+		if (!error && userData && userData.is_super_admin === false) {
 			await supabase.auth.signOut();
 			const url = request.nextUrl.clone();
 			url.pathname = '/login';

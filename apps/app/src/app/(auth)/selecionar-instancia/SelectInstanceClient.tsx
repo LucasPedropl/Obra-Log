@@ -90,7 +90,7 @@ export function SelectInstanceClient() {
 					document.cookie = `parentCompanyId=${matchParent[2]}; path=/; max-age=86400; SameSite=Lax`;
 					router.push('/dashboard');
 					router.refresh();
-					return; // Para o fluxo de tela e transita
+					return;
 				}
 
 				const {
@@ -113,23 +113,23 @@ export function SelectInstanceClient() {
 					return;
 				}
 
-				// Verifica se é Super Admin
-				const { data: userData } = await supabase
-					.from('users')
-					.select('is_super_admin')
-					.eq('id', currentUserId)
-					.maybeSingle();
+				// Paraleliza a busca de dados do usuário e das empresas
+				const [userDataResult, companiesResult] = await Promise.all([
+					supabase
+						.from('users')
+						.select('is_super_admin')
+						.eq('id', currentUserId)
+						.maybeSingle(),
+					getUserCompaniesAction(currentUserId)
+				]);
 
-				if (userData) {
-					setIsSuperAdmin(userData.is_super_admin);
+				if (userDataResult.data) {
+					setIsSuperAdmin(userDataResult.data.is_super_admin);
 				}
 
-				const result = await getUserCompaniesAction(currentUserId);
+				if (!companiesResult.success) throw new Error(companiesResult.error);
 
-				if (!result.success) throw new Error(result.error);
-
-				const mappedCompanies = result.companies || [];
-
+				const mappedCompanies = companiesResult.companies || [];
 				setCompanies(mappedCompanies);
 
 				if (mappedCompanies.length > 0) {
@@ -157,12 +157,13 @@ export function SelectInstanceClient() {
 			
 			const instancesData = result.instances || [];
 			setInstances(instancesData);
+			
+			// Se não houver instâncias, ativa o modo de criação imediatamente
 			if (instancesData.length === 0) {
 				setIsCreating(true);
 			}
 		} catch (err: unknown) {
 			console.error(err);
-			// Fallback ou erro
 		} finally {
 			setLoadingInstances(false);
 		}
@@ -285,6 +286,35 @@ export function SelectInstanceClient() {
 					window.location.reload();
 				}}
 			/>
+		);
+	}
+
+	if (loading) {
+		return (
+			<div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+				<div className="flex flex-col items-center gap-6 animate-in fade-in duration-700">
+					<div className="flex items-center gap-3 mb-4">
+						<img
+							src="/logo.png"
+							alt="Obra-Log"
+							className="h-12 animate-pulse"
+							onError={(e) => (e.currentTarget.style.display = 'none')}
+						/>
+						<h1 className="text-3xl font-bold tracking-tighter text-foreground">
+							Obra
+							<span className="text-blue-600 dark:text-blue-500">
+								Log
+							</span>
+						</h1>
+					</div>
+					<div className="flex flex-col items-center gap-3">
+						<Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+						<p className="text-muted-foreground font-medium animate-pulse">
+							Preparando seu acesso...
+						</p>
+					</div>
+				</div>
+			</div>
 		);
 	}
 
@@ -470,34 +500,18 @@ export function SelectInstanceClient() {
 			<div className="w-full max-w-5xl text-center space-y-12 animate-in fade-in duration-700 zoom-in-95">
 				<div className="space-y-4">
 					<h2 className="text-4xl md:text-5xl font-bold tracking-tighter text-foreground">
-						{!selectedParentCompany
-							? 'Carregando instâncias...'
-							: `Selecione a filial de ${selectedParentCompany.name}`}
+						{selectedParentCompany 
+							? `Selecione a filial de ${selectedParentCompany.name}`
+							: 'Selecione sua empresa'}
 					</h2>
 					<p className="text-muted-foreground text-lg max-w-xl mx-auto">
-						{!selectedParentCompany
-							? 'Aguarde um momento.'
-							: 'Escolha a instância (filial ou matriz) que deseja acessar para iniciar sua sessão.'}
+						{selectedParentCompany
+							? 'Escolha a instância (filial ou matriz) que deseja acessar para iniciar sua sessão.'
+							: 'Selecione a empresa que deseja gerenciar hoje.'}
 					</p>
 				</div>
 
-				{loading && (
-					<div className="flex justify-center gap-8 flex-wrap">
-						{[1, 2, 3].map((i) => (
-							<div
-								key={i}
-								className="flex flex-col items-center gap-4 animate-pulse"
-							>
-								<Skeleton className="h-32 w-32 md:h-40 md:w-40 rounded-2xl bg-muted/60" />
-								<Skeleton className="h-4 w-24 bg-muted/60" />
-							</div>
-						))}
-					</div>
-				)}
-
-				{/* Automatic selection implies we just show loading or instances directly, so no need for company selection list if we only ever have 1 */}
-				{!loading &&
-					!selectedParentCompany &&
+				{!selectedParentCompany &&
 					companies.length === 0 &&
 					!error && (
 						<div className="text-muted-foreground">
