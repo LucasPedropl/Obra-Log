@@ -8,7 +8,7 @@ import {
 	getSupplyItemsAdmin,
 	deleteSupplyItemAdmin
 } from '@/app/actions/adminActions';
-import { getActiveCompanyId } from '@/lib/utils';
+import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
 import { useState } from 'react';
 import { z } from 'zod';
 
@@ -30,7 +30,7 @@ export function useSupplyItems() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getActiveCompanyId();
+			const companyId = getParentCompanyId();
 			if (!companyId) throw new Error('Empresa não selecionada.');
 
 			const newId = await createCategoryAdmin({
@@ -68,7 +68,7 @@ export function useSupplyItems() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getActiveCompanyId();
+			const companyId = getParentCompanyId();
 			if (!companyId) throw new Error('Empresa não selecionada.');
 
 			const newId = await createUnitAdmin({
@@ -104,7 +104,7 @@ export function useSupplyItems() {
 
 	const fetchCategories = async () => {
 		try {
-			const companyId = getActiveCompanyId();
+			const companyId = getParentCompanyId();
 			if (!companyId) return [];
 
 			const data = await getCategoriesAdmin(companyId);
@@ -117,7 +117,7 @@ export function useSupplyItems() {
 
 	const fetchUnits = async () => {
 		try {
-			const companyId = getActiveCompanyId();
+			const companyId = getParentCompanyId();
 			if (!companyId) return [];
 
 			const data = await getUnitsAdmin(companyId);
@@ -132,7 +132,7 @@ export function useSupplyItems() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getActiveCompanyId();
+			const companyId = getParentCompanyId();
 
 			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
 
@@ -160,7 +160,7 @@ export function useSupplyItems() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getActiveCompanyId();
+			const companyId = getParentCompanyId();
 
 			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
 
@@ -184,7 +184,7 @@ export function useSupplyItems() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getActiveCompanyId();
+			const companyId = getParentCompanyId();
 
 			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
 
@@ -204,7 +204,7 @@ export function useSupplyItems() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getActiveCompanyId();
+			const companyId = getParentCompanyId();
 			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
 
 			await deleteSupplyItemAdmin(id, companyId);

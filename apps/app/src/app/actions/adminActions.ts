@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from '@/config/supabaseServer';
 
 export async function createConstructionSiteAdmin(data: {
 	name: string;
-	company_id: string;
+	instance_id: string;
 }) {
 	const supabase = await createServerSupabaseClient();
 	const { data: result, error } = await supabase
@@ -16,12 +16,12 @@ export async function createConstructionSiteAdmin(data: {
 	return result;
 }
 
-export async function getConstructionSitesAdmin(company_id: string) {
+export async function getConstructionSitesAdmin(instance_id: string) {
 	const supabase = await createServerSupabaseClient();
 	const { data, error } = await supabase
 		.from('construction_sites')
 		.select('*')
-		.eq('company_id', company_id)
+		.eq('instance_id', instance_id)
 		.order('created_at', { ascending: false });
 
 	if (error) throw error;

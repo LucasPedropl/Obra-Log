@@ -42,7 +42,7 @@ export default function InfraestruturaPage() {
 		try {
 			const { data: { user } } = await supabase.auth.getUser();
 			if (!user) throw new Error('Usuário não autenticado.');
-			await deleteDatabaseAction(user.id);
+			await deleteDatabaseAction();
 			setIsResetModalOpen(false);
 			setResetConfirmText('');
 			addToast('Banco de dados limpo com sucesso.', 'success');

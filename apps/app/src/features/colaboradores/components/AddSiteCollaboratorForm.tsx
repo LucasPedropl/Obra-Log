@@ -14,7 +14,7 @@ import {
 	getSiteCollaboratorsAdmin,
 	addSiteCollaboratorsAdmin,
 } from '@/app/actions/adminActions';
-import { getActiveCompanyId } from '@/lib/utils';
+import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
 import { useToast } from '@/components/ui/toaster';
 
 interface AddSiteCollaboratorFormProps {
@@ -39,7 +39,7 @@ export function AddSiteCollaboratorForm({
 		const loadData = async () => {
 			try {
 				setIsLoading(true);
-				const companyId = getActiveCompanyId();
+				const companyId = getParentCompanyId();
 				if (!companyId) return;
 
 				const [globalDb, siteDb] = await Promise.all([

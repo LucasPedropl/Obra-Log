@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Search, Plus, Check, Settings2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface SearchableOption {
 	value: string;
@@ -16,6 +17,7 @@ interface SearchableSelectProps {
 	placeholder?: string;
 	disabled?: boolean;
 	onOpenChange?: (isOpen: boolean) => void;
+	className?: string;
 }
 
 export function SearchableSelect({
@@ -27,6 +29,7 @@ export function SearchableSelect({
 	placeholder = 'Selecione...',
 	disabled = false,
 	onOpenChange,
+	className,
 }: SearchableSelectProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [search, setSearch] = useState('');
@@ -66,13 +69,15 @@ export function SearchableSelect({
 	return (
 		<div className="relative w-full" ref={containerRef}>
 			<div
-				className={`flex w-full items-center justify-between rounded-2xl border-2 bg-slate-50/50 px-4 py-3.5 text-sm transition-all duration-200 ${
+				className={cn(
+					'flex w-full items-center justify-between rounded-2xl border-2 bg-slate-50/50 px-4 py-3.5 text-sm transition-all duration-200',
 					disabled 
 						? 'opacity-50 cursor-not-allowed border-slate-100' 
 						: isOpen 
 							? 'border-slate-900 bg-white shadow-sm cursor-pointer' 
-							: 'border-slate-100 hover:border-slate-200 cursor-pointer'
-				}`}
+							: 'border-slate-100 hover:border-slate-200 cursor-pointer',
+					className
+				)}
 				onClick={() => {
 					if (!isOpen) handleOpen();
 					else handleClose();

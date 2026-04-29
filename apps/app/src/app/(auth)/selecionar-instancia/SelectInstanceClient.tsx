@@ -14,9 +14,10 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/config/supabase';
 import { 
-	getUserCompaniesAction, 
-	getCompanyInstancesAction, 
-	createCompanyInstanceAction 
+	getUserAccountsAction, 
+	getAccountInstancesAction, 
+	createInstanceAction,
+	activateAccountAction
 } from '@/app/actions/authData';
 import { SetupProfileModal } from '@/features/auth/components/SetupProfileModal';
 import { Button } from '@/components/ui/button';
@@ -30,10 +31,10 @@ import {
 	DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
 
-interface Company {
+interface Account {
 	id: string;
-	name: string;
-	active?: boolean;
+	company_name: string;
+	status: string;
 	max_instances?: number;
 }
 
@@ -50,9 +51,16 @@ export function SelectInstanceClient() {
 	const [error, setError] = useState<string | null>(null);
 	const [userId, setUserId] = useState<string | null>(null);
 	const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
-	const [companies, setCompanies] = useState<Company[]>([]);
-	const [selectedParentCompany, setSelectedParentCompany] =
-		useState<Company | null>(null);
+	const [isGlobalAdmin, setIsGlobalAdmin] = useState<boolean>(false);
+	const [accounts, setAccounts] = useState<Account[]>([]);
+	const [selectedParentAccount, setSelectedParentAccount] =
+		useState<Account | null>(null);
+	
+	// Onboarding state
+	const [pendingAccount, setPendingAccount] = useState<Account | null>(null);
+	const [onboardingCompanyName, setOnboardingCompanyName] = useState('');
+	const [onboardingCnpj, setOnboardingCnpj] = useState('');
+	const [isActivating, setIsActivating] = useState(false);
 	const [instances, setInstances] = useState<Instance[]>([]);
 	const [loadingInstances, setLoadingInstances] = useState(false);
 	const [isCreating, setIsCreating] = useState(false);
@@ -71,7 +79,7 @@ export function SelectInstanceClient() {
 	const [authUser, setAuthUser] = useState<any | null>(null);
 
 	useEffect(() => {
-		const loadUserAndCompanies = async () => {
+		const loadUserAndAccounts = async () => {
 			try {
 				// Checar auto-login primeiro
 				const matchInstance = document.cookie.match(
@@ -113,45 +121,59 @@ export function SelectInstanceClient() {
 					return;
 				}
 
-				// Paraleliza a busca de dados do usuário e das empresas
-				const [userDataResult, companiesResult] = await Promise.all([
+				// Paraleliza a busca de dados do usuário e das contas
+				const [userDataResult, accountsResult] = await Promise.all([
 					supabase
-						.from('users')
+						.from('profiles')
 						.select('is_super_admin')
 						.eq('id', currentUserId)
 						.maybeSingle(),
-					getUserCompaniesAction(currentUserId)
+					getUserAccountsAction(currentUserId)
 				]);
 
 				if (userDataResult.data) {
 					setIsSuperAdmin(userDataResult.data.is_super_admin);
 				}
 
-				if (!companiesResult.success) throw new Error(companiesResult.error);
+				if (!accountsResult.success) throw new Error(accountsResult.error);
 
-				const mappedCompanies = companiesResult.companies || [];
-				setCompanies(mappedCompanies);
+				setIsGlobalAdmin(accountsResult.isGlobalAdmin || false);
+				const mappedAccounts = (accountsResult.accounts as Account[]) || [];
+				setAccounts(mappedAccounts);
 
-				if (mappedCompanies.length > 0) {
-					// Aguardamos o carregamento das instâncias da primeira empresa antes de tirar o loading
-					await handleSelectCompany(mappedCompanies[0]);
+				// Se houver uma conta PENDING e o usuário for Global Admin da conta, força onboarding
+				const pending = mappedAccounts.find(acc => acc.status === 'PENDING');
+				if (pending && accountsResult.isGlobalAdmin) {
+					setPendingAccount(pending);
+					setLoading(false);
+					return;
+				}
+
+				if (mappedAccounts.length > 0) {
+					await handleSelectAccount(mappedAccounts[0], currentUserId, accountsResult.isGlobalAdmin || false);
 				}
 			} catch (err: unknown) {
 				console.error(err);
-				setError('Não foi possível carregar as empresas vinculadas.');
+				setError('Não foi possível carregar as contas vinculadas.');
 			} finally {
 				setLoading(false);
 			}
 		};
 
-		loadUserAndCompanies();
+		loadUserAndAccounts();
 	}, []);
 
-	const handleSelectCompany = async (company: Company) => {
-		setSelectedParentCompany(company);
+	const handleSelectAccount = async (account: Account, overrideUserId?: string, overrideIsGlobalAdmin?: boolean) => {
+		setSelectedParentAccount(account);
 		setLoadingInstances(true);
 		try {
-			const result = await getCompanyInstancesAction(company.id);
+			const effectiveUserId = overrideUserId || userId;
+			if (!effectiveUserId) return;
+
+			// Usa o valor passado ou o estado (se disponível)
+			const effectiveIsGlobal = overrideIsGlobalAdmin !== undefined ? overrideIsGlobalAdmin : isGlobalAdmin;
+
+			const result = await getAccountInstancesAction(account.id, effectiveUserId, effectiveIsGlobal);
 
 			if (!result.success) throw new Error(result.error);
 			
@@ -161,6 +183,8 @@ export function SelectInstanceClient() {
 			// Se não houver instâncias, ativa o modo de criação imediatamente
 			if (instancesData.length === 0) {
 				setIsCreating(true);
+			} else {
+				setIsCreating(false);
 			}
 		} catch (err: unknown) {
 			console.error(err);
@@ -169,13 +193,48 @@ export function SelectInstanceClient() {
 		}
 	};
 
+	const handleActivateAccount = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!pendingAccount || !onboardingCompanyName.trim()) return;
+
+		setIsActivating(true);
+		try {
+			const result = await activateAccountAction(
+				pendingAccount.id,
+				onboardingCompanyName,
+				onboardingCnpj
+			);
+
+			if (!result.success) throw new Error(result.error);
+
+			// Recarrega as contas após ativação
+			const accountsResult = await getUserAccountsAction(userId!);
+			if (accountsResult.success) {
+				const mappedAccounts = (accountsResult.accounts as Account[]) || [];
+				setAccounts(mappedAccounts);
+				setPendingAccount(null);
+				
+				// Seleciona a conta recém-ativada
+				const activated = mappedAccounts.find(acc => acc.id === pendingAccount.id);
+				if (activated) {
+					await handleSelectAccount(activated);
+				}
+			}
+		} catch (err: unknown) {
+			console.error(err);
+			setError((err as Error).message || 'Erro ao ativar conta');
+		} finally {
+			setIsActivating(false);
+		}
+	};
+
 	const handleCreateInstance = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!selectedParentCompany || !newInstanceName.trim()) return;
+		if (!selectedParentAccount || !newInstanceName.trim()) return;
 
 		setSavingInstance(true);
 		try {
-			const result = await createCompanyInstanceAction(selectedParentCompany.id, newInstanceName);
+			const result = await createInstanceAction(selectedParentAccount.id, newInstanceName);
 
 			if (!result.success) throw new Error(result.error);
 
@@ -183,7 +242,7 @@ export function SelectInstanceClient() {
 			setIsCreating(false);
 
 			// Reload instances
-			handleSelectCompany(selectedParentCompany);
+			handleSelectAccount(selectedParentAccount);
 		} catch (err: unknown) {
 			console.error(err);
 			setError((err as Error).message || 'Erro ao criar instância');
@@ -194,15 +253,15 @@ export function SelectInstanceClient() {
 
 	const handleSelectInstance = async (
 		instanceId: string,
-		companyId: string,
+		accountId: string,
 		remember: boolean = false,
 	) => {
 		document.cookie = `selectedCompanyId=${instanceId}; path=/; max-age=86400; SameSite=Lax`;
-		document.cookie = `parentCompanyId=${companyId}; path=/; max-age=86400; SameSite=Lax`;
+		document.cookie = `parentCompanyId=${accountId}; path=/; max-age=86400; SameSite=Lax`;
 
 		if (remember || defaultInstanceId === instanceId) {
 			document.cookie = `rememberedInstanceId=${instanceId}; path=/; max-age=2592000; SameSite=Lax`; // Salva por 30 dias
-			document.cookie = `rememberedParentId=${companyId}; path=/; max-age=2592000; SameSite=Lax`;
+			document.cookie = `rememberedParentId=${accountId}; path=/; max-age=2592000; SameSite=Lax`;
 		}
 
 		router.push('/dashboard');
@@ -211,13 +270,13 @@ export function SelectInstanceClient() {
 
 	const handleSetDefaultCompany = (
 		instanceId: string,
-		companyId: string,
+		accountId: string,
 		checked: boolean,
 	) => {
 		if (checked) {
 			setDefaultInstanceId(instanceId);
 			document.cookie = `rememberedInstanceId=${instanceId}; path=/; max-age=2592000; SameSite=Lax`;
-			document.cookie = `rememberedParentId=${companyId}; path=/; max-age=2592000; SameSite=Lax`;
+			document.cookie = `rememberedParentId=${accountId}; path=/; max-age=2592000; SameSite=Lax`;
 		} else {
 			if (defaultInstanceId === instanceId) {
 				setDefaultInstanceId(null);
@@ -232,15 +291,15 @@ export function SelectInstanceClient() {
 		if (
 			!editingInstance ||
 			!editInstanceName.trim() ||
-			!selectedParentCompany
+			!selectedParentAccount
 		)
 			return;
 
 		setSavingInstance(true);
 		try {
-			// Atualizando diretamente via cliente (admin possui RLS) ou pela API
+			// Atualizando via cliente
 			const { error: sbError } = await supabase
-				.from('companies')
+				.from('instances')
 				.update({ name: editInstanceName })
 				.eq('id', editingInstance.id);
 
@@ -250,7 +309,7 @@ export function SelectInstanceClient() {
 			setEditInstanceName('');
 
 			// Recarregar lista de instâncias perfeitamente baseada no pai
-			handleSelectCompany(selectedParentCompany);
+			handleSelectAccount(selectedParentAccount);
 		} catch (err: unknown) {
 			console.error(err);
 			setError((err as Error).message || 'Erro ao editar instância');
@@ -313,6 +372,82 @@ export function SelectInstanceClient() {
 							Preparando seu acesso...
 						</p>
 					</div>
+				</div>
+			</div>
+		);
+	}
+
+	if (pendingAccount) {
+		return (
+			<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+				<div className="w-full max-w-md bg-card border border-border rounded-3xl shadow-2xl p-8 text-center animate-in fade-in zoom-in duration-300">
+					<div className="flex flex-col items-center mb-8">
+						<div className="w-16 h-16 bg-primary/10 text-primary rounded-xl flex items-center justify-center mb-4">
+							<Settings size={32} />
+						</div>
+						<h1 className="text-2xl font-bold text-foreground">
+							Configuração de Conta
+						</h1>
+						<p className="text-muted-foreground text-sm mt-2">
+							Quase lá! Precisamos de alguns dados da sua empresa para ativar seu acesso.
+						</p>
+					</div>
+
+					{error && (
+						<div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg border border-destructive/20 text-left">
+							{error}
+						</div>
+					)}
+
+					<form onSubmit={handleActivateAccount} className="space-y-6">
+						<div className="space-y-4 text-left">
+							<div className="space-y-2">
+								<label className="block text-sm font-medium text-foreground">
+									Nome da Empresa (Razão Social ou Fantasia)
+								</label>
+								<input
+									type="text"
+									value={onboardingCompanyName}
+									onChange={(e) => setOnboardingCompanyName(e.target.value)}
+									required
+									className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground"
+									placeholder="Ex: Construtora Silva LTDA"
+								/>
+							</div>
+
+							<div className="space-y-2">
+								<label className="block text-sm font-medium text-foreground">
+									CNPJ (Opcional)
+								</label>
+								<input
+									type="text"
+									value={onboardingCnpj}
+									onChange={(e) => setOnboardingCnpj(e.target.value)}
+									className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground"
+									placeholder="00.000.000/0000-00"
+								/>
+							</div>
+						</div>
+
+						<button
+							type="submit"
+							disabled={isActivating || !onboardingCompanyName.trim()}
+							className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 font-medium h-10 px-4 py-2 rounded-md transition-colors flex items-center justify-center text-sm mt-8"
+						>
+							{isActivating ? (
+								<Loader2 className="animate-spin w-5 h-5" />
+							) : (
+								'Ativar Minha Conta'
+							)}
+						</button>
+					</form>
+
+					<button
+						onClick={handleLogout}
+						className="mt-6 w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
+					>
+						<LogOut size={16} /> Sair
+					</button>
 				</div>
 			</div>
 		);
@@ -500,26 +635,26 @@ export function SelectInstanceClient() {
 			<div className="w-full max-w-5xl text-center space-y-12 animate-in fade-in duration-700 zoom-in-95">
 				<div className="space-y-4">
 					<h2 className="text-4xl md:text-5xl font-bold tracking-tighter text-foreground">
-						{selectedParentCompany 
-							? `Selecione a filial de ${selectedParentCompany.name}`
-							: 'Selecione sua empresa'}
+						{selectedParentAccount 
+							? `Selecione a filial de ${selectedParentAccount.company_name}`
+							: 'Selecione sua conta'}
 					</h2>
 					<p className="text-muted-foreground text-lg max-w-xl mx-auto">
-						{selectedParentCompany
+						{selectedParentAccount
 							? 'Escolha a instância (filial ou matriz) que deseja acessar para iniciar sua sessão.'
-							: 'Selecione a empresa que deseja gerenciar hoje.'}
+							: 'Selecione a conta que deseja gerenciar hoje.'}
 					</p>
 				</div>
 
-				{!selectedParentCompany &&
-					companies.length === 0 &&
+				{!selectedParentAccount &&
+					accounts.length === 0 &&
 					!error && (
 						<div className="text-muted-foreground">
-							Nenhuma empresa encontrada para este usuário.
+							Nenhuma conta encontrada para este usuário.
 						</div>
 					)}
 
-				{selectedParentCompany && (
+				{selectedParentAccount && (
 					<div className="flex flex-col items-center gap-10">
 						{loadingInstances ? (
 							<div className="flex justify-center gap-8 flex-wrap">
@@ -572,7 +707,7 @@ export function SelectInstanceClient() {
 														} else {
 															handleSelectInstance(
 																instance.id,
-																selectedParentCompany.id,
+																selectedParentAccount.id,
 															);
 														}
 													}}
@@ -651,9 +786,9 @@ export function SelectInstanceClient() {
 									))}
 
 									{/* Botão de Adicionar (se limite permitir) */}
-									{(!selectedParentCompany.max_instances ||
+									{isGlobalAdmin && (!selectedParentAccount.max_instances ||
 										instances.length <
-											selectedParentCompany.max_instances) && (
+											selectedParentAccount.max_instances) && (
 										<button
 											onClick={() => setIsCreating(true)}
 											className="group flex flex-col items-center gap-5 transition-all duration-500 hover:-translate-y-2"
@@ -669,14 +804,34 @@ export function SelectInstanceClient() {
 													Nova Filial
 												</span>
 											</div>
-											<div className="flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity">
-												<span className="text-transparent font-medium text-base h-6">
-													{/* Espaçamento compensatório para alinhar */}
-												</span>
-											</div>
 										</button>
 									)}
 								</div>
+
+								{/* Se houver múltiplas contas, mostra seletor de conta */}
+								{accounts.length > 1 && (
+									<div className="mt-8 p-4 bg-muted/30 rounded-2xl border border-border/50 flex flex-wrap justify-center gap-3">
+										<p className="w-full text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">
+											Suas Contas
+										</p>
+										{accounts.map((acc) => (
+											<button
+												key={acc.id}
+												onClick={() =>
+													handleSelectAccount(acc)
+												}
+												className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+													selectedParentAccount.id ===
+													acc.id
+														? 'bg-blue-600 text-white shadow-md'
+														: 'bg-background hover:bg-accent text-muted-foreground'
+												}`}
+											>
+												{acc.company_name}
+											</button>
+										))}
+									</div>
+								)}
 
 								{/* Botão de Configurações Globais apenas para Super Admins */}
 								{isSuperAdmin && (

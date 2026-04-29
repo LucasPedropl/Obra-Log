@@ -49,31 +49,36 @@ export function PermissionsProvider({
 				} = await supabase.auth.getSession();
 				if (!session?.user) return;
 
-				const companyCookie = document.cookie.match(
+				const instanceCookie = document.cookie.match(
 					/(^| )selectedCompanyId=([^;]+)/,
 				);
-				const companyId = companyCookie ? companyCookie[2] : null;
+				const instanceId = instanceCookie ? instanceCookie[2] : null;
 
-				// 1. Verificar Super Admin Global e Company Admin
-				const [userRes, companyUserRes] = await Promise.all([
+				const accountCookie = document.cookie.match(
+					/(^| )parentCompanyId=([^;]+)/,
+				);
+				const accountId = accountCookie ? accountCookie[2] : null;
+
+				// 1. Verificar Super Admin Global e Admin da Conta
+				const [profileRes, accountUserRes] = await Promise.all([
 					supabase
-						.from('users')
+						.from('profiles')
 						.select('is_super_admin')
 						.eq('id', session.user.id)
 						.maybeSingle(),
-					companyId
+					accountId
 						? supabase
-								.from('company_users')
-								.select('is_company_admin')
+								.from('account_users')
+								.select('role')
 								.eq('user_id', session.user.id)
-								.eq('company_id', companyId)
+								.eq('account_id', accountId)
+								.eq('role', 'ADMIN')
 								.maybeSingle()
 						: Promise.resolve({ data: null }),
 				]);
 
-				// DETECÇÃO DE USUÁRIO FANTASMA (Auth OK, mas DB resetado)
-				// Se o usuário não existe na tabela pública, deslogamos ele
-				if (!userRes.data && !userRes.error) {
+				// DETECÇÃO DE USUÁRIO FANTASMA
+				if (!profileRes.data && !profileRes.error) {
 					console.warn('Usuário autenticado mas sem perfil no banco. Deslogando...');
 					await supabase.auth.signOut();
 					document.cookie = 'selectedCompanyId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
@@ -81,63 +86,53 @@ export function PermissionsProvider({
 					return;
 				}
 
-				const isSysSuper = userRes.data?.is_super_admin || false;
-				const isCompAdmin = companyUserRes.data?.is_company_admin || false;
+				const isGlobalSuper = profileRes.data?.is_super_admin || false;
+				const isAccountAdmin = !!accountUserRes.data;
 				
-				// Se for Admin da Empresa ou Super Admin, tem permissão total
-				if (isSysSuper || isCompAdmin) {
+				// Se for Admin da Conta ou Super Admin Global, tem permissão total
+				if (isGlobalSuper || isAccountAdmin) {
 					setIsSuperAdmin(true);
-					setPermissions(null); // Null significa acesso irrestrito na nossa lógica
+					setPermissions(null); 
 					setLoading(false);
 					return;
 				}
 
 				setIsSuperAdmin(false);
 
-				// 2. Se não é admin, verificar se está dentro de uma obra (URL: /obras/[siteId]/...)
-				const match = pathname?.match(/\/obras\/([a-f0-9\-]+)/i);
-				const siteId = match ? match[1] : null;
-
-				if (!siteId) {
-					setPermissions({}); // Sem permissões se não estiver numa obra e não for admin
+				// 2. Se não é admin, verificar acesso à instância atual
+				if (!instanceId) {
+					setPermissions({}); 
 					setLoading(false);
 					return;
 				}
 
 				// 3. Buscar perfil na instância atual
-				const { data: instanceUser } = await supabase
-					.from('instance_users')
-					.select('profile_id')
+				const { data: accessData } = await supabase
+					.from('user_instance_access')
+					.select('profile_id, access_profiles(permissions)')
 					.eq('user_id', session.user.id)
-					.eq('instance_id', siteId)
-					.eq('status', 'ACTIVE')
+					.eq('instance_id', instanceId)
 					.maybeSingle();
 
-				if (!instanceUser?.profile_id) {
+				if (!accessData?.access_profiles) {
 					setPermissions({});
 					setLoading(false);
 					return;
 				}
 
-				// 4. Buscar permissões granulares da nova tabela
-				const { data: permsData } = await supabase
-					.from('profile_permissions')
-					.select('permission_key')
-					.eq('profile_id', instanceUser.profile_id);
-
+				// 4. Carregar permissões do JSONB
+				const rawPermissions = accessData.access_profiles.permissions as any;
 				const permMap: ResourcePermissions = {};
 				
-				if (permsData) {
-					permsData.forEach((p: { permission_key: string }) => {
-						const parts = p.permission_key.split('.');
-						if (parts.length === 2) {
-							const resource = parts[0];
-							const action = parts[1] as keyof PermissionActions;
-							if (!permMap[resource]) {
-								permMap[resource] = { view: false, create: false, edit: false, delete: false };
-							}
-							permMap[resource][action] = true;
-						}
+				// O formato do JSONB deve ser { "tasks": { "view": true, "create": true }, ... }
+				if (rawPermissions && typeof rawPermissions === 'object') {
+					Object.keys(rawPermissions).forEach(resource => {
+						permMap[resource] = {
+							view: !!rawPermissions[resource]?.view,
+							create: !!rawPermissions[resource]?.create,
+							edit: !!rawPermissions[resource]?.edit,
+							delete: !!rawPermissions[resource]?.delete,
+						};
 					});
 				}
 

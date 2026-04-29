@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { Building2, Users, LayoutDashboard, Loader2, Zap, AlertTriangle, ChevronRight } from 'lucide-react';
-import { listCompaniesAction } from '@/app/actions/companies';
+import { listAccountsAction } from '@/app/actions/accounts';
 
 interface DashboardStats {
-	totalCompanies: number;
-	activeCompanies: number;
+	totalAccounts: number;
+	activeAccounts: number;
 }
 
 export default function DashboardPage() {
@@ -16,10 +16,10 @@ export default function DashboardPage() {
 	useEffect(() => {
 		async function loadStats() {
 			try {
-				const companies = await listCompaniesAction();
+				const accounts = await listAccountsAction();
 				setStats({
-					totalCompanies: companies.length,
-					activeCompanies: companies.filter((c) => c.active).length,
+					totalAccounts: accounts.length,
+					activeAccounts: accounts.filter((a) => a.status === 'ACTIVE').length,
 				});
 			} catch (err) {
 				console.error('Erro ao carregar stats:', err);
@@ -51,7 +51,7 @@ export default function DashboardPage() {
 							Empresas Cadastradas
 						</p>
 						<p className="text-3xl font-bold text-slate-800 mt-1">
-							{stats?.totalCompanies ?? 0}
+							{stats?.totalAccounts ?? 0}
 						</p>
 					</div>
 				</div>
@@ -65,7 +65,7 @@ export default function DashboardPage() {
 							Empresas Ativas
 						</p>
 						<p className="text-3xl font-bold text-slate-800 mt-1">
-							{stats?.activeCompanies ?? 0}
+							{stats?.activeAccounts ?? 0}
 						</p>
 					</div>
 				</div>

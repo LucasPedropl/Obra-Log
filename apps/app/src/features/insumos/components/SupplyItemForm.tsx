@@ -7,7 +7,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { SearchableInput } from '@/components/ui/searchable-input';
 import { useToast } from '@/components/ui/toaster';
 import { createClient } from '@/config/supabase';
-import { getActiveCompanyId } from '@/lib/utils';
+import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -595,7 +595,7 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 				onImportLines={async (lines) => {
 					const supabase = createClient();
 					const result: any[] = [];
-					const companyId = getActiveCompanyId();
+					const companyId = getParentCompanyId();
 					if (!companyId)
 						throw new Error('Nenhuma empresa selecionada.');
 
@@ -627,7 +627,7 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 				onImportLines={async (lines) => {
 					const supabase = createClient();
 					const result: any[] = [];
-					const companyId = getActiveCompanyId();
+					const companyId = getParentCompanyId();
 					if (!companyId)
 						throw new Error('Nenhuma empresa selecionada.');
 

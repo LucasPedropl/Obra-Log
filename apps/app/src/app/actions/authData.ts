@@ -1,71 +1,102 @@
 'use server';
 import { createServerSupabaseClient } from '@/config/supabaseServer';
-
 import { supabaseAdmin } from '@/config/supabaseAdmin';
 
 /**
- * Verifica e retorna os dados de vínculos (companies) do usuário.
- * Bypassa o RLS usando supabaseAdmin.
+ * Retorna as Contas (Accounts) do usuário e o seu papel (ADMIN ou User).
+ * Busca em account_users (Global Admins) e user_instance_access (Usuários Locais).
  */
-export async function getUserCompaniesAction(userId: string) {
+export async function getUserAccountsAction(userId: string) {
 	try {
-		const { data, error } = await supabaseAdmin
-			.from('company_users')
-			.select(`
-				company_id,
-				companies (
-					id,
-					name,
-					active,
-					max_instances
-				)
-			`)
+		// 1. Tentar achar o usuário como Admin da Conta
+		const { data: adminData, error: adminErr } = await supabaseAdmin
+			.from('account_users')
+			.select('account_id, accounts(id, company_name, status, max_instances)')
 			.eq('user_id', userId);
 
-		if (error) throw new Error(error.message);
-		
-		// Limpa o objeto retornado pelo join do Supabase
-		const mappedCompanies = (data || []).map((item: any) => item.companies).filter(Boolean);
-		return { success: true, companies: mappedCompanies };
+		if (adminErr) throw new Error(adminErr.message);
+
+		// Se for admin, retorna as contas
+		if (adminData && adminData.length > 0) {
+			const accounts = adminData.map((item: any) => item.accounts).filter(Boolean);
+			return { success: true, isGlobalAdmin: true, accounts };
+		}
+
+		// 2. Tentar achar o usuário como Usuário de Instância
+		const { data: instanceData, error: instanceErr } = await supabaseAdmin
+			.from('user_instance_access')
+			.select('instance_id, instances(account_id, accounts(id, company_name, status, max_instances))')
+			.eq('user_id', userId);
+
+		if (instanceErr) throw new Error(instanceErr.message);
+
+		if (instanceData && instanceData.length > 0) {
+			// Extrair contas únicas
+			const uniqueAccountsMap = new Map();
+			instanceData.forEach((item: any) => {
+				const acc = item.instances?.accounts;
+				if (acc && !uniqueAccountsMap.has(acc.id)) {
+					uniqueAccountsMap.set(acc.id, acc);
+				}
+			});
+			const accounts = Array.from(uniqueAccountsMap.values());
+			return { success: true, isGlobalAdmin: false, accounts };
+		}
+
+		// Nenhum vínculo
+		return { success: true, isGlobalAdmin: false, accounts: [] };
 	} catch (error: unknown) {
-		console.error('Erro em getUserCompaniesAction:', error);
-		const message = error instanceof Error ? error.message : 'Erro ao buscar empresas';
+		console.error('Erro em getUserAccountsAction:', error);
+		const message = error instanceof Error ? error.message : 'Erro ao buscar contas';
 		return { success: false, error: message };
 	}
 }
 
 /**
- * Verifica e retorna as instâncias (filiais/matriz) atreladas à empresa.
- * Bypassa o RLS usando supabaseAdmin.
+ * Verifica e retorna as instâncias (filiais) atreladas à conta, as quais o usuário tem acesso.
  */
-export async function getCompanyInstancesAction(companyId: string) {
+export async function getAccountInstancesAction(accountId: string, userId: string, isGlobalAdmin: boolean) {
 	try {
-		const { data, error } = await supabaseAdmin
-			.from('companies')
-			.select('id, name')
-			.eq('parent_id', companyId);
+		if (isGlobalAdmin) {
+			// Admin vê todas as instâncias da conta
+			const { data, error } = await supabaseAdmin
+				.from('instances')
+				.select('id, name')
+				.eq('account_id', accountId)
+				.order('name');
 
-		if (error) throw new Error(error.message);
-		
-		return { success: true, instances: data || [] };
+			if (error) throw new Error(error.message);
+			return { success: true, instances: data || [] };
+		} else {
+			// Usuário vê apenas as instâncias vinculadas
+			const { data, error } = await supabaseAdmin
+				.from('user_instance_access')
+				.select('instance_id, instances!inner(id, name, account_id)')
+				.eq('user_id', userId)
+				.eq('instances.account_id', accountId);
+
+			if (error) throw new Error(error.message);
+			const instances = (data || []).map((item: any) => item.instances).filter(Boolean);
+			return { success: true, instances };
+		}
 	} catch (error: unknown) {
-		console.error('Erro em getCompanyInstancesAction:', error);
+		console.error('Erro em getAccountInstancesAction:', error);
 		const message = error instanceof Error ? error.message : 'Erro ao buscar instâncias';
 		return { success: false, error: message };
 	}
 }
 
 /**
- * Cria de forma administrativa uma nova instância (filial) para a empresa do usuário logado.
+ * Cria uma nova instância (filial) para a conta selecionada.
  */
-export async function createCompanyInstanceAction(companyId: string, name: string) {
+export async function createInstanceAction(accountId: string, name: string) {
 	try {
 		const { data, error } = await supabaseAdmin
-			.from('companies')
+			.from('instances')
 			.insert({
 				name,
-				parent_id: companyId,
-				active: true
+				account_id: accountId,
+				status: 'ACTIVE'
 			})
 			.select()
 			.single();
@@ -74,31 +105,32 @@ export async function createCompanyInstanceAction(companyId: string, name: strin
 		
 		return { success: true, instance: data };
 	} catch (error: unknown) {
-		console.error('Erro em createCompanyInstanceAction:', error);
+		console.error('Erro em createInstanceAction:', error);
 		const message = error instanceof Error ? error.message : 'Erro ao criar instância';
 		return { success: false, error: message };
 	}
 }
 
 /**
- * Valida de forma administrativa se o usuário possui vínculo com QUALQUER empresa (usado no login).
+ * Ativa uma conta PENDING preenchendo o nome da empresa e cnpj (opcional)
  */
-export async function checkUserHasCompanyLinkAction(userId: string) {
+export async function activateAccountAction(accountId: string, companyName: string, cnpj: string) {
 	try {
-		const supabase = await createServerSupabaseClient();
-		const { data, error } = await supabase
-			.from('company_users')
-			.select('id')
-			.eq('user_id', userId)
-			.limit(1)
-			.maybeSingle();
+		const { error } = await supabaseAdmin
+			.from('accounts')
+			.update({
+				company_name: companyName,
+				cnpj: cnpj || null,
+				status: 'ACTIVE'
+			})
+			.eq('id', accountId);
 
 		if (error) throw new Error(error.message);
 		
-		return { success: true, hasLink: !!data };
+		return { success: true };
 	} catch (error: unknown) {
-		console.error('Erro em checkUserHasCompanyLinkAction:', error);
-		const message = error instanceof Error ? error.message : 'Erro ao verificar vínculos do usuário';
+		console.error('Erro em activateAccountAction:', error);
+		const message = error instanceof Error ? error.message : 'Erro ao ativar a conta';
 		return { success: false, error: message };
 	}
 }

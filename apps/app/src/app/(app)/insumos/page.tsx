@@ -11,7 +11,7 @@ import { TableSearch } from '@/components/shared/TableSearch';
 import { Button } from '@/components/ui/button';
 import { SupplyItemForm } from '@/features/insumos/components/SupplyItemForm';
 import { useSupplyItems } from '@/features/insumos/hooks/useSupplyItems';
-import { getActiveCompanyId } from '@/lib/utils';
+import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Download, Loader2, PackageOpen, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -125,7 +125,7 @@ export default function InsumosPage() {
 
 	const handleImport = async (lines: string[]) => {
 		const result: any[] = [];
-		const companyId = getActiveCompanyId();
+		const companyId = getParentCompanyId();
 
 		if (!companyId) {
 			console.error('Nenhuma empresa ativa encontrada.');
@@ -244,6 +244,7 @@ export default function InsumosPage() {
 								value={categoryFilter}
 								onChange={setCategoryFilter}
 								placeholder="Filtrar por categoria..."
+								className="rounded-[5px] h-10 border-gray-300 bg-white shadow-sm border"
 							/>
 						</div>
 
@@ -259,6 +260,7 @@ export default function InsumosPage() {
 								value={subcategoryFilter}
 								onChange={setSubcategoryFilter}
 								placeholder="Filtrar por subcategoria..."
+								className="rounded-[5px] h-10 border-gray-300 bg-white shadow-sm border"
 							/>
 						</div>
 
@@ -274,6 +276,7 @@ export default function InsumosPage() {
 								value={unitFilter}
 								onChange={setUnitFilter}
 								placeholder="Filtrar por unidade..."
+								className="rounded-[5px] h-10 border-gray-300 bg-white shadow-sm border"
 							/>
 						</div>
 
@@ -289,6 +292,7 @@ export default function InsumosPage() {
 								value={stockControlFilter}
 								onChange={setStockControlFilter}
 								placeholder="Todos"
+								className="rounded-[5px] h-10 border-gray-300 bg-white shadow-sm border"
 							/>
 						</div>
 					</FilterPanel>

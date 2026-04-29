@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Shield, Loader2, Eye, EyeOff } from 'lucide-react';
-import { createClient } from '@/config/supabase';
 import { useAuth } from '@/components/providers/AuthContext';
+import { createClient } from '@/config/supabase';
+import { Eye, EyeOff, Loader2, Shield } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
 
 export default function LoginPage() {
 	const [email, setEmail] = useState('');
@@ -14,7 +14,7 @@ export default function LoginPage() {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
 	const [checkingSession, setCheckingSession] = useState(true);
-	
+
 	const { user, loading: authLoading } = useAuth();
 	const router = useRouter();
 	const supabase = createClient();
@@ -30,7 +30,7 @@ export default function LoginPage() {
 			setEmail(savedEmail);
 			setRememberMe(true);
 		}
-		
+
 		if (!authLoading) {
 			setCheckingSession(false);
 		}
@@ -48,7 +48,7 @@ export default function LoginPage() {
 			if (authError) throw authError;
 
 			const { data: userData, error: userError } = await supabase
-				.from('users')
+				.from('profiles')
 				.select('is_super_admin')
 				.eq('id', authData.user.id)
 				.maybeSingle();

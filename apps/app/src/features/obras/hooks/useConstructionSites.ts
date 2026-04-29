@@ -20,15 +20,15 @@ export function useConstructionSites() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getActiveCompanyId();
+			const instanceId = getActiveCompanyId();
 
-			if (!companyId) {
-				throw new Error('Nenhuma empresa selecionada.');
+			if (!instanceId) {
+				throw new Error('Nenhuma instância selecionada.');
 			}
 
 			await createConstructionSiteAdmin({
 				name: data.name,
-				company_id: companyId,
+				instance_id: instanceId,
 			});
 
 			return true;
@@ -46,13 +46,13 @@ export function useConstructionSites() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getActiveCompanyId();
+			const instanceId = getActiveCompanyId();
 
-			if (!companyId) {
-				throw new Error('Nenhuma empresa selecionada.');
+			if (!instanceId) {
+				throw new Error('Nenhuma instância selecionada.');
 			}
 
-			const data = await getConstructionSitesAdmin(companyId);
+			const data = await getConstructionSitesAdmin(instanceId);
 			return data || [];
 		} catch (err: unknown) {
 			const message = err instanceof Error ? err.message : 'Erro ao buscar as obras';

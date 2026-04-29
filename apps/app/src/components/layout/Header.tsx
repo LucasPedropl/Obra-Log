@@ -53,62 +53,79 @@ export function Header({
 				} = await supabase.auth.getUser();
 				if (!user) return;
 
-				// Fetch user name and role from companies or users tables
-				// First check users table for full name
-				const { data: dbUser } = await supabase
-					.from('users')
+				const { data: dbProfile } = await supabase
+					.from('profiles')
 					.select('full_name')
 					.eq('id', user.id)
 					.single();
 
-				// Get selected company
-				const match = document.cookie.match(
+				// Get selected instance and parent account
+				const instanceCookie = document.cookie.match(
 					/(^| )selectedCompanyId=([^;]+)/,
 				);
-				const selectedCompanyId = match ? match[2] : null;
+				const selectedInstanceId = instanceCookie ? instanceCookie[2] : null;
 
-				let roleTitle = 'Administrador';
+				const accountCookie = document.cookie.match(
+					/(^| )parentCompanyId=([^;]+)/,
+				);
+				const selectedAccountId = accountCookie ? accountCookie[2] : null;
 
-				if (selectedCompanyId) {
-					// Fetch role in this specific company (collaborators table or company_users)
-					const { data: collab } = await supabase
-						.from('company_users')
-						.select('access_profiles(name)')
+				let roleTitle = 'Colaborador';
+
+				if (selectedAccountId) {
+					// 1. Tentar Admin da Conta
+					const { data: accountAdmin } = await supabase
+						.from('account_users')
+						.select('role')
 						.eq('user_id', user.id)
-						.eq('company_id', selectedCompanyId)
-						.limit(1)
+						.eq('account_id', selectedAccountId)
+						.eq('role', 'ADMIN')
 						.maybeSingle();
 
-					const accessProfile = Array.isArray(collab?.access_profiles)
-						? collab.access_profiles[0]
-						: collab?.access_profiles;
+					if (accountAdmin) {
+						roleTitle = 'Administrador da Conta';
+					} else if (selectedInstanceId) {
+						// 2. Se não for admin, buscar o perfil na instância
+						const { data: accessData } = await supabase
+							.from('user_instance_access')
+							.select('access_profiles(name)')
+							.eq('user_id', user.id)
+							.eq('instance_id', selectedInstanceId)
+							.maybeSingle();
 
-					if (accessProfile && typeof accessProfile === 'object' && 'name' in accessProfile) {
-						roleTitle = String(accessProfile.name);
+						const profileName = (accessData?.access_profiles as any)?.name;
+						if (profileName) {
+							roleTitle = profileName;
+						}
 					}
 
 					// Load Obras
-					try {
-						const dbObras =
-							await getConstructionSitesAdmin(selectedCompanyId);
-						if (dbObras) {
-							setObras(dbObras as { id: string; name: string }[]);
-							if (isObraRoute && obraId) {
-								const current = dbObras.find(
-									(o) => o.id === obraId,
-								);
-								if (current) setCurrentObraName(current.name);
-								else setCurrentObraName('Obra');
+					if (selectedInstanceId) {
+						try {
+							const { data: dbObras } = await supabase
+								.from('construction_sites')
+								.select('id, name')
+								.eq('instance_id', selectedInstanceId);
+
+							if (dbObras) {
+								setObras(dbObras);
+								if (isObraRoute && obraId) {
+									const current = dbObras.find(
+										(o) => o.id === obraId,
+									);
+									if (current) setCurrentObraName(current.name);
+									else setCurrentObraName('Obra');
+								}
 							}
+						} catch (err) {
+							console.error(err);
 						}
-					} catch (err) {
-						console.error(err);
 					}
 				}
 
 				setUserProfile({
 					full_name:
-						dbUser?.full_name ||
+						dbProfile?.full_name ||
 						user.user_metadata?.full_name ||
 						'Usuário',
 					email: user.email || '',

@@ -11,7 +11,8 @@ import { TableSearch } from '@/components/shared/TableSearch';
 import { Button } from '@/components/ui/button';
 import { CollaboratorForm } from '@/features/colaboradores/components/CollaboratorForm';
 import { useCollaborators } from '@/features/colaboradores/hooks/useCollaborators';
-import { getActiveCompanyId } from '@/lib/utils';
+import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Download, ExternalLink, FileIcon, FileText, Image as ImageIcon, Loader2, Upload, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -82,7 +83,7 @@ export default function ColaboradoresPage() {
 
 	const handleImport = async (lines: string[]) => {
 		const result: any[] = [];
-		const companyId = getActiveCompanyId();
+		const companyId = getParentCompanyId();
 		if (!companyId) return;
 
 		for (const line of lines) {
@@ -185,23 +186,16 @@ export default function ColaboradoresPage() {
 								<label className="text-sm font-medium text-gray-700">
 									Cargo / Função
 								</label>
-								<select
+								<SearchableSelect
+									options={availableRoles.map((role) => ({
+										value: String(role),
+										label: String(role),
+									}))}
 									value={roleFilter}
-									onChange={(e) =>
-										setRoleFilter(e.target.value)
-									}
-									className="h-10 px-3 py-2 rounded-[5px] border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent w-full"
-								>
-									<option value="">Todos os cargos</option>
-									{availableRoles.map((role) => (
-										<option
-											key={String(role)}
-											value={String(role)}
-										>
-											{String(role)}
-										</option>
-									))}
-								</select>
+									onChange={setRoleFilter}
+									placeholder="Todos os cargos"
+									className="rounded-[5px] h-10 border-gray-300 bg-white shadow-sm border"
+								/>
 							</div>
 						</FilterPanel>
 					</div>

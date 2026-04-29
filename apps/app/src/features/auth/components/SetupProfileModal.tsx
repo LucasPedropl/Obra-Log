@@ -75,9 +75,9 @@ export function SetupProfileModal({
 				}
 			}
 
-			// Update public.users
+			// Update public.profiles
 			const { error: updateDbError } = await supabase
-				.from('users')
+				.from('profiles')
 				.update({ full_name: fullName })
 				.eq('id', user.id);
 

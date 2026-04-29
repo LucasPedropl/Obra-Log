@@ -11,7 +11,7 @@ import { TableSearch } from '@/components/shared/TableSearch';
 import { DataTable, DetailRow } from '@/components/shared/DataTable';
 import { getInstanceUsersAction, saveInstanceUserAction } from '@/app/actions/instanceUsers';
 import { getAllProfilesAction } from '@/app/actions/globalUsers';
-import { getActiveCompanyId } from '@/lib/utils';
+import { getParentCompanyId } from '@/lib/utils';
 import { useToast } from '@/components/ui/toaster';
 
 interface SimpleProfile {
@@ -96,7 +96,7 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 
 		setIsSaving(true);
 		try {
-			const companyId = getActiveCompanyId() || '';
+			const companyId = getParentCompanyId() || '';
 			const res = await saveInstanceUserAction(siteId, {
 				email,
 				fullName,

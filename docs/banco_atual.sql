@@ -28,7 +28,7 @@ CREATE TABLE public.catalogs (
 CREATE TABLE public.categories (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   company_id uuid,
-  entry_type character varying NOT NULL CHECK (entry_type::text = ANY (ARRAY['PRODUTO'::character varying, 'SERVICO'::character varying]::text[])),
+  entry_type character varying NOT NULL CHECK (entry_type::text = ANY (ARRAY['PRODUTO'::character varying::text, 'SERVICO'::character varying::text])),
   primary_category character varying NOT NULL,
   secondary_category character varying,
   CONSTRAINT categories_pkey PRIMARY KEY (id),
@@ -40,7 +40,7 @@ CREATE TABLE public.collaborators (
   name character varying NOT NULL,
   role_title character varying NOT NULL,
   document character varying,
-  status character varying NOT NULL DEFAULT 'ACTIVE'::character varying CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying, 'DISMISSED'::character varying]::text[])),
+  status character varying NOT NULL DEFAULT 'ACTIVE'::character varying CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying::text, 'DISMISSED'::character varying::text])),
   cpf character varying,
   rg character varying,
   birth_date date,
@@ -73,7 +73,7 @@ CREATE TABLE public.company_users (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   company_id uuid NOT NULL,
   user_id uuid NOT NULL,
-  status character varying NOT NULL DEFAULT 'ACTIVE'::character varying CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying, 'INACTIVE'::character varying]::text[])),
+  status character varying NOT NULL DEFAULT 'ACTIVE'::character varying CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying::text, 'INACTIVE'::character varying::text])),
   is_company_admin boolean DEFAULT false,
   CONSTRAINT company_users_pkey PRIMARY KEY (id),
   CONSTRAINT company_users_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id),
@@ -83,7 +83,7 @@ CREATE TABLE public.construction_sites (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   company_id uuid NOT NULL,
   name character varying NOT NULL,
-  status character varying NOT NULL DEFAULT 'ACTIVE'::character varying CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying, 'FINISHED'::character varying, 'PAUSED'::character varying]::text[])),
+  status character varying NOT NULL DEFAULT 'ACTIVE'::character varying CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying::text, 'FINISHED'::character varying::text, 'PAUSED'::character varying::text])),
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT construction_sites_pkey PRIMARY KEY (id),
   CONSTRAINT construction_sites_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id)
@@ -93,11 +93,10 @@ CREATE TABLE public.epi_withdrawals (
   site_id uuid NOT NULL,
   collaborator_id uuid NOT NULL,
   catalog_id uuid NOT NULL,
-  withdrawn_by uuid NOT NULL,
-  quantity integer NOT NULL,
-  withdrawal_date timestamp with time zone DEFAULT now(),
+  quantity integer NOT NULL DEFAULT 1,
+  withdrawal_date timestamp with time zone NOT NULL DEFAULT now(),
+  withdrawn_by uuid,
   notes text,
-  photo_url text,
   CONSTRAINT epi_withdrawals_pkey PRIMARY KEY (id),
   CONSTRAINT epi_withdrawals_site_id_fkey FOREIGN KEY (site_id) REFERENCES public.construction_sites(id),
   CONSTRAINT epi_withdrawals_collaborator_id_fkey FOREIGN KEY (collaborator_id) REFERENCES public.collaborators(id),
@@ -106,15 +105,13 @@ CREATE TABLE public.epi_withdrawals (
 );
 CREATE TABLE public.instance_users (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
   instance_id uuid NOT NULL,
-  profile_id uuid NOT NULL,
-  status character varying NOT NULL DEFAULT 'ACTIVE'::character varying CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying, 'INACTIVE'::character varying]::text[])),
+  user_id uuid NOT NULL,
+  profile_id uuid,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT instance_users_pkey PRIMARY KEY (id),
-  CONSTRAINT instance_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT instance_users_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES public.construction_sites(id),
-  CONSTRAINT instance_users_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.access_profiles(id)
+  CONSTRAINT instance_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT instance_users_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES public.construction_sites(id)
 );
 CREATE TABLE public.measurement_units (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -124,16 +121,9 @@ CREATE TABLE public.measurement_units (
   CONSTRAINT measurement_units_pkey PRIMARY KEY (id),
   CONSTRAINT measurement_units_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id)
 );
-CREATE TABLE public.profile_permissions (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  profile_id uuid NOT NULL,
-  permission_key character varying NOT NULL,
-  CONSTRAINT profile_permissions_pkey PRIMARY KEY (id),
-  CONSTRAINT profile_permissions_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.access_profiles(id)
-);
 CREATE TABLE public.rented_equipment_categories (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  company_id uuid,
+  company_id uuid NOT NULL,
   name character varying NOT NULL,
   CONSTRAINT rented_equipment_categories_pkey PRIMARY KEY (id),
   CONSTRAINT rented_equipment_categories_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id)
@@ -141,17 +131,15 @@ CREATE TABLE public.rented_equipment_categories (
 CREATE TABLE public.rented_equipments (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   site_id uuid NOT NULL,
-  name character varying,
-  category character varying,
-  supplier character varying,
-  quantity integer NOT NULL,
-  entry_date timestamp with time zone NOT NULL,
-  exit_date timestamp with time zone,
-  status character varying NOT NULL DEFAULT 'ACTIVE'::character varying CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying, 'RETURNED'::character varying]::text[])),
-  entry_photos_json jsonb DEFAULT '[]'::jsonb,
-  exit_photos_json jsonb DEFAULT '[]'::jsonb,
-  description text,
   inventory_id uuid,
+  name character varying NOT NULL,
+  category character varying NOT NULL,
+  supplier character varying,
+  quantity integer NOT NULL DEFAULT 1,
+  entry_date timestamp with time zone NOT NULL DEFAULT now(),
+  exit_date timestamp with time zone,
+  status character varying NOT NULL DEFAULT 'ACTIVE'::character varying CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying::text, 'RETURNED'::character varying::text])),
+  description text,
   entry_photos_url text,
   exit_photos_url text,
   CONSTRAINT rented_equipments_pkey PRIMARY KEY (id),
@@ -191,10 +179,10 @@ CREATE TABLE public.site_movements (
   site_id uuid NOT NULL,
   inventory_id uuid NOT NULL,
   created_by uuid NOT NULL,
-  type character varying NOT NULL CHECK (type::text = ANY (ARRAY['IN'::character varying, 'OUT'::character varying]::text[])),
+  type character varying NOT NULL CHECK (type::text = ANY (ARRAY['IN'::character varying::text, 'OUT'::character varying::text])),
   quantity_delta double precision NOT NULL,
   action_date timestamp with time zone DEFAULT now(),
-  reason character varying NOT NULL CHECK (reason::text = ANY (ARRAY['PURCHASE'::character varying, 'WASTE'::character varying, 'APPLICATION'::character varying, 'TRANSFER'::character varying, 'ADJUSTMENT'::character varying]::text[])),
+  reason character varying NOT NULL CHECK (reason::text = ANY (ARRAY['PURCHASE'::character varying::text, 'WASTE'::character varying::text, 'APPLICATION'::character varying::text, 'TRANSFER'::character varying::text, 'ADJUSTMENT'::character varying::text])),
   CONSTRAINT site_movements_pkey PRIMARY KEY (id),
   CONSTRAINT site_movements_site_id_fkey FOREIGN KEY (site_id) REFERENCES public.construction_sites(id),
   CONSTRAINT site_movements_inventory_id_fkey FOREIGN KEY (inventory_id) REFERENCES public.site_inventory(id),
@@ -217,7 +205,7 @@ CREATE TABLE public.tool_loans (
   quantity integer NOT NULL,
   loan_date timestamp with time zone DEFAULT now(),
   returned_date timestamp with time zone,
-  status character varying NOT NULL DEFAULT 'OPEN'::character varying CHECK (status::text = ANY (ARRAY['OPEN'::character varying, 'RETURNED'::character varying, 'LOST'::character varying]::text[])),
+  status character varying NOT NULL DEFAULT 'OPEN'::character varying CHECK (status::text = ANY (ARRAY['OPEN'::character varying::text, 'RETURNED'::character varying::text, 'LOST'::character varying::text])),
   notes_on_return text,
   notes_on_loan text,
   photo_url text,
@@ -235,6 +223,5 @@ CREATE TABLE public.users (
   last_login timestamp with time zone,
   temp_password text,
   require_password_change boolean DEFAULT false,
-  CONSTRAINT users_pkey PRIMARY KEY (id),
-  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+  CONSTRAINT users_pkey PRIMARY KEY (id)
 );

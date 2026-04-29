@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/toaster';
 import { createClient } from '@/config/supabase';
 import { AccessProfileForm } from '@/features/admin/components/AccessProfileForm';
 import { maskCEP, maskCPF, maskDate, maskPhone, unmask } from '@/lib/maskUtils';
-import { getActiveCompanyId } from '@/lib/utils';
+import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
 	Calendar,
@@ -181,7 +181,7 @@ export function CollaboratorForm({
 		const files = e.target.files;
 		if (!files || files.length === 0) return;
 
-		const companyId = getActiveCompanyId();
+		const companyId = getParentCompanyId();
 		if (!companyId) {
 			addToast('Erro: Empresa não identificada.', 'error');
 			return;
@@ -233,11 +233,6 @@ export function CollaboratorForm({
 	};
 
 	const onSubmit = async (data: CollaboratorFormData) => {
-		if (currentStep < 4) {
-			await nextStep();
-			return;
-		}
-
 		let success;
 		if (initialData?.id) {
 			success = await updateCollaborator(initialData.id, data);
@@ -287,7 +282,7 @@ export function CollaboratorForm({
 	const handleCreateProfile = async (profileData: any) => {
 		setIsCreatingProfile(true);
 		try {
-			const companyId = getActiveCompanyId();
+			const companyId = getParentCompanyId();
 			if (!companyId) throw new Error('Empresa não identificada');
 
 			await createAccessProfileAdmin({
@@ -333,7 +328,7 @@ export function CollaboratorForm({
 						</button>
 
 						<AccessProfileForm 
-							companyId={getActiveCompanyId() || ''}
+							companyId={getParentCompanyId() || ''}
 							onSubmit={handleCreateProfile}
 							onCancel={() => setShowProfileModal(false)}
 							isLoading={isCreatingProfile}
@@ -419,8 +414,10 @@ export function CollaboratorForm({
 
 			{/* Form Area */}
 			<form
-				onSubmit={handleSubmit(onSubmit)}
 				className="flex-1 flex flex-col overflow-hidden"
+				onKeyDown={(e) => {
+					if (e.key === 'Enter') e.preventDefault();
+				}}
 			>
 				<div
 					className="px-6 md:px-10 py-6 md:py-10 flex-1 overflow-x-hidden overflow-y-auto custom-scrollbar"
@@ -815,7 +812,8 @@ export function CollaboratorForm({
 				) : (
 					<button
 						key="submit-btn"
-						type="submit"
+						type="button"
+						onClick={handleSubmit(onSubmit)}
 						disabled={isLoading || isUploading}
 						className="px-8 py-3 rounded-2xl bg-slate-900 text-white font-bold text-sm shadow-xl shadow-slate-200 hover:bg-slate-800 hover:shadow-slate-300 transition-all focus:ring-4 focus:ring-slate-900/20 focus:outline-none flex items-center gap-2 min-w-[160px] justify-center disabled:opacity-70 disabled:cursor-not-allowed active:scale-95"
 					>

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { User } from '@supabase/supabase-js';
 import { createClient } from '@/config/supabase';
+import { User } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 interface AuthContextType {
 	user: User | null;
@@ -22,7 +22,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 	const refreshSession = async () => {
 		try {
-			const { data: { session } } = await supabase.auth.getSession();
+			const {
+				data: { session },
+			} = await supabase.auth.getSession();
 			setUser(session?.user ?? null);
 		} catch (error) {
 			console.error('Error refreshing session:', error);
@@ -37,18 +39,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		refreshSession();
 
 		// Escuta mudanças no estado de autenticação
-		const { data: { subscription } } = supabase.auth.onAuthStateChange(
-			async (event, session) => {
-				setUser(session?.user ?? null);
-				
-				if (event === 'SIGNED_OUT') {
-					router.push('/login');
-					router.refresh();
-				} else if (event === 'SIGNED_IN') {
-					router.refresh();
-				}
+		const {
+			data: { subscription },
+		} = supabase.auth.onAuthStateChange(async (event, session) => {
+			setUser(session?.user ?? null);
+
+			if (event === 'SIGNED_OUT') {
+				router.push('/login');
+				router.refresh();
+			} else if (event === 'SIGNED_IN') {
+				router.refresh();
 			}
-		);
+		});
 
 		return () => {
 			subscription.unsubscribe();
@@ -63,7 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	};
 
 	return (
-		<AuthContext.Provider value={{ user, loading, signOut, refreshSession }}>
+		<AuthContext.Provider
+			value={{ user, loading, signOut, refreshSession }}
+		>
 			{children}
 		</AuthContext.Provider>
 	);

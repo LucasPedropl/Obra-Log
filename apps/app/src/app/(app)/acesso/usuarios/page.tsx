@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/toaster';
 import { UserForm } from '@/features/admin/components/UserForm';
 import { getGlobalUsersAction, getAllProfilesAction } from '@/app/actions/globalUsers';
 import { usersService } from '@/features/admin/services/users.service';
-import { getActiveCompanyId, cn } from '@/lib/utils';
+import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
 import { Loader2, Plus, ShieldCheck, UserCheck, Users as UsersIcon, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -78,7 +78,7 @@ export default function UsuariosPage() {
 	const handleSaveUser = async (data: any) => {
 		try {
 			setIsSaving(true);
-			const companyId = getActiveCompanyId();
+			const companyId = getParentCompanyId();
 			if (!companyId) throw new Error('Empresa não selecionada');
 
 			const response = await usersService.createUser({
@@ -161,7 +161,7 @@ export default function UsuariosPage() {
 							</div>
 						) : (
 							<UserForm
-								companyId={getActiveCompanyId() || ''}
+								companyId={getParentCompanyId() || ''}
 								profiles={profiles}
 								onSubmit={handleSaveUser}
 								onCancel={handleFormClose}
