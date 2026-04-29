@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { CollaboratorForm } from '@/features/colaboradores/components/CollaboratorForm';
 import { useCollaborators } from '@/features/colaboradores/hooks/useCollaborators';
 import { getActiveCompanyId } from '@/lib/utils';
-import { Download, Loader2, Upload, Users, X } from 'lucide-react';
+import { Download, ExternalLink, FileIcon, FileText, Image as ImageIcon, Loader2, Upload, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function ColaboradoresPage() {
@@ -237,15 +237,51 @@ export default function ColaboradoresPage() {
 							]}
 							detailsTitle="Detalhes do Colaborador"
 							renderDetails={(colab) => (
-								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-									<DetailRow label="Nome" value={colab.name} className="sm:col-span-2" />
-									<DetailRow label="Email" value={colab.email || '-'} />
-									<DetailRow label="Cargo/Função" value={colab.role_title} />
-									<DetailRow label="CPF" value={colab.cpf || '-'} />
-									<DetailRow label="RG" value={colab.rg || '-'} />
-									<DetailRow label="Telefone" value={colab.cellphone || '-'} />
-									<DetailRow label="Data de Nascimento" value={colab.birth_date ? new Date(colab.birth_date).toLocaleDateString('pt-BR') : '-'} />
-									<DetailRow label="Data de Admissão" value={colab.created_at ? new Date(colab.created_at).toLocaleDateString('pt-BR') : '-'} />
+								<div className="flex flex-col gap-6">
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+										<DetailRow label="Nome" value={colab.name} className="sm:col-span-2" />
+										<DetailRow label="Email" value={colab.email || '-'} />
+										<DetailRow label="Cargo/Função" value={colab.role_title} />
+										<DetailRow label="CPF" value={colab.cpf || '-'} />
+										<DetailRow label="RG" value={colab.rg || '-'} />
+										<DetailRow label="Telefone" value={colab.cellphone || '-'} />
+										<DetailRow label="Data de Nascimento" value={colab.birth_date ? new Date(colab.birth_date).toLocaleDateString('pt-BR') : '-'} />
+										<DetailRow label="Data de Admissão" value={colab.created_at ? new Date(colab.created_at).toLocaleDateString('pt-BR') : '-'} />
+									</div>
+
+									{colab.documents_json && colab.documents_json.length > 0 && (
+										<div className="border-t pt-4">
+											<h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+												<FileIcon className="w-4 h-4 text-primary" />
+												Documentos Anexados
+											</h4>
+											<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+												{colab.documents_json.map((doc: any, idx: number) => (
+													<a
+														key={idx}
+														href={doc.url}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg group hover:bg-white hover:border-primary/30 transition-all"
+													>
+														<div className="flex items-center gap-3 overflow-hidden">
+															<div className="p-2 bg-white rounded-md border border-gray-100 text-gray-500 group-hover:text-primary transition-colors">
+																{doc.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/) ? (
+																	<ImageIcon size={16} />
+																) : (
+																	<FileText size={16} />
+																)}
+															</div>
+															<span className="text-xs font-medium text-gray-700 truncate">
+																{doc.name}
+															</span>
+														</div>
+														<ExternalLink size={14} className="text-gray-400 group-hover:text-primary" />
+													</a>
+												))}
+											</div>
+										</div>
+									)}
 								</div>
 							)}
 							keyExtractor={(item) => item.id}

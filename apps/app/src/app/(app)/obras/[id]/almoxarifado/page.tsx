@@ -7,6 +7,7 @@ import { TableSearch } from '@/components/shared/TableSearch';
 import { Pagination } from '@/components/shared/Pagination';
 import { DataTable, DetailRow } from '@/components/shared/DataTable';
 import { AddInventoryForm } from '@/features/almoxarifado/components/AddInventoryForm';
+import { StockAdjustment } from '@/features/almoxarifado/components/StockAdjustment';
 import { getSiteInventoryAdmin } from '@/app/actions/adminActions';
 
 interface InventoryItem {
@@ -193,7 +194,18 @@ export default function AlmoxarifadoObraPage({
 								},
 								{
 									header: 'Quantidade',
-									cell: (item) => item.quantity || 0,
+									cell: (item) => (
+										<StockAdjustment
+											inventoryId={item.id}
+											siteId={resolvedParams.id}
+											initialQuantity={item.quantity}
+											unit={
+												item.catalogs?.measurement_units
+													?.abbreviation || 'UN'
+											}
+											onSaved={loadItems}
+										/>
+									),
 									className: 'text-right font-semibold',
 								},
 								{

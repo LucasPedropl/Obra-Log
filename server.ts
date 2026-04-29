@@ -360,7 +360,9 @@ async function startServer() {
 					measurement_units!inner(name, abbreviation)
 				`,
 				)
-				.eq('company_id', company_id);
+				.eq('company_id', company_id)
+				.eq('is_rented_equipment', false)
+				.eq('is_tool', false);
 
 			if (error) throw error;
 			res.json(data);

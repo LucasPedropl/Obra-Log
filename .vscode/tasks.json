@@ -12,7 +12,7 @@
 				"background": {
 					"activeOnStart": true,
 					"beginsPattern": "compiled",
-					"endsPattern": "ready"
+					"endsPattern": "Ready"
 				}
 			},
 			"presentation": {
@@ -20,7 +20,7 @@
 				"panel": "dedicated"
 			},
 			"serverReadyAction": {
-				"pattern": "ready",
+				"pattern": "Ready",
 				"uriFormat": "http://localhost:3010",
 				"action": "openExternally"
 			}
@@ -36,7 +36,7 @@
 				"background": {
 					"activeOnStart": true,
 					"beginsPattern": "compiled",
-					"endsPattern": "ready"
+					"endsPattern": "Ready"
 				}
 			},
 			"presentation": {
@@ -44,7 +44,7 @@
 				"panel": "dedicated"
 			},
 			"serverReadyAction": {
-				"pattern": "ready",
+				"pattern": "Ready",
 				"uriFormat": "http://localhost:3005",
 				"action": "openExternally"
 			}

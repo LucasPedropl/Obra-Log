@@ -176,6 +176,8 @@ export async function getSupplyItemsAdmin(company_id: string) {
 		.from('catalogs')
 		.select('*, categories(*), measurement_units(name, abbreviation)')
 		.eq('company_id', company_id)
+		.eq('is_rented_equipment', false)
+		.eq('is_tool', false)
 		.order('name', { ascending: true });
 
 	if (error) throw error;
