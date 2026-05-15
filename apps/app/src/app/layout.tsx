@@ -1,14 +1,12 @@
 import type { Metadata } from 'next';
-import { Poppins, Geist } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { ToastProvider } from '@/components/ui/toaster';
 
-const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
-
-const poppins = Poppins({
+const inter = Inter({
 	subsets: ['latin'],
-	weight: ['300', '400', '500', '600', '700'],
+	variable: '--font-sans',
 	display: 'swap',
 });
 
@@ -23,9 +21,15 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="pt-BR" className={cn('font-sans', geist.variable)}>
+		<html lang="pt-BR" className={cn('font-sans', inter.variable)}>
+			<head>
+				<link
+					rel="stylesheet"
+					href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+				/>
+			</head>
 			<body
-				className={`${poppins.className} min-h-screen bg-background antialiased`}
+				className={`${inter.className} min-h-screen bg-background antialiased`}
 			>
 				<ToastProvider>{children}</ToastProvider>
 			</body>

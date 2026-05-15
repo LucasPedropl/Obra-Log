@@ -44,87 +44,66 @@ export function PermissionsProvider({
 	useEffect(() => {
 		const loadPermissions = async () => {
 			try {
-				const {
-					data: { session },
-				} = await supabase.auth.getSession();
+				const { data: { session } } = await supabase.auth.getSession();
 				if (!session?.user) return;
 
-				const instanceCookie = document.cookie.match(
-					/(^| )selectedCompanyId=([^;]+)/,
-				);
-				const instanceId = instanceCookie ? instanceCookie[2] : null;
+				const companyCookie = document.cookie.match(/(^| )selectedCompanyId=([^;]+)/);
+				const companyId = companyCookie ? companyCookie[2] : null;
 
-				const accountCookie = document.cookie.match(
-					/(^| )parentCompanyId=([^;]+)/,
-				);
-				const accountId = accountCookie ? accountCookie[2] : null;
-
-				// 1. Verificar Super Admin Global e Admin da Conta
-				const [profileRes, accountUserRes] = await Promise.all([
-					supabase
-						.from('profiles')
-						.select('is_super_admin')
-						.eq('id', session.user.id)
-						.maybeSingle(),
-					accountId
-						? supabase
-								.from('account_users')
-								.select('role')
-								.eq('user_id', session.user.id)
-								.eq('account_id', accountId)
-								.eq('role', 'ADMIN')
-								.maybeSingle()
-						: Promise.resolve({ data: null }),
-				]);
-
-				// DETECÇÃO DE USUÁRIO FANTASMA
-				if (!profileRes.data && !profileRes.error) {
-					console.warn('Usuário autenticado mas sem perfil no banco. Deslogando...');
-					await supabase.auth.signOut();
-					document.cookie = 'selectedCompanyId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-					window.location.href = '/auth/login';
+				if (!companyId) {
+					setPermissions({});
+					setLoading(false);
 					return;
 				}
 
-				const isGlobalSuper = profileRes.data?.is_super_admin || false;
-				const isAccountAdmin = !!accountUserRes.data;
-				
-				// Se for Admin da Conta ou Super Admin Global, tem permissão total
-				if (isGlobalSuper || isAccountAdmin) {
+				// 1. Verificar Perfil Global (Super Admin do Sistema)
+				const { data: profileData } = await supabase
+					.from('profiles')
+					.select('is_super_admin')
+					.eq('id', session.user.id)
+					.maybeSingle();
+
+				if (profileData?.is_super_admin) {
 					setIsSuperAdmin(true);
-					setPermissions(null); 
+					setPermissions(null);
+					setLoading(false);
+					return;
+				}
+
+				// 2. Buscar vínculo do usuário com a empresa selecionada
+				const { data: accessData } = await supabase
+					.from('company_users')
+					.select('role, profile_id')
+					.eq('user_id', session.user.id)
+					.eq('company_id', companyId)
+					.maybeSingle();
+
+				// Se for Admin da Empresa, tem permissão total dentro dela
+				if (accessData?.role === 'ADMIN') {
+					setIsSuperAdmin(true);
+					setPermissions(null);
 					setLoading(false);
 					return;
 				}
 
 				setIsSuperAdmin(false);
 
-				// 2. Se não é admin, verificar acesso à instância atual
-				if (!instanceId) {
-					setPermissions({}); 
-					setLoading(false);
-					return;
-				}
-
-				// 3. Buscar perfil na instância atual
-				const { data: accessData } = await supabase
-					.from('user_instance_access')
-					.select('profile_id, access_profiles(permissions)')
-					.eq('user_id', session.user.id)
-					.eq('instance_id', instanceId)
-					.maybeSingle();
-
-				if (!accessData?.access_profiles) {
+				// 3. Se for usuário restrito, carregar permissões do perfil
+				if (!accessData?.profile_id) {
 					setPermissions({});
 					setLoading(false);
 					return;
 				}
 
-				// 4. Carregar permissões do JSONB
-				const rawPermissions = accessData.access_profiles.permissions as any;
+				const { data: profilePermissions } = await supabase
+					.from('access_profiles')
+					.select('permissions')
+					.eq('id', accessData.profile_id)
+					.single();
+
+				const rawPermissions = profilePermissions?.permissions as any;
 				const permMap: ResourcePermissions = {};
 				
-				// O formato do JSONB deve ser { "tasks": { "view": true, "create": true }, ... }
 				if (rawPermissions && typeof rawPermissions === 'object') {
 					Object.keys(rawPermissions).forEach(resource => {
 						permMap[resource] = {
@@ -140,13 +119,7 @@ export function PermissionsProvider({
 
 			} catch (error) {
 				console.error('Error loading permissions:', error);
-				// Em caso de erro crítico (ex: tabela users não existe), deslogar por segurança
-				if (error && typeof error === 'object' && 'code' in error && error.code === 'PGRST116') {
-					await supabase.auth.signOut();
-					window.location.href = '/auth/login';
-				} else {
-					setPermissions({});
-				}
+				setPermissions({});
 			} finally {
 				setLoading(false);
 			}

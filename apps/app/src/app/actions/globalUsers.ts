@@ -12,7 +12,7 @@ export interface SaveUserResponse {
 }
 
 /**
- * Salva um usuário no nível da conta (Global Admin ou com acessos específicos).
+ * Salva um usuário vinculado à empresa atual.
  */
 export async function saveGlobalUserAction(
 	data: {
@@ -20,259 +20,159 @@ export async function saveGlobalUserAction(
 		email: string;
 		fullName: string;
 		isCompanyAdmin: boolean;
-		assignments: Array<{ instanceId: string; profileId: string }>;
+		profileId?: string | null;
 	}
 ): Promise<SaveUserResponse> {
 	const supabase = await createServerSupabaseClient();
 	try {
 		const cookieStore = await cookies();
-		const accountId = cookieStore.get('parentCompanyId')?.value;
-		if (!accountId) return { success: false, error: 'Conta não selecionada' };
+		const companyId = cookieStore.get('selectedCompanyId')?.value;
+		if (!companyId) return { success: false, error: 'Empresa não selecionada' };
 
 		let userId = data.id;
 		let generatedPassword: string | null = null;
 
 		// 1. Criar ou Atualizar Usuário no Auth e Profile
 		if (!userId) {
-			try {
-				const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
-				generatedPassword = tempPassword;
-				const { data: authUser, error: authError } =
-					await supabaseAdmin.auth.admin.createUser({
-						email: data.email,
-						password: tempPassword,
-						email_confirm: true,
-						user_metadata: {
-							require_password_change: true,
-							full_name: data.fullName,
-							temp_password: tempPassword,
-						},
-					});
-
-				if (authError) {
-					// Detectar se o usuário já existe no auth mas está órfão no DB
-					if (authError.message.toLowerCase().includes('already been registered')) {
-						const { data: { users: allUsers } } = await supabaseAdmin.auth.admin.listUsers();
-						const existingAuthUser = allUsers.find(u => u.email === data.email);
-
-						if (existingAuthUser) {
-							// Verifica se tem perfil ou vínculos
-							const { data: profile } = await supabase.from('profiles').select('id').eq('id', existingAuthUser.id).maybeSingle();
-							const { data: adminLinks } = await supabase.from('account_users').select('id').eq('user_id', existingAuthUser.id).limit(1);
-							const { data: instanceLinks } = await supabase.from('user_instance_access').select('id').eq('user_id', existingAuthUser.id).limit(1);
-
-							if (!profile && !adminLinks?.length && !instanceLinks?.length) {
-								await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id);
-								return saveGlobalUserAction(data); // Tentar novamente
-							}
-						}
-					}
-					throw new Error(authError.message);
-				}
-
-				userId = authUser.user.id;
-
-				// Criar perfil público
-				const { error: profileError } = await supabase.from('profiles').upsert({
-					id: userId,
-					email: data.email,
+			const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
+			generatedPassword = tempPassword;
+			
+			const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+				email: data.email,
+				password: tempPassword,
+				email_confirm: true,
+				user_metadata: {
+					require_password_change: true,
 					full_name: data.fullName,
-					is_super_admin: false,
-				});
+					temp_password: tempPassword,
+				},
+			});
 
-				if (profileError) {
-					await supabaseAdmin.auth.admin.deleteUser(userId);
-					throw profileError;
+			if (authError) {
+				// Lógica para recuperar usuário se ele já existe no Auth mas não no Profile (usuário órfão)
+				if (authError.message.toLowerCase().includes('already been registered')) {
+					const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+					const existing = users.find(u => u.email === data.email);
+					if (existing) {
+						userId = existing.id;
+					} else {
+						throw authError;
+					}
+				} else {
+					throw authError;
 				}
-			} catch (err: unknown) {
-				const message = err instanceof Error ? err.message : 'Erro ao criar usuário no Auth';
-				throw new Error(message);
+			} else {
+				userId = authUser.user.id;
 			}
+
+			// Upsert Profile
+			const { error: profileError } = await supabase.from('profiles').upsert({
+				id: userId,
+				email: data.email,
+				full_name: data.fullName,
+			});
+
+			if (profileError) throw profileError;
 		} else {
-			// Atualizar perfil existente
-			await supabase
-				.from('profiles')
-				.update({ full_name: data.fullName })
-				.eq('id', userId);
+			// Atualizar apenas o nome se já existe
+			await supabase.from('profiles').update({ full_name: data.fullName }).eq('id', userId);
 		}
 
-		// 2. Gerenciar Vínculo de Admin da Conta
-		if (data.isCompanyAdmin) {
-			await supabaseAdmin
-				.from('account_users')
-				.upsert({
-					account_id: accountId,
-					user_id: userId,
-					role: 'ADMIN'
-				}, { onConflict: 'account_id,user_id' });
-			
-			// Se é Admin da Conta, remove acessos granulares (já tem acesso a tudo)
-			await supabaseAdmin
-				.from('user_instance_access')
-				.delete()
-				.eq('user_id', userId)
-				.in('instance_id', (
-					await supabaseAdmin.from('instances').select('id').eq('account_id', accountId)
-				).data?.map(i => i.id) || []);
+		// 2. Gerenciar Vínculo com a Empresa (company_users)
+		const { error: linkError } = await supabaseAdmin
+			.from('company_users')
+			.upsert({
+				company_id: companyId,
+				user_id: userId,
+				role: data.isCompanyAdmin ? 'ADMIN' : 'USER',
+				profile_id: data.isCompanyAdmin ? null : (data.profileId || null),
+			}, { onConflict: 'company_id,user_id' });
 
-		} else {
-			// Remove vínculo de admin se existir
-			await supabaseAdmin
-				.from('account_users')
-				.delete()
-				.eq('account_id', accountId)
-				.eq('user_id', userId);
-
-			// 3. Atualizar Acessos de Instância
-			// Limpa acessos atuais nesta conta
-			const { data: accountInstances } = await supabaseAdmin
-				.from('instances')
-				.select('id')
-				.eq('account_id', accountId);
-			
-			const instanceIds = accountInstances?.map(i => i.id) || [];
-			
-			if (instanceIds.length > 0) {
-				await supabaseAdmin
-					.from('user_instance_access')
-					.delete()
-					.eq('user_id', userId)
-					.in('instance_id', instanceIds);
-			}
-
-			// Adiciona novos acessos
-			if (data.assignments.length > 0) {
-				const dbAssignments = data.assignments.map((a) => ({
-					user_id: userId,
-					instance_id: a.instanceId,
-					profile_id: a.profileId,
-				}));
-				const { error: assignError } = await supabaseAdmin
-					.from('user_instance_access')
-					.insert(dbAssignments);
-				if (assignError) throw new Error(assignError.message);
-			}
-		}
+		if (linkError) throw linkError;
 
 		return { success: true, userId, tempPassword: generatedPassword };
-	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : 'Ocorreu um erro desconhecido.';
-		console.error('Error saving global user:', error);
-		return { success: false, error: message };
+	} catch (error: any) {
+		console.error('Error saving user:', error);
+		return { success: false, error: error.message || 'Erro ao salvar usuário' };
 	}
 }
 
+/**
+ * Lista todos os usuários da empresa selecionada.
+ */
 export async function getGlobalUsersAction() {
 	const supabase = await createServerSupabaseClient();
 	try {
 		const cookieStore = await cookies();
-		const accountId = cookieStore.get('parentCompanyId')?.value;
-		
-		if (!accountId) return { success: false, error: 'Conta não selecionada' };
+		const companyId = cookieStore.get('selectedCompanyId')?.value;
+		if (!companyId) return { success: false, error: 'Empresa não selecionada' };
 
-		// 1. Buscar Admins da Conta
-		const { data: admins, error: adminErr } = await supabaseAdmin
-			.from('account_users')
-			.select('user_id, profiles(id, email, full_name)')
-			.eq('account_id', accountId);
-
-		if (adminErr) throw adminErr;
-
-		// 2. Buscar Usuários com acesso a instâncias
-		const { data: instanceAccess, error: accessErr } = await supabaseAdmin
-			.from('user_instance_access')
+		const { data, error } = await supabaseAdmin
+			.from('company_users')
 			.select(`
 				user_id,
-				instance_id,
+				role,
 				profile_id,
-				instances!inner(name, account_id),
-				access_profiles(name),
 				profiles(id, email, full_name)
 			`)
-			.eq('instances.account_id', accountId);
+			.eq('company_id', companyId);
 
-		if (accessErr) throw accessErr;
+		if (error) throw error;
 
-		// 3. Consolidar lista única de usuários
-		const usersMap = new Map();
+		// Buscar nomes dos perfis separadamente
+		const profileIds = (data || []).map(item => item.profile_id).filter(Boolean) as string[];
+		const profilesMap: Record<string, string> = {};
 
-		// Adicionar admins
-		admins?.forEach((a: any) => {
-			const p = a.profiles;
-			if (!p) return;
-			usersMap.set(p.id, {
-				id: p.id,
-				email: p.email,
-				full_name: p.full_name,
-				is_company_admin: true,
-				assignments: []
-			});
-		});
-
-		// Adicionar usuários de instância
-		instanceAccess?.forEach((ia: any) => {
-			const p = ia.profiles;
-			if (!p) return;
+		if (profileIds.length > 0) {
+			const { data: profilesData } = await supabaseAdmin
+				.from('access_profiles')
+				.select('id, name')
+				.in('id', profileIds);
 			
-			if (!usersMap.has(p.id)) {
-				usersMap.set(p.id, {
-					id: p.id,
-					email: p.email,
-					full_name: p.full_name,
-					is_company_admin: false,
-					assignments: []
-				});
-			}
-
-			const userData = usersMap.get(p.id);
-			userData.assignments.push({
-				instanceId: ia.instance_id,
-				instanceName: ia.instances?.name,
-				profileId: ia.profile_id,
-				profileName: ia.access_profiles?.name
+			profilesData?.forEach(p => {
+				profilesMap[p.id] = p.name;
 			});
-		});
+		}
 
-		const users = Array.from(usersMap.values()).sort((a, b) => 
-			(a.full_name || '').localeCompare(b.full_name || '')
-		);
+		const users = (data || []).map((item: any) => ({
+			id: item.profiles?.id,
+			email: item.profiles?.email,
+			full_name: item.profiles?.full_name,
+			is_company_admin: item.role === 'ADMIN',
+			profile_name: item.role === 'ADMIN' ? 'Administrador' : (profilesMap[item.profile_id] || 'Sem Perfil'),
+			// Mantendo compatibilidade com a tipagem anterior se necessário
+			assignments: item.role === 'ADMIN' ? [] : [{
+				profileId: item.profile_id,
+				profileName: profilesMap[item.profile_id] || 'Sem Perfil'
+			}]
+		}));
 
 		return { success: true, users };
-	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : 'Erro ao buscar usuários';
-		console.error('Error fetching global users:', error);
-		return { success: false, error: message };
+	} catch (error: any) {
+		console.error('Error fetching users:', error);
+		return { success: false, error: error.message };
 	}
 }
 
-export async function getInstancesAction() {
-	const supabase = await createServerSupabaseClient();
-	const cookieStore = await cookies();
-	const accountId = cookieStore.get('parentCompanyId')?.value;
-	if (!accountId) return { success: false, error: 'Conta não selecionada' };
-
-	const { data, error } = await supabase
-		.from('instances')
-		.select('id, name')
-		.eq('account_id', accountId)
-		.order('name', { ascending: true });
-		
-	if (error) return { success: false, error: error.message };
-	return { success: true, instances: data || [] };
-}
-
+/**
+ * Lista os perfis de acesso da empresa.
+ */
 export async function getAllProfilesAction() {
 	const supabase = await createServerSupabaseClient();
-	const cookieStore = await cookies();
-	const accountId = cookieStore.get('parentCompanyId')?.value;
-	if (!accountId) return { success: false, error: 'Conta não selecionada' };
+	try {
+		const cookieStore = await cookies();
+		const companyId = cookieStore.get('selectedCompanyId')?.value;
+		if (!companyId) return { success: false, error: 'Empresa não selecionada' };
 
-	const { data, error } = await supabase
-		.from('access_profiles')
-		.select('id, name')
-		.eq('account_id', accountId)
-		.order('name', { ascending: true });
-		
-	if (error) return { success: false, error: error.message };
-	return { success: true, profiles: data || [] };
+		const { data, error } = await supabase
+			.from('access_profiles')
+			.select('id, name')
+			.eq('company_id', companyId)
+			.order('name');
+
+		if (error) throw error;
+		return { success: true, profiles: data || [] };
+	} catch (error: any) {
+		return { success: false, error: error.message };
+	}
 }

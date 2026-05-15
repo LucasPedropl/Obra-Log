@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obra-Log - Diagrama de Banco de Dados</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f9;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .dot {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .core { background-color: #ef5350; }
+        .org { background-color: #42a5f5; }
+        .site { background-color: #66bb6a; }
+        .ops { background-color: #ffa726; }
+        
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Arquitetura de Banco de Dados - Obra-Log</h1>
+        
+        <div class="legend">
+            <div class="legend-item"><span class="dot core"></span> Identidade (Auth)</div>
+            <div class="legend-item"><span class="dot org"></span> Estrutura da Empresa</div>
+            <div class="legend-item"><span class="dot site"></span> Gestão de Obras</div>
+            <div class="legend-item"><span class="dot ops"></span> Operações/Logística</div>
+        </div>
+
+        <div class="mermaid">
+erDiagram
+    %% Core & Identity
+    USERS ||--o{ COMPANY_USERS : "pertence a"
+    COMPANIES ||--o{ COMPANY_USERS : "tem"
+    
+    %% Multi-Tenant Structure
+    COMPANIES ||--o{ COMPANIES : "parent_id (sub-contas)"
+    COMPANIES ||--o{ ACCESS_PROFILES : "define"
+    COMPANIES ||--o{ CONSTRUCTION_SITES : "possui"
+    COMPANIES ||--o{ COLLABORATORS : "contrata"
+    COMPANIES ||--o{ CATALOGS : "gerencia"
+    COMPANIES ||--o{ CATEGORIES : "organiza"
+    COMPANIES ||--o{ MEASUREMENT_UNITS : "padroniza"
+
+    %% Construction Site Logic
+    CONSTRUCTION_SITES ||--o{ SITE_INVENTORY : "estoque local"
+    CONSTRUCTION_SITES ||--o{ SITE_COLLABORATORS : "equipe alocada"
+    CONSTRUCTION_SITES ||--o{ INSTANCE_USERS : "acesso de usuários"
+    
+    CATALOGS ||--o{ SITE_INVENTORY : "vincula item"
+    COLLABORATORS ||--o{ SITE_COLLABORATORS : "é alocado"
+    
+    %% Inventory & Movements
+    SITE_INVENTORY ||--o{ SITE_MOVEMENTS : "registra"
+    USERS ||--o{ SITE_MOVEMENTS : "realiza"
+    
+    %% Specialized Logistics
+    SITE_INVENTORY ||--o{ SITE_TOOLS : "é ferramenta"
+    SITE_INVENTORY ||--o{ SITE_EPIS : "é epi"
+    
+    %% Operational Transactions
+    CONSTRUCTION_SITES ||--o{ TOOL_LOANS : "local"
+    COLLABORATORS ||--o{ TOOL_LOANS : "responsável"
+    SITE_INVENTORY ||--o{ TOOL_LOANS : "item"
+    
+    CONSTRUCTION_SITES ||--o{ EPI_WITHDRAWALS : "local"
+    COLLABORATORS ||--o{ EPI_WITHDRAWALS : "recebe"
+    CATALOGS ||--o{ EPI_WITHDRAWALS : "item"
+    
+    CONSTRUCTION_SITES ||--o{ RENTED_EQUIPMENTS : "alocação"
+
+    USERS {
+        uuid id PK
+        string email
+        string full_name
+        boolean is_super_admin
+    }
+
+    COMPANIES {
+        uuid id PK
+        string name
+        uuid parent_id FK
+    }
+
+    CONSTRUCTION_SITES {
+        uuid id PK
+        uuid company_id FK
+        string name
+        string status
+    }
+
+    CATALOGS {
+        uuid id PK
+        uuid company_id FK
+        string name
+        boolean is_tool
+        boolean is_stock_controlled
+    }
+
+    SITE_INVENTORY {
+        uuid id PK
+        uuid site_id FK
+        uuid catalog_id FK
+        float quantity
+    }
+
+    COLLABORATORS {
+        uuid id PK
+        uuid company_id FK
+        string name
+        string role_title
+    }
+
+    TOOL_LOANS {
+        uuid id PK
+        uuid site_id FK
+        uuid collaborator_id FK
+        uuid inventory_id FK
+        string status
+    }
+
+    EPI_WITHDRAWALS {
+        uuid id PK
+        uuid site_id FK
+        uuid collaborator_id FK
+        uuid catalog_id FK
+    }
+        </div>
+
+        <div style="margin-top: 30px; font-size: 0.85em; color: #7f8c8d;">
+            <p><strong>Dica:</strong> Este diagrama foca nas conexões principais (Foreign Keys) para ilustrar o fluxo de dados entre Contas, Obras, Estoque e Operações.</p>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'neutral',
+            er: {
+                useMaxWidth: true,
+                layoutDirection: 'TB'
+            }
+        });
+    </script>
+</body>
+</html>

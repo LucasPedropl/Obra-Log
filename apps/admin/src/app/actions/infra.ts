@@ -22,40 +22,42 @@ export async function deleteDatabaseAction() {
 			await supabaseAdmin.auth.admin.deleteUser(authUser.id);
 		}
 	}
-// 3. Limpar tabelas locais usando Supabase Admin (delete all)
-// A ordem deve respeitar as foreign keys: deletar dependentes primeiro
-const tablesToClear = [
-	'inventory_movements',
-	'epi_withdrawals',
-	'tool_loans',
-	'site_inventory',
-	'rented_equipments',
-	'site_collaborators',
-	'user_site_access',
-	'construction_sites',
-	'collaborators',
-	'catalogs',
-	'measurement_units',
-	'categories',
-	'user_instance_access',
-	'instances',
-	'access_profiles',
-	'account_users',
-	'accounts',
-];
 
-for (const table of tablesToClear) {
-	const { error } = await supabaseAdmin.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
-	if (error) {
-		console.warn(`Aviso ao limpar tabela ${table}:`, error.message);
+	// 3. Limpar tabelas locais usando Supabase Admin (delete all)
+	// A ordem deve respeitar as foreign keys: deletar dependentes primeiro
+	const tablesToClear = [
+		'inventory_movements',
+		'epi_withdrawals',
+		'tool_loans',
+		'site_inventory',
+		'rented_equipments',
+		'site_collaborators',
+		'construction_sites',
+		'collaborators',
+		'catalogs',
+		'measurement_units',
+		'categories',
+		'access_profiles',
+		'company_users',
+		'companies',
+		'user_instance_access', // Legado
+		'instances',           // Legado
+		'account_users',       // Legado
+		'accounts',            // Legado
+	];
+
+	for (const table of tablesToClear) {
+		const { error } = await supabaseAdmin.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+		if (error) {
+			console.warn(`Aviso ao limpar tabela ${table}:`, error.message);
+		}
 	}
-}
 
-// 4. Limpar dados de profiles exceto o do admin
-await supabaseAdmin
-	.from('profiles')
-	.delete()
-	.neq('id', adminUserId);
+	// 4. Limpar dados de profiles exceto o do admin
+	await supabaseAdmin
+		.from('profiles')
+		.delete()
+		.neq('id', adminUserId);
 
 	return { success: true, message: 'Banco de dados limpo com sucesso.' };
 }

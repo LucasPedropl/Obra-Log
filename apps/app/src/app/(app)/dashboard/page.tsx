@@ -21,7 +21,7 @@ export default function DashboardPage() {
 
 			{/* KPI Cards */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-				<div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-all">
+				<div className="bg-white rounded-none border border-gray-200 p-5   transition-all">
 					<div className="flex justify-between items-start">
 						<div>
 							<p className="text-sm font-medium text-gray-500 mb-1">
@@ -31,7 +31,7 @@ export default function DashboardPage() {
 								12
 							</h3>
 						</div>
-						<div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+						<div className="p-3 bg-blue-50 text-blue-600 border border-blue-100">
 							<Building2 className="w-6 h-6" />
 						</div>
 					</div>
@@ -42,7 +42,7 @@ export default function DashboardPage() {
 					</div>
 				</div>
 
-				<div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-all">
+				<div className="bg-white rounded-none border border-gray-200 p-5   transition-all">
 					<div className="flex justify-between items-start">
 						<div>
 							<p className="text-sm font-medium text-gray-500 mb-1">
@@ -52,7 +52,7 @@ export default function DashboardPage() {
 								148
 							</h3>
 						</div>
-						<div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
+						<div className="p-3 bg-indigo-50 text-indigo-600 border border-indigo-100">
 							<Users className="w-6 h-6" />
 						</div>
 					</div>
@@ -65,7 +65,7 @@ export default function DashboardPage() {
 					</div>
 				</div>
 
-				<div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-all">
+				<div className="bg-white rounded-none border border-gray-200 p-5   transition-all">
 					<div className="flex justify-between items-start">
 						<div>
 							<p className="text-sm font-medium text-gray-500 mb-1">
@@ -75,7 +75,7 @@ export default function DashboardPage() {
 								24
 							</h3>
 						</div>
-						<div className="p-3 bg-orange-50 text-orange-600 rounded-lg">
+						<div className="p-3 bg-orange-50 text-orange-600 border border-orange-100">
 							<PackageOpen className="w-6 h-6" />
 						</div>
 					</div>
@@ -88,7 +88,7 @@ export default function DashboardPage() {
 					</div>
 				</div>
 
-				<div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-all">
+				<div className="bg-white rounded-none border border-gray-200 p-5   transition-all">
 					<div className="flex justify-between items-start">
 						<div>
 							<p className="text-sm font-medium text-gray-500 mb-1">
@@ -98,7 +98,7 @@ export default function DashboardPage() {
 								R$ 1.2M
 							</h3>
 						</div>
-						<div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+						<div className="p-3 bg-emerald-50 text-emerald-600 border border-emerald-100">
 							<TrendingUp className="w-6 h-6" />
 						</div>
 					</div>
@@ -117,12 +117,12 @@ export default function DashboardPage() {
 			{/* Gráficos e Atividades / Sub-grids */}
 			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 				{/* Simulador de Gráfico / Métricas da Obra */}
-				<div className="lg:col-span-2 bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+				<div className="lg:col-span-2 bg-white border border-gray-200 rounded-none p-6 ">
 					<div className="flex items-center justify-between mb-6">
 						<h3 className="text-lg font-semibold text-gray-900">
 							Evolução do Custo
 						</h3>
-						<select className="bg-gray-50 border-none text-sm text-gray-600 rounded-md px-3 py-1 cursor-pointer focus:ring-0">
+						<select className="bg-gray-50 border-none text-sm text-gray-600 rounded-none px-3 py-1 cursor-pointer focus:ring-0">
 							<option>Últimos 6 meses</option>
 							<option>Último Ano</option>
 						</select>
@@ -136,11 +136,11 @@ export default function DashboardPage() {
 								className="w-full flex flex-col items-center gap-2 group"
 							>
 								<div
-									className="w-full bg-blue-100 group-hover:bg-blue-200 rounded-t-md relative transition-all"
+									className="w-full bg-blue-100 group-hover:bg-blue-200 rounded-none relative transition-all"
 									style={{ height: `${height}%` }}
 								>
 									<div
-										className="absolute bottom-0 w-full bg-blue-600 group-hover:bg-blue-700 rounded-t-md transition-all"
+										className="absolute bottom-0 w-full bg-blue-600 group-hover:bg-blue-700 rounded-none transition-all"
 										style={{ height: `${height - 20}%` }}
 									/>
 								</div>
@@ -162,7 +162,7 @@ export default function DashboardPage() {
 				</div>
 
 				{/* Painel de Avisos/Atividades */}
-				<div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+				<div className="bg-white border border-gray-200 rounded-none p-6 ">
 					<h3 className="text-lg font-semibold text-gray-900 mb-6">
 						Avisos Recentes
 					</h3>
@@ -196,7 +196,7 @@ export default function DashboardPage() {
 						].map((item, idx) => (
 							<div key={idx} className="flex gap-4">
 								<div
-									className={`mt-1 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${item.bg} ${item.color}`}
+									className={`mt-1 w-10 h-10 border flex items-center justify-center shrink-0 ${item.bg} ${item.color} ${item.color.replace('text-', 'border-').replace('500', '100')}`}
 								>
 									<item.icon className="w-5 h-5" />
 								</div>
@@ -215,7 +215,7 @@ export default function DashboardPage() {
 						))}
 					</div>
 
-					<button className="w-full mt-6 py-2.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+					<button className="w-full mt-6 py-2.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 transition-colors">
 						Ver todas as notificações
 					</button>
 				</div>

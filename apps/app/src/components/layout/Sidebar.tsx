@@ -2,26 +2,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import {
-	LayoutDashboard,
-	Building2,
-	PackageOpen,
-	Users,
-	ChevronLeft,
-	ChevronRight,
-	Settings,
-	Package,
-	ArrowRightLeft,
-	HardHat,
-	Wrench,
-	Truck,
-	ShieldCheck,
-	ChevronDown,
-	X,
-} from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { MaterialIcon } from '../ui/MaterialIcon';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
+import { createClient } from '@/config/supabase';
 
 interface SidebarProps {
 	isOpen: boolean;
@@ -33,19 +18,19 @@ interface SidebarProps {
 
 type NavItem = {
 	name: string;
-	icon: React.ElementType;
+	icon: string;
 	href?: string;
 	children?: { name: string; href: string }[];
 };
 
 const mainNavItems: NavItem[] = [
-	{ name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-	{ name: 'Obras', icon: Building2, href: '/obras' },
-	{ name: 'Insumos', icon: PackageOpen, href: '/insumos' },
-	{ name: 'Colaboradores', icon: Users, href: '/colaboradores' },
+	{ name: 'Dashboard', icon: 'dashboard', href: '/dashboard' },
+	{ name: 'Obras', icon: 'apartment', href: '/obras' },
+	{ name: 'Insumos', icon: 'package_2', href: '/insumos' },
+	{ name: 'Colaboradores', icon: 'group', href: '/colaboradores' },
 	{
 		name: 'Acesso ao Sistema',
-		icon: ShieldCheck,
+		icon: 'verified_user',
 		children: [
 			{ name: 'Perfis de Acesso', href: '/acesso/perfis' },
 			{ name: 'Usuários', href: '/acesso/usuarios' },
@@ -61,40 +46,85 @@ export function Sidebar({
 	isInObraRoute,
 }: SidebarProps) {
 	const pathname = usePathname();
+	const router = useRouter();
 	const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
 		{},
 	);
+	const [companyName, setCompanyName] = useState<string>('Obra-Log');
+	const [obras, setObras] = useState<{ id: string; name: string }[]>([]);
+	const [currentObraName, setCurrentObraName] = useState<string>('Carregando...');
+	const [isObraSelectOpen, setIsObraSelectOpen] = useState(false);
+	const obraSelectRef = React.useRef<HTMLDivElement>(null);
+	const supabase = createClient();
+
+	const isObraRoute = pathname?.match(/^\/obras\/([^\/]+)(?:\/|$)/);
+	const obraId = isObraRoute ? isObraRoute[1] : null;
+
+	React.useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (obraSelectRef.current && !obraSelectRef.current.contains(event.target as Node)) {
+				setIsObraSelectOpen(false);
+			}
+		};
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => document.removeEventListener('mousedown', handleClickOutside);
+	}, []);
+
+	React.useEffect(() => {
+		const loadData = async () => {
+			const companyCookie = document.cookie.match(/(^| )selectedCompanyId=([^;]+)/);
+			const companyId = companyCookie ? companyCookie[2] : null;
+			
+			if (companyId) {
+				// Carregar Nome da Empresa
+				const { data: comp } = await supabase.from('companies').select('name').eq('id', companyId).maybeSingle();
+				if (comp?.name) setCompanyName(comp.name);
+
+				// Carregar Obras
+				const { data: dbObras } = await supabase
+					.from('construction_sites')
+					.select('id, name')
+					.eq('company_id', companyId);
+
+				if (dbObras) {
+					setObras(dbObras);
+					if (obraId) {
+						const current = dbObras.find((o) => o.id === obraId);
+						setCurrentObraName(current ? current.name : 'Obra');
+					}
+				}
+			}
+		};
+		loadData();
+	}, [obraId]);
 
 	const toggleExpand = (name: string) => {
 		setExpandedItems((prev) => ({ ...prev, [name]: !prev[name] }));
 	};
 
-	// Check if we are inside a specific Obra (e.g. /obras/123/...)
-	const isObraRoute = pathname?.match(/^\/obras\/([^\/]+)(?:\/|$)/);
-	const obraId = isObraRoute ? isObraRoute[1] : null;
 
 	const navItems: NavItem[] =
 		obraId && !isMobileOpen
 			? [
 					{
 						name: 'Visão Geral',
-						icon: LayoutDashboard,
+						icon: 'dashboard',
 						href: `/obras/${obraId}/visao-geral`,
 					},
 					{
 						name: 'Almoxarifado',
-						icon: Package,
+						icon: 'inventory_2',
 						href: `/obras/${obraId}/almoxarifado`,
 					},
 					{
 						name: 'Colaboradores (Campo)',
-						icon: Users,
+						icon: 'group',
 						href: `/obras/${obraId}/colaboradores`,
 					},
 
 					{
 						name: 'Ferramentas',
-						icon: Wrench,
+						icon: 'build',
 						children: [
 							{
 								name: 'Disponíveis',
@@ -112,7 +142,7 @@ export function Sidebar({
 					},
 					{
 						name: 'EPIs',
-						icon: HardHat,
+						icon: 'engineering',
 						children: [
 							{
 								name: 'Disponíveis',
@@ -126,7 +156,7 @@ export function Sidebar({
 					},
 					{
 						name: 'Equip. Alugados',
-						icon: Truck,
+						icon: 'local_shipping',
 						children: [
 							{
 								name: 'Ativos',
@@ -140,7 +170,7 @@ export function Sidebar({
 					},
 					{
 						name: 'Movimentações',
-						icon: ArrowRightLeft,
+						icon: 'swap_horiz',
 						href: `/obras/${obraId}/movimentacoes`,
 					},
 				]
@@ -158,7 +188,7 @@ export function Sidebar({
 
 			<aside
 				className={cn(
-					'relative z-[70] flex h-full flex-col bg-[#101828] text-white transition-all duration-300 ease-in-out select-none',
+					'relative z-[70] flex h-full flex-col bg-[#101828] text-white transition-[width] duration-300 ease-in-out select-none',
 					// Desktop logic
 					'hidden md:flex',
 					isOpen ? 'md:w-64' : 'md:w-20',
@@ -173,7 +203,7 @@ export function Sidebar({
 				{/* Logo / Header da Sidebar com altura ampliada e separador */}
 				<div
 					className={cn(
-						'flex items-center relative h-[88px] border-b border-gray-800 transition-all px-4',
+						'flex items-center relative h-[88px] border-b border-gray-800 transition-all px-4 shrink-0',
 						isOpen || isMobileOpen
 							? 'justify-start'
 							: 'justify-center',
@@ -185,12 +215,12 @@ export function Sidebar({
 							onClick={onMobileClose}
 							className="absolute right-4 p-2 text-gray-400 hover:text-white md:hidden"
 						>
-							<X size={20} />
+							<MaterialIcon icon="close" size={20} />
 						</button>
 					)}
 
 					{/* Ícone da Empresa */}
-					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/10">
+					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none bg-orange-500/10">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							width="24"
@@ -210,34 +240,102 @@ export function Sidebar({
 						</svg>
 					</div>
 
-					{/* Nome Empresa (oculta se fechado) */}
-					<span
+					{/* Logo do Sistema */}
+					<div
 						className={cn(
-							'ml-3 overflow-hidden whitespace-nowrap font-bold text-lg transition-all duration-300 ease-in-out block tracking-wide',
+							'ml-3 overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out flex flex-col justify-center',
 							isOpen || isMobileOpen
 								? 'opacity-100 max-w-full'
 								: 'opacity-0 max-w-0 ml-0',
 						)}
 					>
-						Obra-Log
-					</span>
-
-					{/* Botão para encolher/expandir centralizado na linha do separador e borda direita */}
-					<button
-						onClick={onToggleSidebar}
-						className="hidden md:flex absolute -right-3 -bottom-3 h-6 w-6 items-center justify-center rounded-[5px] bg-[#101828] border border-gray-700 text-gray-300 hover:bg-[#1b263b] hover:text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#1b263b]/50 z-50"
-						aria-label="Toggle Sidebar"
-					>
-						{isOpen ? (
-							<ChevronLeft size={14} strokeWidth={2.5} />
-						) : (
-							<ChevronRight size={14} strokeWidth={2.5} />
-						)}
-					</button>
+						<span className="font-bold text-xl leading-none tracking-tight">
+							ObraLog
+						</span>
+						<span className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.15em] mt-1.5 leading-none">
+							ERP Manager
+						</span>
+					</div>
 				</div>
 
-				{/* Navegação - overflow visible para garantir que os tooltips escapem */}
-				<nav className="flex-1 space-y-1.5 px-4 py-6 overflow-visible">
+				{/* Seletor de Obra - Estilo Card Premium */}
+				{obraId && (
+					<div className="relative px-4 mt-6 mb-2 shrink-0" ref={obraSelectRef}>
+						<div
+							onClick={() => setIsObraSelectOpen(!isObraSelectOpen)}
+							className={cn(
+								'flex items-center gap-3 border border-gray-800 rounded-none transition-all cursor-pointer hover:bg-white/5 active:scale-[0.98] group',
+								isOpen || isMobileOpen ? 'p-2.5' : 'h-12 w-12 mx-auto justify-center p-0'
+							)}
+						>
+							<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none bg-gray-800 text-white font-bold text-xs shadow-inner">
+								{currentObraName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+							</div>
+
+							{(isOpen || isMobileOpen) && (
+								<>
+									<div className="flex-1 min-w-0">
+										<p className="text-sm font-bold text-white truncate leading-tight">
+											{currentObraName}
+										</p>
+										<p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">
+											Obra Ativa
+										</p>
+									</div>
+									<MaterialIcon icon="unfold_more" size={16} className="text-gray-500 group-hover:text-gray-300" />
+								</>
+							)}
+						</div>
+
+						{/* Dropdown do Seletor */}
+						{isObraSelectOpen && (
+							<div 
+								className={cn(
+									"absolute mt-2 bg-[#1f2937] border border-gray-700 rounded-none shadow-2xl z-[100] overflow-hidden transition-all animate-in fade-in zoom-in duration-200",
+									isOpen || isMobileOpen ? "left-4 right-4" : "left-full ml-2 w-64 top-0"
+								)}
+							>
+								<div className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-800/50 border-b border-gray-700">
+									Minhas Obras
+								</div>
+								<div className="max-h-60 overflow-y-auto custom-scrollbar">
+									{obras.map((obra) => (
+										<button
+											key={obra.id}
+											onClick={() => {
+												router.push(`/obras/${obra.id}/visao-geral`);
+												setIsObraSelectOpen(false);
+											}}
+											className={cn(
+												"w-full flex items-center px-4 py-3 text-sm text-left transition-colors hover:bg-blue-600 hover:text-white",
+												obra.id === obraId ? "bg-blue-600/10 text-blue-400 font-bold" : "text-gray-300"
+											)}
+										>
+											<span className="truncate">{obra.name}</span>
+										</button>
+									))}
+								</div>
+								<div className="border-t border-gray-700 p-1.5 flex flex-col gap-1 bg-gray-800/20">
+									<button
+										onClick={() => { router.push('/obras?novo=true'); setIsObraSelectOpen(false); }}
+										className="flex items-center px-3 py-2 text-xs font-bold text-blue-400 hover:bg-blue-600/10 rounded-none transition-colors"
+									>
+										<MaterialIcon icon="add" size={14} className="mr-2" /> Adicionar Obra
+									</button>
+									<button
+										onClick={() => { router.push('/obras'); setIsObraSelectOpen(false); }}
+										className="flex items-center px-3 py-2 text-xs font-bold text-gray-400 hover:bg-gray-700 rounded-none transition-colors"
+									>
+										<MaterialIcon icon="apps" size={14} className="mr-2" /> Ver Tudo
+									</button>
+								</div>
+							</div>
+						)}
+					</div>
+				)}
+
+				{/* Navegação - overflow-y-auto para que apenas o menu role */}
+				<nav className="flex-1 flex flex-col space-y-1.5 px-4 py-6 overflow-y-auto custom-scrollbar">
 					{navItems.map((item) => {
 						const hasChildren =
 							item.children && item.children.length > 0;
@@ -256,7 +354,7 @@ export function Sidebar({
 						const buttonContent = (
 							<div
 								className={cn(
-									'flex items-center rounded-md transition-all duration-200 cursor-pointer',
+									'flex items-center rounded-none transition-all duration-200 cursor-pointer',
 									isOpen || isMobileOpen
 										? 'px-3 py-2.5 justify-start'
 										: 'h-10 w-10 mx-auto justify-center',
@@ -274,9 +372,11 @@ export function Sidebar({
 									)}
 								>
 									<div className="flex items-center justify-center">
-										<item.icon
+										<MaterialIcon
+											icon={item.icon}
 											size={20}
-											strokeWidth={isActive ? 2.5 : 2}
+											fill={isActive}
+											weight={isActive ? 600 : 400}
 											className={cn(
 												'shrink-0',
 												isActive
@@ -298,8 +398,9 @@ export function Sidebar({
 
 									{hasChildren &&
 										(isOpen || isMobileOpen) && (
-											<ChevronDown
-												size={16}
+											<MaterialIcon
+												icon="expand_more"
+												size={18}
 												className={cn(
 													'shrink-0 text-gray-400 transition-transform duration-200',
 													isExpanded
@@ -353,7 +454,7 @@ export function Sidebar({
 													>
 														<div
 															className={cn(
-																'px-3 py-2 rounded-md text-sm transition-colors',
+																'px-3 py-2 rounded-none text-sm transition-colors',
 																isChildActive
 																	? 'text-white bg-white/5 font-medium'
 																	: 'text-gray-400 hover:text-gray-200 hover:bg-white/5',
@@ -376,7 +477,7 @@ export function Sidebar({
 									>
 										<div
 											className={cn(
-												'rounded-md bg-[#1f2937] shadow-xl overflow-hidden ring-1 ring-gray-700/50 pointer-events-auto',
+												'rounded-none bg-[#1f2937] shadow-xl overflow-hidden ring-1 ring-gray-700/50 pointer-events-auto',
 												hasChildren
 													? 'py-1'
 													: 'px-3 py-1.5',
@@ -422,7 +523,7 @@ export function Sidebar({
 						<Link href="/configuracoes" className="block">
 							<div
 								className={cn(
-									'flex items-center rounded-md transition-all duration-200',
+									'flex items-center rounded-none transition-all duration-200',
 									isOpen
 										? 'px-3 py-2.5 justify-start'
 										: 'h-10 w-10 mx-auto justify-center',
@@ -432,13 +533,11 @@ export function Sidebar({
 										: 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
 								)}
 							>
-								<Settings
+								<MaterialIcon
+									icon="settings"
 									size={20}
-									strokeWidth={
-										pathname?.startsWith('/configuracoes')
-											? 2.5
-											: 2
-									}
+									fill={pathname?.startsWith('/configuracoes')}
+									weight={pathname?.startsWith('/configuracoes') ? 600 : 400}
 									className={cn(
 										'shrink-0',
 										pathname?.startsWith('/configuracoes')
@@ -462,7 +561,7 @@ export function Sidebar({
 						{/* Tooltip quando Sidebar Fechado */}
 						{!isOpen && (
 							<div className="absolute left-full top-1/2 -translate-y-1/2 pl-6 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto z-[100] min-w-max invisible group-hover:visible transition-none group-hover:transition-all group-hover:duration-300">
-								<div className="rounded-md bg-[#1f2937] px-3 py-1.5 text-xs font-semibold text-white shadow-xl ring-1 ring-gray-700/50 whitespace-nowrap pointer-events-auto">
+								<div className="rounded-none bg-[#1f2937] px-3 py-1.5 text-xs font-semibold text-white shadow-xl ring-1 ring-gray-700/50 whitespace-nowrap pointer-events-auto">
 									Configurações
 								</div>
 							</div>

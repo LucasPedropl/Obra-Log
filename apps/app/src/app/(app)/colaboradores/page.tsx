@@ -11,7 +11,7 @@ import { TableSearch } from '@/components/shared/TableSearch';
 import { Button } from '@/components/ui/button';
 import { CollaboratorForm } from '@/features/colaboradores/components/CollaboratorForm';
 import { useCollaborators } from '@/features/colaboradores/hooks/useCollaborators';
-import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
+import { getActiveCompanyId } from '@/lib/utils';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Download, ExternalLink, FileIcon, FileText, Image as ImageIcon, Loader2, Upload, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -83,7 +83,7 @@ export default function ColaboradoresPage() {
 
 	const handleImport = async (lines: string[]) => {
 		const result: any[] = [];
-		const companyId = getParentCompanyId();
+		const companyId = getActiveCompanyId();
 		if (!companyId) return;
 
 		for (const line of lines) {

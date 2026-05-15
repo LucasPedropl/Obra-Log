@@ -2,20 +2,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import {
-	LogOut,
-	RefreshCcw,
-	Loader2,
-	Building2,
-	ChevronDown,
-	ArrowLeft,
-	Plus,
-	Menu,
-} from 'lucide-react';
+import { MaterialIcon } from '../ui/MaterialIcon';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/config/supabase';
 import { Button } from '../ui/button';
-import { getConstructionSitesAdmin } from '@/app/actions/adminActions';
 
 interface UserProfile {
 	full_name: string;
@@ -26,108 +16,86 @@ interface UserProfile {
 
 export function Header({
 	onMobileMenuToggle,
+	onToggleSidebar,
 }: {
 	onMobileMenuToggle?: () => void;
+	onToggleSidebar?: () => void;
 }) {
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-	const [isObraDropdownOpen, setIsObraDropdownOpen] = useState(false);
+	const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
 	const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-	const [obras, setObras] = useState<{ id: string; name: string }[]>([]);
-	const [currentObraName, setCurrentObraName] =
-		useState<string>('Carregando Obra...');
+	const [companyName, setCompanyName] = useState<string>('');
+	const [myCompanies, setMyCompanies] = useState<{ id: string, name: string }[]>([]);
 	const [loading, setLoading] = useState(true);
 	const dropdownRef = useRef<HTMLDivElement>(null);
-	const obraDropdownRef = useRef<HTMLDivElement>(null);
+	const companyDropdownRef = useRef<HTMLDivElement>(null);
 	const router = useRouter();
 	const pathname = usePathname();
 	const supabase = createClient();
 
-	const isObraRoute = pathname?.match(/^\/obras\/([^\/]+)(?:\/|$)/);
-	const obraId = isObraRoute ? isObraRoute[1] : null;
-
 	useEffect(() => {
-		const loadUserProfile = async () => {
+		const loadData = async () => {
 			try {
-				const {
-					data: { user },
-				} = await supabase.auth.getUser();
+				const { data: { user } } = await supabase.auth.getUser();
 				if (!user) return;
 
+				// Carregar Perfil
 				const { data: dbProfile } = await supabase
 					.from('profiles')
 					.select('full_name')
 					.eq('id', user.id)
 					.single();
 
-				// Get selected instance and parent account
-				const instanceCookie = document.cookie.match(
-					/(^| )selectedCompanyId=([^;]+)/,
-				);
-				const selectedInstanceId = instanceCookie ? instanceCookie[2] : null;
+				const companyCookie = document.cookie.match(/(^| )selectedCompanyId=([^;]+)/);
+				const companyId = companyCookie ? companyCookie[2] : null;
 
-				const accountCookie = document.cookie.match(
-					/(^| )parentCompanyId=([^;]+)/,
-				);
-				const selectedAccountId = accountCookie ? accountCookie[2] : null;
+				// Carregar Minhas Empresas
+				const { data: userCompanies } = await supabase
+					.from('company_users')
+					.select('company_id, companies(id, name)')
+					.eq('user_id', user.id);
+
+				if (userCompanies) {
+					const formatted = userCompanies
+						.map((uc: any) => uc.companies)
+						.filter(Boolean);
+					setMyCompanies(formatted);
+
+					if (companyId) {
+						const current = formatted.find((c: any) => c.id === companyId);
+						if (current) setCompanyName(current.name);
+					}
+				}
 
 				let roleTitle = 'Colaborador';
 
-				if (selectedAccountId) {
-					// 1. Tentar Admin da Conta
-					const { data: accountAdmin } = await supabase
-						.from('account_users')
-						.select('role')
+				if (companyId) {
+					const { data: accessData } = await supabase
+						.from('company_users')
+						.select('role, profile_id')
 						.eq('user_id', user.id)
-						.eq('account_id', selectedAccountId)
-						.eq('role', 'ADMIN')
+						.eq('company_id', companyId)
 						.maybeSingle();
 
-					if (accountAdmin) {
-						roleTitle = 'Administrador da Conta';
-					} else if (selectedInstanceId) {
-						// 2. Se não for admin, buscar o perfil na instância
-						const { data: accessData } = await supabase
-							.from('user_instance_access')
-							.select('access_profiles(name)')
-							.eq('user_id', user.id)
-							.eq('instance_id', selectedInstanceId)
-							.maybeSingle();
-
-						const profileName = (accessData?.access_profiles as any)?.name;
-						if (profileName) {
-							roleTitle = profileName;
-						}
-					}
-
-					// Load Obras
-					if (selectedInstanceId) {
-						try {
-							const { data: dbObras } = await supabase
-								.from('construction_sites')
-								.select('id, name')
-								.eq('instance_id', selectedInstanceId);
-
-							if (dbObras) {
-								setObras(dbObras);
-								if (isObraRoute && obraId) {
-									const current = dbObras.find(
-										(o) => o.id === obraId,
-									);
-									if (current) setCurrentObraName(current.name);
-									else setCurrentObraName('Obra');
-								}
+					if (accessData) {
+						if (accessData.role === 'ADMIN') {
+							roleTitle = 'Administrador';
+						} else if (accessData.profile_id) {
+							const { data: profileData } = await supabase
+								.from('access_profiles')
+								.select('name')
+								.eq('id', accessData.profile_id)
+								.single();
+							
+							if (profileData?.name) {
+								roleTitle = profileData.name;
 							}
-						} catch (err) {
-							console.error(err);
 						}
 					}
 				}
 
 				setUserProfile({
-					full_name:
-						dbProfile?.full_name ||
-						user.user_metadata?.full_name ||
-						'Usuário',
+					full_name: dbProfile?.full_name || user.user_metadata?.full_name || 'Usuário',
 					email: user.email || '',
 					role_title: roleTitle,
 					avatar_url: user.user_metadata?.avatar_url || '',
@@ -139,217 +107,229 @@ export function Header({
 			}
 		};
 
-		loadUserProfile();
-	}, []);
+		loadData();
+	}, [pathname]);
 
-	// Fecha o dropdown ao clicar fora
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
-			if (
-				dropdownRef.current &&
-				!dropdownRef.current.contains(event.target as Node)
-			) {
+			if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
 				setIsDropdownOpen(false);
 			}
-			if (
-				obraDropdownRef.current &&
-				!obraDropdownRef.current.contains(event.target as Node)
-			) {
-				setIsObraDropdownOpen(false);
+			if (companyDropdownRef.current && !companyDropdownRef.current.contains(event.target as Node)) {
+				setIsCompanyDropdownOpen(false);
 			}
 		};
 		document.addEventListener('mousedown', handleClickOutside);
-		return () => {
-			document.removeEventListener('mousedown', handleClickOutside);
-		};
+		return () => document.removeEventListener('mousedown', handleClickOutside);
 	}, []);
 
 	const handleLogout = async () => {
 		await supabase.auth.signOut();
 		document.cookie = 'selectedCompanyId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+		document.cookie = 'rememberedCompanyId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 		router.push('/auth/login');
 		router.refresh();
 	};
 
-	const handleChangeInstance = () => {
-		// Clear remember cookie so we don't get auto-redirected back
-		document.cookie =
-			'rememberedInstanceId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-		document.cookie =
-			'rememberedParentId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-		router.push('/selecionar-instancia');
+	const handleChangeCompany = () => {
+		document.cookie = 'rememberedCompanyId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+		document.cookie = 'selectedCompanyId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+		router.push('/empresas');
+	};
+
+	const switchCompany = (id: string) => {
+		document.cookie = `selectedCompanyId=${id}; path=/; max-age=31536000`;
+		setIsCompanyDropdownOpen(false);
+		router.push('/dashboard');
+		router.refresh();
 	};
 
 	const getInitials = (name: string) => {
-		if (!name) return 'A';
-		return name
-			.split(' ')
-			.map((n) => n[0])
-			.join('')
-			.substring(0, 2)
-			.toUpperCase();
+		if (!name) return 'U';
+		return name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
 	};
 
+	const hasMultipleCompanies = myCompanies.length > 1;
+
 	return (
-		<header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm z-10 transition-all duration-300">
-			{/* Mobile Menu Toggle & Área da Obra */}
-			<div className="flex items-center gap-3">
-				{onMobileMenuToggle && (
-					<button
-						onClick={onMobileMenuToggle}
-						className="md:hidden p-2 -ml-2 text-gray-500 hover:text-gray-900 rounded-md hover:bg-gray-100 focus:outline-none transition-colors"
-						aria-label="Abrir Menu"
+		<header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 z-10 transition-all duration-300">
+			{/* Lado Esquerdo: Toggle Menu e Identidade da Empresa */}
+			<div className="flex items-center gap-2">
+				<div className="flex items-center">
+					{onToggleSidebar && (
+						<button
+							onClick={onToggleSidebar}
+							className="hidden md:flex p-2 text-gray-500 hover:text-gray-900 rounded-none hover:bg-gray-100 focus:outline-none transition-colors"
+						>
+							<MaterialIcon icon="menu" size={20} />
+						</button>
+					)}
+
+					{onMobileMenuToggle && (
+						<button
+							onClick={onMobileMenuToggle}
+							className="md:hidden p-2 text-gray-500 hover:text-gray-900 rounded-none hover:bg-gray-100 focus:outline-none transition-colors"
+						>
+							<MaterialIcon icon="menu" size={20} />
+						</button>
+					)}
+				</div>
+
+				{/* Divisor vertical sutil entre menu e logo */}
+				<div className="h-6 w-px bg-gray-200 mx-1 hidden md:block"></div>
+
+				{/* Identidade da Empresa / Seletor */}
+				<div className="relative" ref={companyDropdownRef}>
+					<div 
+						onClick={() => hasMultipleCompanies && setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
+						className={cn(
+							"flex items-center gap-2.5 px-2 py-1.5 rounded-none transition-all group",
+							hasMultipleCompanies ? "cursor-pointer hover:bg-gray-50 active:scale-[0.98]" : "cursor-default"
+						)}
 					>
-						<Menu className="w-5 h-5" />
-					</button>
-				)}
-
-				{obraId && (
-					<div className="flex items-center gap-3 bg-gray-50/50 p-1.5 rounded-lg border border-gray-100">
-						<div className="relative" ref={obraDropdownRef}>
-							<button
-								onClick={() =>
-									setIsObraDropdownOpen(!isObraDropdownOpen)
-								}
-								className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm transition-all"
-							>
-								<Building2 className="w-4 h-4 text-blue-600" />
-								<span className="max-w-[120px] sm:max-w-[200px] truncate">
-									{currentObraName}
+						<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none bg-[#F3F4F6] text-[#101828] border border-gray-300 transition-colors overflow-hidden">
+							<span className="text-sm font-bold tracking-wider">
+								{getInitials(companyName || 'Obra-Log')}
+							</span>
+						</div>
+						<div className="flex flex-col">
+							<div className="flex items-center gap-1">
+								<span className="text-[16px] font-semibold text-gray-900 leading-tight tracking-tight">
+									{companyName || 'Obra-Log'}
 								</span>
-								<ChevronDown className="w-4 h-4 text-gray-400" />
-							</button>
-
-							{isObraDropdownOpen && (
-								<div className="absolute left-0 mt-2 w-64 origin-top-left rounded-md bg-white py-1.5 shadow-lg ring-1 ring-black/5 focus:outline-none transition-all duration-200 ease-out z-50 overflow-y-auto max-h-[300px]">
-									<div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50/80 mb-1 border-b border-gray-100">
-										Obras Disponíveis
-									</div>
-									{obras.length === 0 ? (
-										<div className="px-4 py-2 text-sm text-gray-500 italic">
-											Nenhuma obra encontrada
-										</div>
-									) : (
-										obras.map((obra) => (
-											<button
-												key={obra.id}
-												onClick={() => {
-													router.push(
-														`/obras/${obra.id}/visao-geral`,
-													);
-													setIsObraDropdownOpen(
-														false,
-													);
-													setCurrentObraName(
-														obra.name,
-													);
-												}}
-												className={cn(
-													'flex items-center w-full px-4 py-2 text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors text-left',
-													obra.id === obraId
-														? 'bg-blue-50 font-semibold text-blue-700'
-														: 'text-gray-700 font-medium',
-												)}
-											>
-												<span className="truncate">
-													{obra.name}
-												</span>
-											</button>
-										))
-									)}
-
-									<div className="border-t border-gray-100 my-1"></div>
-
-									<button
-										onClick={() => {
-											router.push('/obras?novo=true');
-											setIsObraDropdownOpen(false);
-										}}
-										className="flex items-center w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors font-medium"
-									>
-										<Plus className="w-4 h-4 mr-2" />
-										Nova Obra
-									</button>
-									<button
-										onClick={() => {
-											router.push('/obras');
-											setIsObraDropdownOpen(false);
-										}}
-										className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors font-medium"
-									>
-										<ArrowLeft className="w-4 h-4 mr-2 text-gray-400" />
-										Sair da Obra
-									</button>
-								</div>
-							)}
+								{hasMultipleCompanies && (
+									<MaterialIcon icon="expand_more" size={14} className={cn(
+										"text-gray-400 transition-transform duration-200",
+										isCompanyDropdownOpen ? "rotate-180" : ""
+									)} />
+								)}
+							</div>
+							<span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.05em] leading-none mt-0.5">
+								Workspace Ativo
+							</span>
 						</div>
 					</div>
-				)}
+
+					{/* Dropdown de Troca de Empresa */}
+					{isCompanyDropdownOpen && (
+						<div className="absolute left-0 mt-2 w-72 origin-top-left rounded-none bg-white p-1.5 shadow-2xl ring-1 ring-black/5 z-[60] animate-in fade-in zoom-in duration-200 border border-gray-100">
+							<div className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50 mb-1">
+								Trocar de Empresa
+							</div>
+							<div className="max-h-60 overflow-y-auto custom-scrollbar">
+								{myCompanies.map((company) => {
+									const isActive = companyName === company.name;
+									return (
+										<button
+											key={company.id}
+											onClick={() => switchCompany(company.id)}
+											className={cn(
+												"w-full flex items-center gap-3 px-3 py-2.5 rounded-none text-sm text-left transition-all mb-0.5 group/item",
+												isActive 
+													? "bg-blue-600 text-white shadow-md shadow-blue-200" 
+													: "text-gray-700 hover:bg-gray-50"
+											)}
+										>
+											<div className={cn(
+												"flex h-8 w-8 shrink-0 items-center justify-center rounded-none text-[10px] font-bold border transition-colors",
+												isActive 
+													? "bg-white/20 border-white/30 text-white" 
+													: "bg-gray-100 border-gray-200 text-gray-500 group-hover/item:bg-white"
+											)}>
+												{getInitials(company.name)}
+											</div>
+											<span className="flex-1 truncate font-semibold">{company.name}</span>
+											{isActive && <MaterialIcon icon="check" size={16} />}
+										</button>
+									);
+								})}
+							</div>
+						</div>
+					)}
+				</div>
 			</div>
 
-			{/* Perfil e Ações do Usuário */}
-			<div className="relative" ref={dropdownRef}>
-				<button
-					onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-					className="flex items-center gap-3 focus:outline-none hover:bg-gray-50/80 p-1.5 rounded-lg transition-colors border border-transparent hover:border-gray-100"
-				>
-					<div className="text-right hidden sm:block">
-						<p className="text-sm font-semibold text-gray-900 truncate max-w-[150px]">
-							{userProfile?.full_name || 'Carregando...'}
-						</p>
-						<p className="text-xs font-medium text-gray-500 leading-none mt-0.5">
-							{userProfile?.role_title || 'Usuário'}
-						</p>
+			{/* Lado Direito: Pesquisa, Ícones e Perfil */}
+			<div className="flex items-center flex-1 justify-end gap-4">
+				{/* Barra de Pesquisa */}
+				<div className="max-w-xs hidden md:block">
+					<div className="relative group">
+						<div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors">
+							<MaterialIcon icon="search" size={20} />
+						</div>
+						<input
+							type="text"
+							placeholder="Pesquisar..."
+							className="block w-full pl-10 pr-3 py-1.5 border border-gray-300 rounded-none bg-white text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
+						/>
 					</div>
+				</div>
 
-					<div className="flex items-center justify-center h-10 w-10 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors border border-gray-200 shadow-sm overflow-hidden shrink-0">
-						{loading ? (
-							<Loader2 className="h-4 w-4 animate-spin text-white/70" />
-						) : userProfile?.avatar_url ? (
-							<img
-								src={userProfile.avatar_url}
-								alt={userProfile.full_name}
-								className="h-full w-full object-cover"
-							/>
-						) : (
-							getInitials(userProfile?.full_name || '')
-						)}
-					</div>
-				</button>
+				{/* Divisor Vertical */}
+				<div className="hidden md:block h-8 w-px bg-gray-200 mx-2"></div>
 
-				{/* Dropdown Menu */}
-				<div
-					className={cn(
-						'absolute right-0 mt-2 w-56 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-none transition-all duration-200 ease-out z-50',
-						isDropdownOpen
-							? 'transform opacity-100 scale-100'
-							: 'transform opacity-0 scale-95 pointer-events-none',
-					)}
-				>
-					<div className="px-4 py-3 border-b border-gray-100">
-						<p className="text-sm font-medium text-gray-900 truncate">
-							{userProfile?.full_name || 'Carregando...'}
-						</p>
-						<p className="text-xs text-gray-500 truncate mt-0.5">
-							{userProfile?.email}
-						</p>
-					</div>
-					<div className="flex flex-col py-1">
+				{/* Área de Ícones */}
+				<div className="flex items-center gap-2">
+					<button title="Ajuda" className="p-2 text-gray-500 hover:text-gray-900 rounded-none hover:bg-gray-100 transition-colors">
+						<MaterialIcon icon="help_outline" size={22} />
+					</button>
+
+					<button title="Configurações" className="p-2 text-gray-500 hover:text-gray-900 rounded-none hover:bg-gray-100 transition-colors">
+						<MaterialIcon icon="settings" size={22} />
+					</button>
+
+					<button title="Notificações" className="p-2 text-gray-500 hover:text-gray-900 rounded-none hover:bg-gray-100 transition-colors relative mr-2 group">
+						<MaterialIcon icon="notifications" size={22} className="group-hover:shake transition-transform" />
+						<span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-none border-2 border-white shadow-sm"></span>
+					</button>
+
+					{/* Perfil do Usuário */}
+					<div className="relative" ref={dropdownRef}>
 						<button
-							onClick={handleChangeInstance}
-							className="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600 transition-colors"
+							onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+							className="flex items-center focus:outline-none hover:bg-gray-50/80 p-1.5 rounded-none transition-colors"
 						>
-							<RefreshCcw className="mr-2 h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
-							Trocar Instância
+							<div className="flex items-center justify-center h-10 w-10 rounded-none bg-blue-600 text-white font-medium border border-gray-200 shadow-sm overflow-hidden shrink-0">
+								{loading ? (
+									<MaterialIcon icon="autorenew" size={16} className="animate-spin" />
+								) : userProfile?.avatar_url ? (
+									<img src={userProfile.avatar_url} alt="Avatar" className="h-full w-full object-cover" />
+								) : (
+									getInitials(userProfile?.full_name || '')
+								)}
+							</div>
 						</button>
-						<div className="border-t border-gray-100 my-1"></div>
-						<button
-							onClick={handleLogout}
-							className="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors"
+
+						{/* Dropdown de Perfil */}
+						<div
+							className={cn(
+								'absolute right-0 mt-2 w-64 origin-top-right rounded-none bg-white py-1 shadow-lg ring-1 ring-black/5 z-50 transition-all duration-200',
+								isDropdownOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+							)}
 						>
-							<LogOut className="mr-2 h-4 w-4 text-gray-400 group-hover:text-red-600 transition-colors" />
-							Sair
-						</button>
+							<div className="px-4 py-3 border-b border-gray-100">
+								<p className="text-sm font-bold text-gray-900 truncate">{userProfile?.full_name}</p>
+								<p className="text-xs font-medium text-blue-600 truncate mb-1">{userProfile?.role_title}</p>
+								<p className="text-[11px] text-gray-500 truncate">{userProfile?.email}</p>
+							</div>
+							<div className="py-1">
+								<button
+									onClick={handleChangeCompany}
+									className="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600 transition-colors"
+								>
+									<MaterialIcon icon="sync" size={18} className="mr-2 text-gray-400 group-hover:text-blue-500" />
+									Trocar Empresa
+								</button>
+								<div className="border-t border-gray-100 my-1"></div>
+								<button
+									onClick={handleLogout}
+									className="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors"
+								>
+									<MaterialIcon icon="logout" size={18} className="mr-2 text-gray-400 group-hover:text-red-600" />
+									Sair
+								</button>
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>

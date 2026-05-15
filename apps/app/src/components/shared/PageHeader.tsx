@@ -30,7 +30,7 @@ export function PageHeader({
 					<Button
 						size="sm"
 						onClick={onAdd}
-						className="flex items-center gap-2 bg-[#101828] hover:bg-[#1a2333] text-white rounded-[5px] px-4 shadow-sm"
+						className="flex items-center gap-2 bg-[#101828] hover:bg-[#1a2333] text-white rounded-none px-4 shadow-sm"
 					>
 						<Plus className="h-4 w-4" />
 						<span>{addLabel}</span>

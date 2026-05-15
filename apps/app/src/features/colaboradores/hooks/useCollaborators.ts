@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
+import { getActiveCompanyId } from '@/lib/utils';
 import { unmask } from '@/lib/maskUtils';
 import { z } from 'zod';
 import {
@@ -39,7 +39,7 @@ export function useCollaborators() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 
 			if (!companyId) {
 				throw new Error('Nenhuma empresa selecionada.');
@@ -91,7 +91,7 @@ export function useCollaborators() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 
 			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
 
@@ -141,7 +141,7 @@ export function useCollaborators() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 			if (!companyId) return [];
 
 			const data = await getCollaboratorsAdmin(companyId);
@@ -160,7 +160,7 @@ export function useCollaborators() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
 
 			await deleteCollaboratorAdmin(id, companyId);
@@ -179,7 +179,7 @@ export function useCollaborators() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 			if (!companyId) return [];
 
 			const data = await getAccessProfilesAdmin(companyId);

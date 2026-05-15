@@ -12,7 +12,7 @@ import {
 	AccessProfile,
 	accessProfilesService,
 } from '@/features/admin/services/accessProfiles.service';
-import { getParentCompanyId } from '@/lib/utils';
+import { getActiveCompanyId } from '@/lib/utils';
 import { Download, Loader2, Plus, ShieldCheck, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -32,7 +32,7 @@ export default function PerfisDeAcessoPage() {
 	const loadData = async () => {
 		try {
 			setIsLoading(true);
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 			if (!companyId)
 				throw new Error(
 					'Instância não encontrada. Faça login novamente.',
@@ -86,7 +86,7 @@ export default function PerfisDeAcessoPage() {
 	const handleSave = async (data: LocalProfileFormData) => {
 		try {
 			setIsSaving(true);
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 			if (!companyId) throw new Error('Instância não encontrada.');
 
 			data.company_id = companyId;

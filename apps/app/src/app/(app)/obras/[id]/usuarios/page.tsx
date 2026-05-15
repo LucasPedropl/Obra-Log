@@ -9,9 +9,8 @@ import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { TableSearch } from '@/components/shared/TableSearch';
 import { DataTable, DetailRow } from '@/components/shared/DataTable';
-import { getInstanceUsersAction, saveInstanceUserAction } from '@/app/actions/instanceUsers';
-import { getAllProfilesAction } from '@/app/actions/globalUsers';
-import { getParentCompanyId } from '@/lib/utils';
+import { getGlobalUsersAction, saveGlobalUserAction, getAllProfilesAction } from '@/app/actions/globalUsers';
+import { getActiveCompanyId } from '@/lib/utils';
 import { useToast } from '@/components/ui/toaster';
 
 interface SimpleProfile {
@@ -19,22 +18,21 @@ interface SimpleProfile {
 	name: string;
 }
 
-interface InstanceUser {
-	instanceUserId: string;
+interface CompanyUser {
+	id: string;
 	full_name: string;
 	email: string;
-	status: string;
-	profile?: {
-		name: string;
-	};
+	is_company_admin: boolean;
+	profile_name?: string;
+	assignments?: any[];
 }
 
-export default function InstanceUsuariosPage({ params }: { params: Promise<{ id: string }> }) {
+export default function SiteUsuariosPage({ params }: { params: Promise<{ id: string }> }) {
 	const resolvedParams = use(params);
 	const siteId = resolvedParams.id;
 	const { addToast } = useToast();
 
-	const [usuarios, setUsuarios] = useState<InstanceUser[]>([]);
+	const [usuarios, setUsuarios] = useState<CompanyUser[]>([]);
 	const [profiles, setProfiles] = useState<SimpleProfile[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	
@@ -58,11 +56,13 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 	const loadData = async () => {
 		setIsLoading(true);
 		try {
+			// No novo modelo, listamos os usuários da EMPRESA.
+			// Filtraremos na UI ou via query no futuro se houver site_users.
 			const [usersRes, profRes] = await Promise.all([
-				getInstanceUsersAction(siteId),
+				getGlobalUsersAction(),
 				getAllProfilesAction()
 			]);
-			if (usersRes.success) setUsuarios((usersRes.users as unknown as InstanceUser[]) || []);
+			if (usersRes.success) setUsuarios((usersRes.users as unknown as CompanyUser[]) || []);
 			if (profRes.success) setProfiles((profRes.profiles as unknown as SimpleProfile[]) || []);
 		} catch (error: unknown) {
 			console.error(error);
@@ -96,23 +96,23 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 
 		setIsSaving(true);
 		try {
-			const companyId = getParentCompanyId() || '';
-			const res = await saveInstanceUserAction(siteId, {
+			// Salva como um usuário normal da empresa
+			const res = await saveGlobalUserAction({
 				email,
 				fullName,
-				profileId,
-				companyId
+				isCompanyAdmin: false,
+				profileId
 			});
 
 			if (res.success) {
-				addToast('Usuário vinculado à obra.', 'success');
+				addToast('Usuário cadastrado com sucesso.', 'success');
 				setIsFormOpen(false);
 				loadData();
 			} else {
 				addToast(res.error || 'Erro ao salvar', 'error');
 			}
 		} catch (err: unknown) {
-			const message = err instanceof Error ? err.message : 'Erro ao vincular usuário';
+			const message = err instanceof Error ? err.message : 'Erro ao cadastrar usuário';
 			addToast(message, 'error');
 		} finally {
 			setIsSaving(false);
@@ -122,10 +122,10 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 	return (
 		<div className="w-full flex flex-col gap-6 relative animate-in fade-in zoom-in-95 duration-300">
 			<PageHeader
-				title="Acesso ao Sistema"
-				description="Convide usuários e defina seus perfis (cargos) para esta Obra especificamente."
+				title="Gestão de Acessos"
+				description="Gerencie os usuários que possuem acesso ao sistema nesta empresa."
 				onAdd={handleOpenForm}
-				addLabel="Vincular Usuário"
+				addLabel="Cadastrar Usuário"
 			/>
 
 			{isFormOpen && (
@@ -133,8 +133,8 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 					<div className="bg-white rounded-2xl w-full max-w-md flex flex-col shadow-2xl relative animate-in zoom-in-95 duration-200">
 						<div className="p-5 border-b flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
 							<div>
-								<h3 className="text-lg font-semibold text-gray-900">Vincular Usuário à Obra</h3>
-								<p className="text-xs text-gray-500">O usuário terá acesso apenas a esta obra.</p>
+								<h3 className="text-lg font-semibold text-gray-900">Novo Usuário</h3>
+								<p className="text-xs text-gray-500">O usuário receberá um convite por e-mail.</p>
 							</div>
 							<button onClick={() => setIsFormOpen(false)} className="p-1.5 hover:bg-gray-200 rounded-full transition text-gray-500">
 								<X className="w-5 h-5" />
@@ -165,7 +165,7 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 							<Button variant="outline" onClick={() => setIsFormOpen(false)} disabled={isSaving}>Cancelar</Button>
 							<Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white" disabled={isSaving}>
 								{isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-								Vincular
+								Cadastrar
 							</Button>
 						</div>
 					</div>
@@ -178,8 +178,8 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 				</div>
 			) : usuarios.length === 0 && !searchTerm ? (
 				<EmptyState
-					title="Nenhum usuário nesta Obra"
-					description="Nenhum usuário com acesso restrito a esta obra foi encontrado. (Admins Globais não aparecem aqui pois já têm acesso a tudo)."
+					title="Nenhum usuário cadastrado"
+					description="Comece cadastrando os usuários que utilizarão o sistema na sua empresa."
 					icon={<Users className="w-8 h-8 text-gray-400" />}
 				/>
 			) : (
@@ -197,28 +197,20 @@ export default function InstanceUsuariosPage({ params }: { params: Promise<{ id:
 								{ header: 'Nome', accessorKey: 'full_name', className: 'font-medium' },
 								{ header: 'E-mail', accessorKey: 'email' },
 								{ 
-									header: 'Perfil', 
-									cell: (item) => <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-md border border-blue-100">{item.profile?.name || 'Sem Perfil'}</span>
-								},
-								{ 
-									header: 'Status', 
+									header: 'Papel', 
 									cell: (item) => (
-										<span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${item.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-											{item.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+										<span className={cn(
+											"px-2 py-1 text-xs font-medium rounded-md border",
+											item.is_company_admin 
+												? "bg-purple-50 text-purple-700 border-purple-100" 
+												: "bg-blue-50 text-blue-700 border-blue-100"
+										)}>
+											{item.is_company_admin ? 'Administrador' : (item.profile_name || 'Sem Perfil')}
 										</span>
 									)
 								},
 							]}
-							detailsTitle="Detalhes do Usuário"
-							renderDetails={(item) => (
-								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-									<DetailRow label="Nome" value={item.full_name} className="sm:col-span-2" />
-									<DetailRow label="E-mail" value={item.email} />
-									<DetailRow label="Perfil" value={item.profile?.name || 'Sem Perfil'} />
-									<DetailRow label="Status" value={item.status === 'ACTIVE' ? 'Ativo' : 'Inativo'} />
-								</div>
-							)}
-							keyExtractor={(item) => item.instanceUserId}
+							keyExtractor={(item) => item.id}
 						/>
 
 						{totalPages > 1 && (

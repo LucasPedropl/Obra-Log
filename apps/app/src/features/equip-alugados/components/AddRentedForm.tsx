@@ -4,7 +4,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { SearchableInput } from '@/components/ui/searchable-input';
 
 import { X, Upload, Loader2, Info, Plus } from 'lucide-react';
-import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
+import { getActiveCompanyId } from '@/lib/utils';
 
 import { ManageSelectsModal } from '@/features/insumos/components/ManageSelectsModal';
 import { useToast } from '@/components/ui/toaster';
@@ -73,7 +73,7 @@ export function AddRentedForm({
 			if (!siteId) return;
 
 			try {
-				const currentCompanyId = getParentCompanyId();
+				const currentCompanyId = getActiveCompanyId();
 				if (!currentCompanyId) {
 					throw new Error('Nenhuma empresa ativa selecionada.');
 				}

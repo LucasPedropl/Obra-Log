@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/toaster';
 import { createClient } from '@/config/supabase';
 import { AccessProfileForm } from '@/features/admin/components/AccessProfileForm';
 import { maskCEP, maskCPF, maskDate, maskPhone, unmask } from '@/lib/maskUtils';
-import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
+import { getActiveCompanyId } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
 	Calendar,
@@ -181,7 +181,7 @@ export function CollaboratorForm({
 		const files = e.target.files;
 		if (!files || files.length === 0) return;
 
-		const companyId = getParentCompanyId();
+		const companyId = getActiveCompanyId();
 		if (!companyId) {
 			addToast('Erro: Empresa não identificada.', 'error');
 			return;
@@ -282,7 +282,7 @@ export function CollaboratorForm({
 	const handleCreateProfile = async (profileData: any) => {
 		setIsCreatingProfile(true);
 		try {
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 			if (!companyId) throw new Error('Empresa não identificada');
 
 			await createAccessProfileAdmin({
@@ -328,7 +328,7 @@ export function CollaboratorForm({
 						</button>
 
 						<AccessProfileForm 
-							companyId={getParentCompanyId() || ''}
+							companyId={getActiveCompanyId() || ''}
 							onSubmit={handleCreateProfile}
 							onCancel={() => setShowProfileModal(false)}
 							isLoading={isCreatingProfile}

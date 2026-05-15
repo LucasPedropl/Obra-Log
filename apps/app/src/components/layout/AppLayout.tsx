@@ -41,6 +41,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 					onMobileMenuToggle={() =>
 						setIsMobileMenuOpen(!isMobileMenuOpen)
 					}
+					onToggleSidebar={toggleSidebar}
 				/>
 
 				{/* Page Content */}

@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { HardHat, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/config/supabase';
+import { setupInitialProfileAction } from '@/app/actions/authData';
 
 interface SetupProfileUser {
 	id: string;
@@ -29,7 +28,6 @@ export function SetupProfileModal({
 	const [showPassword, setShowPassword] = useState(false);
 	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const [error, setError] = useState('');
-	const supabase = createClient();
 
 	const handleSetup = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -46,42 +44,11 @@ export function SetupProfileModal({
 		setError('');
 
 		try {
-			// Update auth user data first
-			const { error: updateDataError } = await supabase.auth.updateUser({
-				data: { full_name: fullName, require_password_change: false },
-			});
-
-			if (updateDataError) {
-				throw new Error(
-					`Erro ao atualizar perfil: ${updateDataError.message}`,
-				);
+			const result = await setupInitialProfileAction(user.id, fullName, password);
+			
+			if (!result.success) {
+				throw new Error(result.error);
 			}
-
-			// Update auth password separately
-			const { error: updatePassError } = await supabase.auth.updateUser({
-				password: password,
-			});
-
-			if (updatePassError) {
-				if (
-					!updatePassError.message.includes(
-						'different from the old password',
-					) &&
-					!updatePassError.message.includes('should be different')
-				) {
-					throw new Error(
-						`Erro de senha (Supabase): ${updatePassError.message}`,
-					);
-				}
-			}
-
-			// Update public.profiles
-			const { error: updateDbError } = await supabase
-				.from('profiles')
-				.update({ full_name: fullName })
-				.eq('id', user.id);
-
-			if (updateDbError) throw updateDbError;
 
 			onComplete();
 		} catch (err: unknown) {
@@ -126,12 +93,13 @@ export function SetupProfileModal({
 						<Label className="block text-sm font-medium text-gray-700">
 							Nome Completo
 						</Label>
-						<Input
+						<input
 							type="text"
 							value={fullName}
 							onChange={(e) => setFullName(e.target.value)}
 							required
 							placeholder="Ex: João Silva"
+							className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 						/>
 					</div>
 					<div className="space-y-2">
@@ -139,13 +107,13 @@ export function SetupProfileModal({
 							Nova Senha
 						</Label>
 						<div className="relative">
-							<Input
+							<input
 								type={showPassword ? 'text' : 'password'}
 								value={password}
 								onChange={(e) => setPassword(e.target.value)}
 								required
 								placeholder="••••••••"
-								className="pr-10"
+								className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10"
 							/>
 							<button
 								type="button"
@@ -161,13 +129,13 @@ export function SetupProfileModal({
 							Confirmar Nova Senha
 						</Label>
 						<div className="relative">
-							<Input
+							<input
 								type={showConfirmPassword ? 'text' : 'password'}
 								value={confirmPassword}
 								onChange={(e) => setConfirmPassword(e.target.value)}
 								required
 								placeholder="••••••••"
-								className="pr-10"
+								className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10"
 							/>
 							<button
 								type="button"

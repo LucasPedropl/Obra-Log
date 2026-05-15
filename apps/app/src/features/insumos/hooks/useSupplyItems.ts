@@ -8,7 +8,7 @@ import {
 	getSupplyItemsAdmin,
 	deleteSupplyItemAdmin
 } from '@/app/actions/adminActions';
-import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
+import { getActiveCompanyId } from '@/lib/utils';
 import { useState } from 'react';
 import { z } from 'zod';
 
@@ -30,17 +30,20 @@ export function useSupplyItems() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
-			if (!companyId) throw new Error('Empresa não selecionada.');
+			const companyId = getActiveCompanyId();
+			if (!companyId) {
+				setError('Empresa não selecionada.');
+				return null;
+			}
 
-			const newId = await createCategoryAdmin({
+			const result = await createCategoryAdmin({
 				company_id: companyId,
 				primary_category: params.primary,
 				secondary_category: params.secondary || null,
 				entry_type: params.entryType || 'PRODUTO'
 			});
 
-			return newId;
+			return result?.id;
 		} catch (err: any) {
 			console.error('Error creating category:', {
 				message: err?.message || 'No message',
@@ -68,16 +71,19 @@ export function useSupplyItems() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
-			if (!companyId) throw new Error('Empresa não selecionada.');
+			const companyId = getActiveCompanyId();
+			if (!companyId) {
+				setError('Empresa não selecionada.');
+				return null;
+			}
 
-			const newId = await createUnitAdmin({
+			const result = await createUnitAdmin({
 				company_id: companyId,
 				name,
 				abbreviation
 			});
 
-			return newId;
+			return result?.id;
 		} catch (err: any) {
 			console.error('Error creating unit:', {
 				message: err?.message || 'No message',
@@ -104,7 +110,7 @@ export function useSupplyItems() {
 
 	const fetchCategories = async () => {
 		try {
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 			if (!companyId) return [];
 
 			const data = await getCategoriesAdmin(companyId);
@@ -117,7 +123,7 @@ export function useSupplyItems() {
 
 	const fetchUnits = async () => {
 		try {
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 			if (!companyId) return [];
 
 			const data = await getUnitsAdmin(companyId);
@@ -132,9 +138,12 @@ export function useSupplyItems() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 
-			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
+			if (!companyId) {
+				setError('Nenhuma empresa selecionada.');
+				return false;
+			}
 
 			await createSupplyItemAdmin({
 				company_id: companyId,
@@ -160,9 +169,12 @@ export function useSupplyItems() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 
-			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
+			if (!companyId) {
+				setError('Nenhuma empresa selecionada.');
+				return false;
+			}
 
 			await updateSupplyItemAdmin(id, {
 				...data,
@@ -184,9 +196,12 @@ export function useSupplyItems() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
+			const companyId = getActiveCompanyId();
 
-			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
+			if (!companyId) {
+				setError('Nenhuma empresa selecionada.');
+				return false;
+			}
 
 			const data = await getSupplyItemsAdmin(companyId);
 			return data || [];
@@ -204,8 +219,11 @@ export function useSupplyItems() {
 		try {
 			setIsLoading(true);
 			setError(null);
-			const companyId = getParentCompanyId();
-			if (!companyId) throw new Error('Nenhuma empresa selecionada.');
+			const companyId = getActiveCompanyId();
+			if (!companyId) {
+				setError('Nenhuma empresa selecionada.');
+				return false;
+			}
 
 			await deleteSupplyItemAdmin(id, companyId);
 			return true;

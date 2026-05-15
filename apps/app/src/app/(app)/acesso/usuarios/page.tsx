@@ -7,26 +7,19 @@ import { FilterPanel } from '@/components/shared/FilterPanel';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toaster';
 import { UserForm } from '@/features/admin/components/UserForm';
-import { getGlobalUsersAction, getAllProfilesAction } from '@/app/actions/globalUsers';
-import { usersService } from '@/features/admin/services/users.service';
-import { getActiveCompanyId, getParentCompanyId } from '@/lib/utils';
-import { Loader2, Plus, ShieldCheck, UserCheck, Users as UsersIcon, X } from 'lucide-react';
+import { getGlobalUsersAction, getAllProfilesAction, saveGlobalUserAction } from '@/app/actions/globalUsers';
+import { getActiveCompanyId } from '@/lib/utils';
+import { Loader2, Plus, UserCheck, Users as UsersIcon, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-interface UserAssignment {
-	instanceId: string;
-	instanceName: string;
-	profileId: string;
-	profileName: string;
-}
+import { cn } from '@/lib/utils';
 
 interface CompanyUser {
 	id: string;
 	email: string;
 	full_name: string;
-	is_super_admin: boolean;
 	is_company_admin: boolean;
-	assignments: UserAssignment[];
+	profile_name?: string;
+	status: string;
 }
 
 export default function UsuariosPage() {
@@ -78,18 +71,20 @@ export default function UsuariosPage() {
 	const handleSaveUser = async (data: any) => {
 		try {
 			setIsSaving(true);
-			const companyId = getParentCompanyId();
-			if (!companyId) throw new Error('Empresa não selecionada');
-
-			const response = await usersService.createUser({
+			const response = await saveGlobalUserAction({
 				email: data.email,
-				full_name: data.full_name,
-				profile_id: data.profile_id,
+				fullName: data.full_name,
+				isCompanyAdmin: data.is_company_admin,
+				profileId: data.profile_id,
 			});
 
-			setGeneratedPassword(response.tempPassword ?? null);
-			addToast('Usuário cadastrado com sucesso!', 'success');
-			await loadData();
+			if (response.success) {
+				setGeneratedPassword(response.tempPassword ?? null);
+				addToast('Usuário cadastrado com sucesso!', 'success');
+				await loadData();
+			} else {
+				throw new Error(response.error || 'Erro ao salvar usuário');
+			}
 		} catch (error: any) {
 			addToast(error.message || 'Erro ao salvar usuário', 'error');
 		} finally {
@@ -114,7 +109,7 @@ export default function UsuariosPage() {
 		<div className="w-full flex flex-col gap-6 relative">
 			<PageHeader
 				title="Usuários do Sistema"
-				description="Gerencie os usuários e seus respectivos níveis de acesso"
+				description="Gerencie os usuários e seus respectivos níveis de acesso na empresa."
 				onAdd={() => setIsFormOpen(true)}
 				addLabel="Novo Usuário"
 			/>
@@ -161,7 +156,7 @@ export default function UsuariosPage() {
 							</div>
 						) : (
 							<UserForm
-								companyId={getParentCompanyId() || ''}
+								companyId={getActiveCompanyId() || ''}
 								profiles={profiles}
 								onSubmit={handleSaveUser}
 								onCancel={handleFormClose}
@@ -183,7 +178,7 @@ export default function UsuariosPage() {
 						Nenhum usuário encontrado
 					</h3>
 					<p className="text-gray-500 text-sm mb-6 text-center max-w-md">
-						Cadastre seu primeiro usuário para que ele possa acessar o sistema e gerenciar as obras.
+						Cadastre seu primeiro usuário para que ele possa acessar o sistema e gerenciar a empresa.
 					</p>
 					<Button onClick={() => setIsFormOpen(true)}>
 						<Plus className="w-4 h-4 mr-2" />
@@ -238,34 +233,29 @@ export default function UsuariosPage() {
 									accessorKey: 'email',
 								},
 								{
-									header: 'Tipo',
+									header: 'Perfil / Papel',
 									cell: (item) => (
 										<span className={cn(
-											"px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider",
+											"px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border",
 											item.is_company_admin 
-												? "bg-purple-100 text-purple-700 border border-purple-200"
-												: "bg-blue-100 text-blue-700 border border-blue-200"
+												? "bg-purple-50 text-purple-700 border-purple-100"
+												: "bg-blue-50 text-blue-700 border-blue-100"
 										)}>
-											{item.is_company_admin ? 'Admin Empresa' : 'Usuário Restrito'}
+											{item.is_company_admin ? 'Admin Empresa' : (item.profile_name || 'Usuário Restrito')}
 										</span>
 									)
 								},
 								{
-									header: 'Acessos Ativos',
+									header: 'Status',
 									cell: (item) => (
-										<div className="flex flex-wrap gap-1">
-											{item.is_company_admin ? (
-												<span className="text-xs text-slate-500 italic">Acesso Total (Todas as Obras)</span>
-											) : item.assignments.length > 0 ? (
-												item.assignments.map((a, idx) => (
-													<span key={idx} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] rounded border border-slate-200">
-														{a.instanceName} ({a.profileName})
-													</span>
-												))
-											) : (
-												<span className="text-xs text-red-500 italic">Sem acessos vinculados</span>
-											)}
-										</div>
+										<span className={cn(
+											"px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border",
+											item.status === 'ACTIVE' 
+												? "bg-green-50 text-green-700 border-green-100"
+												: "bg-red-50 text-red-700 border-red-100"
+										)}>
+											{item.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+										</span>
 									)
 								}
 							]}
@@ -274,24 +264,8 @@ export default function UsuariosPage() {
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<DetailRow label="Nome Completo" value={item.full_name} className="sm:col-span-2" />
 									<DetailRow label="E-mail" value={item.email} />
-									<DetailRow label="Tipo de Conta" value={item.is_company_admin ? 'Administrador da Empresa' : 'Usuário de Obra'} />
-									<div className="sm:col-span-2 mt-2">
-										<p className="text-xs font-bold text-slate-500 uppercase mb-2">Vínculos de Acesso</p>
-										{item.is_company_admin ? (
-											<p className="text-sm text-slate-600">Este usuário possui acesso administrativo total a todas as obras e configurações da empresa.</p>
-										) : (
-											<div className="space-y-2">
-												{item.assignments.map((a, idx) => (
-													<div key={idx} className="flex items-center gap-2 text-sm bg-slate-50 p-2 rounded border border-slate-100">
-														<ShieldCheck size={14} className="text-slate-400" />
-														<span className="font-semibold">{a.instanceName}</span>
-														<span className="text-slate-400">•</span>
-														<span className="text-slate-600">{a.profileName}</span>
-													</div>
-												))}
-											</div>
-										)}
-									</div>
+									<DetailRow label="Perfil" value={item.is_company_admin ? 'Administrador da Empresa' : (item.profile_name || 'Sem Perfil')} />
+									<DetailRow label="Status" value={item.status === 'ACTIVE' ? 'Ativo' : 'Inativo'} />
 								</div>
 							)}
 							keyExtractor={(item) => item.id}

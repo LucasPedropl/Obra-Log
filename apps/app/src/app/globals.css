@@ -32,7 +32,7 @@
 		--border: #e4e4e7;
 		--input: #e4e4e7;
 		--ring: #101828;
-		--radius: 0.75rem; /* Tornando tudo mais arredondado */
+		--radius: 0; /* Bordas totalmente retas */
 	}
 	.dark {
 		--background: #09090b;
@@ -137,7 +137,7 @@
 	--chart-3: oklch(0.439 0 0);
 	--chart-4: oklch(0.371 0 0);
 	--chart-5: oklch(0.269 0 0);
-	--radius: 0.625rem;
+	--radius: 0;
 	--sidebar: oklch(0.985 0 0);
 	--sidebar-foreground: oklch(0.145 0 0);
 	--sidebar-primary: oklch(0.205 0 0);
@@ -180,4 +180,32 @@
 	--sidebar-accent-foreground: oklch(0.985 0 0);
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.556 0 0);
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+	width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+	background: rgba(156, 163, 175, 0.2);
+	border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+	background: rgba(156, 163, 175, 0.4);
+}
+
+@keyframes shake {
+	0%, 100% { transform: rotate(0deg); }
+	25% { transform: rotate(15deg); }
+	75% { transform: rotate(-15deg); }
+}
+
+.group:hover .group-hover\:shake {
+	animation: shake 0.4s ease-in-out;
 }
