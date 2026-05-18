@@ -22,7 +22,7 @@ interface RawMovement {
 	reason: string | null;
 	quantity_delta: number;
 	action_date: string;
-	users: { full_name: string | null } | null;
+	profiles: { full_name: string | null } | null;
 	site_inventory: {
 		catalogs: { name: string; is_tool: boolean } | null;
 	} | null;
@@ -44,7 +44,7 @@ interface RawEpiWithdrawalMov {
 	id: string;
 	quantity: number;
 	withdrawal_date: string;
-	users: { full_name: string | null } | null;
+	profiles: { full_name: string | null } | null;
 	collaborators: { name: string } | null;
 	catalogs: { name: string } | null;
 }
@@ -77,7 +77,7 @@ export function useMovimentacoes(siteId: string) {
 					reason,
 					quantity_delta,
 					action_date,
-					users ( full_name ),
+					profiles!site_movements_created_by_fkey ( full_name ),
 					site_inventory (
 						catalogs ( name, is_tool )
 					)
@@ -116,7 +116,7 @@ export function useMovimentacoes(siteId: string) {
 					id,
 					quantity,
 					withdrawal_date,
-					users ( full_name ),
+					profiles!epi_withdrawals_withdrawn_by_fkey ( full_name ),
 					collaborators ( name ),
 					catalogs ( name )
 				`,
@@ -171,7 +171,7 @@ export function useMovimentacoes(siteId: string) {
 					action,
 					item_name: itemName,
 					quantity: mov.quantity_delta,
-					user_name: mov.users?.full_name || undefined,
+					user_name: mov.profiles?.full_name || undefined,
 					reason: mov.reason || undefined,
 				});
 			});
@@ -224,7 +224,7 @@ export function useMovimentacoes(siteId: string) {
 					action: 'Entrega de EPI',
 					item_name: epi.catalogs?.name || 'EPI Desconhecido',
 					quantity: epi.quantity,
-					user_name: epi.users?.full_name || undefined,
+					user_name: epi.profiles?.full_name || undefined,
 					collaborator_name: epi.collaborators?.name,
 				});
 			});
@@ -278,3 +278,4 @@ export function useMovimentacoes(siteId: string) {
 
 	return { movimentacoes, isLoading, refetch: fetchMovimentacoes };
 }
+

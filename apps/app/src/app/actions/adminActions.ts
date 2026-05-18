@@ -1,6 +1,7 @@
 'use server';
 
 import { createServerSupabaseClient } from '@/config/supabaseServer';
+import { supabaseAdmin } from '@/config/supabaseAdmin';
 
 /**
  * Cria uma nova obra vinculada diretamente à empresa.
@@ -21,18 +22,40 @@ export async function createConstructionSiteAdmin(data: {
 }
 
 /**
- * Lista todas as obras de uma empresa.
+ * Lista todas as obras de uma empresa com contagens de colaboradores e inventário.
  */
 export async function getConstructionSitesAdmin(company_id: string) {
 	const supabase = await createServerSupabaseClient();
-	const { data, error } = await supabase
+	const { data: sites, error } = await supabase
 		.from('construction_sites')
 		.select('*')
 		.eq('company_id', company_id)
 		.order('created_at', { ascending: false });
 
 	if (error) throw error;
-	return data;
+	if (!sites || sites.length === 0) return [];
+
+	const enrichedSites = await Promise.all(
+		sites.map(async (site) => {
+			const { data: colabs } = await supabaseAdmin
+				.from('site_collaborators')
+				.select('id')
+				.eq('site_id', site.id);
+
+			const { data: invs } = await supabaseAdmin
+				.from('site_inventory')
+				.select('id')
+				.eq('site_id', site.id);
+
+			return {
+				...site,
+				collaborators_count: colabs ? colabs.length : 0,
+				inventory_count: invs ? invs.length : 0,
+			};
+		})
+	);
+
+	return enrichedSites;
 }
 
 /**

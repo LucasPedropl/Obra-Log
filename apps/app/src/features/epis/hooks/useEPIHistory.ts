@@ -26,8 +26,8 @@ interface RawEPIWithdrawal {
 		name: string;
 		cpf: string | null;
 	} | null;
-	users: {
-		full_name: string;
+	profiles: {
+		full_name: string | null;
 	} | null;
 }
 
@@ -58,7 +58,7 @@ export function useEPIHistory(siteId: string) {
             name,
             cpf
           ),
-          users!epi_withdrawals_withdrawn_by_fkey (
+          profiles!epi_withdrawals_withdrawn_by_fkey (
             full_name
           )
         `,
@@ -75,7 +75,7 @@ export function useEPIHistory(siteId: string) {
 				collaboratorName:
 					t.collaborators?.name || 'Colaborador Desconhecido',
 				collaboratorCpf: t.collaborators?.cpf || '-',
-				withdrawnByName: t.users?.full_name || 'Usuário',
+				withdrawnByName: t.profiles?.full_name || 'Usuário',
 				quantity: t.quantity,
 				withdrawalDate: t.withdrawal_date,
 				notes: t.notes || '',

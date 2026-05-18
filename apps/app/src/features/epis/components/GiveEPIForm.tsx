@@ -3,6 +3,7 @@ import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/config/supabase';
 import { useCollaborators } from '@/features/colaboradores/hooks/useCollaborators';
+import { useToast } from '@/components/ui/toaster';
 
 interface GiveEPIFormProps {
 	onCancel: () => void;
@@ -29,6 +30,7 @@ export function GiveEPIForm({
 	epiName,
 	availableQuantity,
 }: GiveEPIFormProps) {
+	const { addToast } = useToast();
 	const { fetchCollaborators } = useCollaborators();
 	const [collaborators, setCollaborators] = useState<SimpleCollaborator[]>([]);
 	const [loadingCollabs, setLoadingCollabs] = useState(true);
@@ -109,6 +111,7 @@ export function GiveEPIForm({
 
 			if (updateError) throw updateError;
 
+			addToast('EPI entregue com sucesso!', 'success');
 			onSaved();
 		} catch (err: unknown) {
 			const message = err instanceof Error ? err.message : 'Erro ao realizar a entrega de EPI';

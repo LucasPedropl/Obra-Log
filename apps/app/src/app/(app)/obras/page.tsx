@@ -8,13 +8,23 @@ import { Pagination } from '@/components/shared/Pagination';
 import { Button } from '@/components/ui/button';
 import { ConstructionSiteForm } from '@/features/obras/components/ConstructionSiteForm';
 import { useConstructionSites } from '@/features/obras/hooks/useConstructionSites';
-import { Download, Hammer, Loader2, Upload, X } from 'lucide-react';
+import { Download, Hammer, Loader2, Upload, X, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
+
+interface ConstructionSite {
+	id: string;
+	name: string;
+	status?: string;
+	created_at?: string;
+	collaborators_count?: number;
+	inventory_count?: number;
+}
 
 export default function ObrasPage() {
-	const [obras, setObras] = useState<any[]>([]);
+	const [obras, setObras] = useState<ConstructionSite[]>([]);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const { fetchConstructionSites, isLoading } = useConstructionSites();
@@ -24,7 +34,7 @@ export default function ObrasPage() {
 
 	const loadObras = async () => {
 		const data = await fetchConstructionSites();
-		setObras(data);
+		setObras(data as ConstructionSite[]);
 	};
 
 	useEffect(() => {
@@ -94,41 +104,49 @@ export default function ObrasPage() {
 					/>
 				) : (
 					<div className="flex flex-col gap-6">
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 							{currentObras.map((obra, i) => (
-								<div
+								<button
 									onClick={() => router.push(`/obras/${obra.id || i}/visao-geral`)}
 									key={obra.id || i}
-									className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer block"
+									className="group flex flex-col bg-white border border-gray-300 hover:border-gray-900 hover:shadow-md transition-all text-left overflow-hidden rounded-[5px] block w-full"
 								>
-									<div className="flex justify-between items-start">
-										<h3 className="font-semibold text-lg text-gray-900 line-clamp-2">
-											{obra.name}
-										</h3>
-										<span
-											className={`px-2.5 py-1 rounded-full text-xs font-medium border ${obra.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}
-										>
-											{obra.status === 'active'
-												? 'Ativa'
-												: obra.status}
-										</span>
+									<div className="p-6 flex items-start gap-5 flex-1 w-full">
+										<div className="w-[60px] h-[60px] shrink-0 bg-[#F3F4F6] text-[#101828] font-bold text-xl flex items-center justify-center border border-gray-300 rounded-[5px]">
+											{obra.name ? obra.name.substring(0, 2).toUpperCase() : 'OB'}
+										</div>
+										<div className="flex flex-col min-w-0 pt-1 flex-1">
+											<h3 className="font-bold text-[#101828] text-[17px] truncate leading-tight group-hover:text-black">
+												{obra.name}
+											</h3>
+											<div className="flex items-center gap-2 mt-1.5 flex-wrap">
+												<span className="text-xs text-gray-400 font-mono">
+													{obra.created_at
+														? `Início: ${new Date(obra.created_at).toLocaleDateString('pt-BR')}`
+														: 'Sem data'}
+												</span>
+											</div>
+										</div>
 									</div>
 
-									<div className="text-sm text-gray-500 mt-auto">
-										<p>
-											Data de início:{' '}
-											<span className="font-medium text-gray-700">
-												{obra.created_at
-													? new Date(
-															obra.created_at,
-														).toLocaleDateString(
-															'pt-BR',
-														)
-													: 'N/A'}
-											</span>
-										</p>
+									<div className="h-[1px] bg-gray-200 w-full" />
+
+									<div className="px-6 py-4 flex items-center justify-between bg-white group-hover:bg-gray-50 transition-colors w-full">
+										<div className="flex items-center gap-8">
+											<div className="flex flex-col">
+												<span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Colaboradores</span>
+												<span className="text-xl font-black text-[#101828] mt-0.5">{obra.collaborators_count || 0}</span>
+											</div>
+											<div className="flex flex-col">
+												<span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Insumos / Itens</span>
+												<span className="text-xl font-black text-[#101828] mt-0.5">{obra.inventory_count || 0}</span>
+											</div>
+										</div>
+										<div className="w-8 h-8 flex items-center justify-center text-gray-400 group-hover:text-[#101828] transition-colors">
+											<ArrowRight size={20} />
+										</div>
 									</div>
-								</div>
+								</button>
 							))}
 						</div>
 
