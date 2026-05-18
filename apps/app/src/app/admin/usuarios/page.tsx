@@ -17,7 +17,7 @@ import {
 import {
 	getGlobalUsersAction,
 	saveGlobalUserAction,
-	getInstancesAction,
+	getCompanySitesAction,
 	getAllProfilesAction,
 } from '../../actions/globalUsers';
 
@@ -66,11 +66,11 @@ export default function UsuariosPage() {
 	const loadOptions = async () => {
 		try {
 			const [instRes, profRes] = await Promise.all([
-				getInstancesAction(),
+				getCompanySitesAction(),
 				getAllProfilesAction(),
 			]);
-			if (instRes.success && instRes.instances)
-				setInstances(instRes.instances);
+			if (instRes.success && instRes.sites)
+				setInstances(instRes.sites);
 			if (profRes.success && profRes.profiles)
 				setProfiles(profRes.profiles);
 		} catch (err) {
@@ -126,10 +126,8 @@ export default function UsuariosPage() {
 				email,
 				fullName,
 				isCompanyAdmin: isCompanyAdmin,
-				assignments: assignments.map((a) => ({
-					instanceId: a.instanceId,
-					profileId: a.profileId as string,
-				})),
+				profileId: assignments[0]?.profileId || '',
+				siteIds: assignments.map((a) => a.instanceId).filter(Boolean),
 			});
 
 			if (!res.success) {

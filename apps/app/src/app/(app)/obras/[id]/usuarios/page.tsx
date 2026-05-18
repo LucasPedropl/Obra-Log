@@ -10,7 +10,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { TableSearch } from '@/components/shared/TableSearch';
 import { DataTable, DetailRow } from '@/components/shared/DataTable';
 import { getGlobalUsersAction, saveGlobalUserAction, getAllProfilesAction } from '@/app/actions/globalUsers';
-import { getActiveCompanyId } from '@/lib/utils';
+import { getActiveCompanyId, cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toaster';
 
 interface SimpleProfile {

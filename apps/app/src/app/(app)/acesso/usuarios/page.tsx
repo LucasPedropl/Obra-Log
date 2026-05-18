@@ -307,9 +307,7 @@ export default function UsuariosPage() {
 										)
 									},
 								]}
-								resource="usuarios"
-							/>
-						</div>
+								/>						</div>
 					</div>
 				)}
 			</div>

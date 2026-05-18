@@ -203,7 +203,6 @@ export default function ColaboradoresPage() {
 								onEdit={handleEdit}
 								onDelete={handleDelete}
 								keyExtractor={(item) => item.id}
-								resource="colaboradores"
 							/>
 							{totalPages > 1 && (
 								<Pagination
@@ -243,13 +242,18 @@ export default function ColaboradoresPage() {
 				<ImportModal
 					isOpen={isImportModalOpen}
 					onClose={() => setIsImportModalOpen(false)}
-					onImport={async (data) => {
+					onImportLines={async (lines) => {
 						const companyId = await getActiveCompanyId();
-						await importCollaboratorsAdmin(data, companyId!);
+						// Adaptar as linhas do TXT (separadas por ;) para o formato esperado por importCollaboratorsAdmin
+						const data = lines.map(line => {
+							const [name, email, role, cpf] = line.split(';');
+							return { company_id: companyId, name: name?.trim(), email: email?.trim(), role: role?.trim(), cpf: cpf?.trim() };
+						});
+						await importCollaboratorsAdmin(data);
 						loadColaboradores();
 					}}
 					title="Importar Colaboradores"
-					templateUrl="/templates/template_colaboradores.xlsx"
+					description="Selecione um arquivo TXT com dados separados por ponto e vírgula."
 				/>
 			</div>
 		</ProtectedRoute>

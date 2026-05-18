@@ -10,7 +10,8 @@ export const usersService = {
 			email: data.email,
 			fullName: data.full_name,
 			isCompanyAdmin: false,
-			assignments: data.profile_id ? [{ instanceId: '', profileId: data.profile_id }] : [],
+			profileId: data.profile_id,
+			siteIds: [],
 		});
 
 		if (!result.success) {

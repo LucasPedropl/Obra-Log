@@ -14,6 +14,8 @@ export interface AccessProfile {
 		}
 	>;
 	scope: 'ALL_SITES' | 'SPECIFIC_SITES';
+	obra_scope?: string;
+	created_at?: string;
 	allowed_sites: string[];
 }
 

@@ -12,7 +12,7 @@ const userFormSchema = z.object({
 	full_name: z.string().min(3, 'O nome deve ter no mínimo 3 caracteres'),
 	email: z.string().email('E-mail inválido'),
 	profile_id: z.string().min(1, 'Selecione um perfil de acesso'),
-	site_ids: z.array(z.string()).optional().default([]),
+	site_ids: z.array(z.string()),
 });
 
 type UserFormData = z.infer<typeof userFormSchema>;

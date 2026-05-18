@@ -306,7 +306,6 @@ export default function SettingsPage() {
 					)}
 				</main>
 			</div>
-			<Toaster position="bottom-right" richColors />
 		</div>
 	);
 }

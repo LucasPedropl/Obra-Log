@@ -246,16 +246,14 @@ export default function PerfisDeAcessoPage() {
 											</span>
 										)
 									},
-									{ 
-										header: 'Criado em', 
+									{
+										header: 'Criado em',
 										accessorKey: 'created_at',
-										cell: (item) => new Date(item.created_at).toLocaleDateString('pt-BR')
-									},
-								]}
+										cell: (item) => item.created_at ? new Date(item.created_at).toLocaleDateString('pt-BR') : '-'
+									},								]}
 								onEdit={handleEdit}
 								onDelete={handleDelete}
 								keyExtractor={(item) => item.id}
-								resource="perfis"
 							/>
 							{totalPages > 1 && (
 								<Pagination

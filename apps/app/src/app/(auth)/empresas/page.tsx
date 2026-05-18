@@ -29,5 +29,5 @@ export default async function EmpresasPage() {
 
 	// OBSERVAÇÃO: Não tentamos setar cookies aqui (Server Component).
 	// Passamos a lista para o SelectCompanyClient que cuidará do auto-select se necessário.
-	return <SelectCompanyClient initialCompanies={companies} user={user} />;
+	return <SelectCompanyClient initialCompanies={companies.map(c => ({ ...c, profile_name: c.profile_name || undefined }))} user={user} />;
 }

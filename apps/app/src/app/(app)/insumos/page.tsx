@@ -38,7 +38,7 @@ export default function InsumosPage() {
 
 	const loadInsumos = async () => {
 		const data = await fetchSupplyItems();
-		setInsumos(data);
+		setInsumos(Array.isArray(data) ? data : []);
 	};
 
 	useEffect(() => {
@@ -321,7 +321,6 @@ export default function InsumosPage() {
 								onEdit={handleEdit}
 								onDelete={handleDelete}
 								keyExtractor={(item) => item.id}
-								resource="insumos"
 							/>
 							{totalPages > 1 && (
 								<Pagination
@@ -361,13 +360,18 @@ export default function InsumosPage() {
 				<ImportModal
 					isOpen={isImportModalOpen}
 					onClose={() => setIsImportModalOpen(false)}
-					onImport={async (data) => {
+					onImportLines={async (lines) => {
 						const companyId = await getActiveCompanyId();
-						await importCatalogsAdmin(data, companyId!);
+						// Adaptar as linhas do TXT (separadas por ;) para o formato esperado por importCatalogsAdmin
+						const data = lines.map(line => {
+							const [name, unit_abbreviation, min_threshold] = line.split(';');
+							return { company_id: companyId, name: name?.trim(), unit_abbreviation: unit_abbreviation?.trim(), min_threshold: Number(min_threshold) || 0 };
+						});
+						await importCatalogsAdmin(data);
 						loadInsumos();
 					}}
 					title="Importar Insumos"
-					templateUrl="/templates/template_insumos.xlsx"
+					description="Selecione um arquivo TXT com dados separados por ponto e vírgula."
 				/>
 			</div>
 		</ProtectedRoute>
