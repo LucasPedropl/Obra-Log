@@ -42,18 +42,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		const {
 			data: { subscription },
 		} = supabase.auth.onAuthStateChange(async (event, session) => {
-			setUser(session?.user ?? null);
+			const currentUser = session?.user ?? null;
+			setUser(currentUser);
 
-			if (event === 'SIGNED_OUT') {
+			if (event === 'SIGNED_OUT' || (event === 'USER_UPDATED' && !currentUser)) {
 				router.push('/login');
 				router.refresh();
-			} else if (event === 'SIGNED_IN') {
-				router.refresh();
+			} else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+				// Sincroniza o estado do servidor se necessário
+				if (event === 'SIGNED_IN') {
+					router.refresh();
+				}
 			}
 		});
 
+		// Verificar sessão ao focar na janela (ajuda a detectar se deslogou em outra aba)
+		const handleFocus = () => {
+			refreshSession();
+		};
+
+		window.addEventListener('focus', handleFocus);
+
 		return () => {
 			subscription.unsubscribe();
+			window.removeEventListener('focus', handleFocus);
 		};
 	}, [supabase, router]);
 

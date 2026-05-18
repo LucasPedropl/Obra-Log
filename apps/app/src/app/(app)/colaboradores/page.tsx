@@ -9,6 +9,8 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Pagination } from '@/components/shared/Pagination';
 import { TableSearch } from '@/components/shared/TableSearch';
 import { Button } from '@/components/ui/button';
+import { Can } from '@/components/shared/Can';
+import { ProtectedRoute } from '@/components/shared/ProtectedRoute';
 import { CollaboratorForm } from '@/features/colaboradores/components/CollaboratorForm';
 import { useCollaborators } from '@/features/colaboradores/hooks/useCollaborators';
 import { getActiveCompanyId } from '@/lib/utils';
@@ -43,305 +45,213 @@ export default function ColaboradoresPage() {
 
 	const handleSearchChange = (val: string) => {
 		setSearchTerm(val);
-		setCurrentPage(1); // resolve pagination issue
+		setCurrentPage(1);
 	};
 
 	const filteredColaboradores = colaboradores.filter((colab) => {
-		if (!searchTerm) return true;
 		const searchLower = searchTerm.toLowerCase();
 		const dateStr = colab.created_at
 			? new Date(colab.created_at).toLocaleDateString('pt-BR')
 			: '';
 
-		const matchesSearch =
+		const matchesSearch = !searchTerm ||
 			colab.name?.toLowerCase().includes(searchLower) ||
 			colab.email?.toLowerCase().includes(searchLower) ||
-			colab.role_title?.toLowerCase().includes(searchLower) ||
+			colab.role?.toLowerCase().includes(searchLower) ||
 			dateStr.includes(searchLower);
 
 		const matchesRole = roleFilter
-			? colab.role_title?.toLowerCase() === roleFilter.toLowerCase()
+			? colab.role?.toLowerCase() === roleFilter.toLowerCase()
 			: true;
 
 		return matchesSearch && matchesRole;
 	});
 
-	// Get unique roles for the filter dropdown
 	const availableRoles = Array.from(
-		new Set(colaboradores.map((c) => c.role_title).filter(Boolean)),
+		new Set(colaboradores.map((c) => c.role).filter(Boolean)),
 	);
 
-	const totalPages = Math.max(
-		1,
-		Math.ceil(filteredColaboradores.length / itemsPerPage),
-	);
-
-	const handleFormClose = () => {
-		setIsFormOpen(false);
-		loadColaboradores();
-	};
-
-	const handleImport = async (lines: string[]) => {
-		const result: any[] = [];
-		const companyId = getActiveCompanyId();
-		if (!companyId) return;
-
-		for (const line of lines) {
-			const parts = line.split(';');
-			if (parts.length >= 2) {
-				const [name, role_title] = parts;
-				result.push({
-					name: name.trim(),
-					role_title: role_title.trim(),
-					company_id: companyId,
-					status: 'ACTIVE',
-				});
-			}
-		}
-
-		if (result.length > 0) {
-			try {
-				await importCollaboratorsAdmin(result);
-				loadColaboradores();
-			} catch (error) {
-				console.error('Erro ao importar colaboradores:', error);
-			}
-		}
-	};
-	const currentColabs = filteredColaboradores.slice(
+	const totalPages = Math.ceil(filteredColaboradores.length / itemsPerPage);
+	const currentData = filteredColaboradores.slice(
 		(currentPage - 1) * itemsPerPage,
 		currentPage * itemsPerPage,
 	);
 
+	const handleEdit = (item: any) => {
+		setEditingItem(item);
+		setIsFormOpen(true);
+	};
+
+	const handleDelete = async (item: any) => {
+		if (confirm(`Deseja realmente excluir o colaborador ${item.name}?`)) {
+			await deleteCollaborator(item.id);
+			loadColaboradores();
+		}
+	};
+
+	const handleFormClose = () => {
+		setIsFormOpen(false);
+		setEditingItem(null);
+		loadColaboradores();
+	};
+
 	return (
-		<div className="w-full flex flex-col gap-6 relative">
-			<PageHeader
-				title="Colaboradores"
-				description="Gestão de equipes, jornada e permissões."
-				onAdd={() => setIsFormOpen(true)}
-				addLabel="Cadastrar Colaborador"
-			/>
-
-			{(isFormOpen || editingItem) && (
-				<div
-					className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"
-					onClick={() => {
-						setIsFormOpen(false);
-						setEditingItem(null);
-					}}
+		<ProtectedRoute resource="colaboradores">
+			<div className="w-full flex flex-col gap-6 relative">
+				<Can 
+					on="colaboradores" 
+					perform="create"
+					fallback={
+						<PageHeader
+							title="Colaboradores"
+							description="Gestão de equipes, jornada e permissões."
+						/>
+					}
 				>
+					<PageHeader
+						title="Colaboradores"
+						description="Gestão de equipes, jornada e permissões."
+						onAdd={() => setIsFormOpen(true)}
+						addLabel="Cadastrar Colaborador"
+					/>
+				</Can>
+
+				{(isFormOpen || editingItem) && (
 					<div
-						className="relative w-full max-w-2xl mt-8 md:mt-0 animate-in fade-in zoom-in duration-300"
-						onClick={(e) => e.stopPropagation()}
+						className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"
+						onClick={handleFormClose}
 					>
-						<button
-							onClick={() => {
-								setIsFormOpen(false);
-								setEditingItem(null);
-							}}
-							className="absolute top-4 right-4 z-10 p-2 text-muted-foreground hover:bg-muted/30 rounded-full transition-colors"
+						<div
+							className="relative w-full max-w-3xl mt-8 md:mt-0 animate-in fade-in zoom-in duration-300"
+							onClick={(e) => e.stopPropagation()}
 						>
-							<X size={20} />
-						</button>
-						<CollaboratorForm
-							onCancel={() => {
-								setIsFormOpen(false);
-								setEditingItem(null);
-								loadColaboradores();
-							}}
-							initialData={editingItem}
-						/>
+							<CollaboratorForm
+								initialData={editingItem}
+								onCancel={handleFormClose}
+							/>
+						</div>
 					</div>
-				</div>
-			)}
+				)}
 
-			{isLoading && colaboradores.length === 0 ? (
-				<div className="flex justify-center p-12">
-					<Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-				</div>
-			) : colaboradores.length === 0 ? (
-				<EmptyState
-					title="Equipe Vazia"
-					description="Você ainda não adicionou colaboradores. A tela aguarda o início do fluxo de RH."
-					icon={<Users className="w-8 h-8 text-gray-400" />}
-				/>
-			) : (
-				<div className="space-y-4">
+				{isLoading && colaboradores.length === 0 ? (
+					<div className="flex justify-center p-12">
+						<Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+					</div>
+				) : colaboradores.length === 0 ? (
+					<EmptyState
+						title="Equipe Vazia"
+						description="Você ainda não adicionou colaboradores. A tela aguarda o início do fluxo de RH."
+						icon={<Users className="w-8 h-8 text-gray-400" />}
+					/>
+				) : (
 					<div className="space-y-4">
-						<TableSearch
-							value={searchTerm}
-							onChange={handleSearchChange}
-							placeholder="Buscar colaboradores por nome, email ou cargo..."
-							onFilterClick={() => setShowFilters(!showFilters)}
-						/>
+						<div className="space-y-4">
+							<TableSearch
+								value={searchTerm}
+								onChange={handleSearchChange}
+								placeholder="Buscar colaboradores por nome, email ou cargo..."
+								onFilterClick={() => setShowFilters(!showFilters)}
+							/>
 
-						<FilterPanel
-							isOpen={showFilters}
-							onClose={() => setShowFilters(false)}
-							onClear={() => {
-								setRoleFilter('');
-							}}
-						>
-							<div className="flex flex-col gap-1.5">
-								<label className="text-sm font-medium text-gray-700">
-									Cargo / Função
-								</label>
-								<SearchableSelect
-									options={availableRoles.map((role) => ({
-										value: String(role),
-										label: String(role),
-									}))}
-									value={roleFilter}
-									onChange={setRoleFilter}
-									placeholder="Todos os cargos"
-									className="rounded-[5px] h-10 border-gray-300 bg-white shadow-sm border"
-								/>
-							</div>
-						</FilterPanel>
-					</div>
-
-					<div className="">
-						<DataTable
-							data={currentColabs}
-							columns={[
-								{
-									header: 'Nome',
-									accessorKey: 'name',
-									className: 'font-medium',
-								},
-								{
-									header: 'Email',
-									accessorKey: 'email',
-									className:
-										'break-all max-w-[200px] truncate',
-								},
-								{
-									header: 'Cargo/Função',
-									accessorKey: 'role_title',
-								},
-								{
-									header: 'Admissão',
-									cell: (colab) =>
-										colab.created_at
-											? new Date(
-													colab.created_at,
-												).toLocaleDateString('pt-BR')
-											: 'N/A',
-								},
-							]}
-							detailsTitle="Detalhes do Colaborador"
-							renderDetails={(colab) => (
-								<div className="flex flex-col gap-6">
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-										<DetailRow label="Nome" value={colab.name} className="sm:col-span-2" />
-										<DetailRow label="Email" value={colab.email || '-'} />
-										<DetailRow label="Cargo/Função" value={colab.role_title} />
-										<DetailRow label="CPF" value={colab.cpf || '-'} />
-										<DetailRow label="RG" value={colab.rg || '-'} />
-										<DetailRow label="Telefone" value={colab.cellphone || '-'} />
-										<DetailRow label="Data de Nascimento" value={colab.birth_date ? new Date(colab.birth_date).toLocaleDateString('pt-BR') : '-'} />
-										<DetailRow label="Data de Admissão" value={colab.created_at ? new Date(colab.created_at).toLocaleDateString('pt-BR') : '-'} />
-									</div>
-
-									{colab.documents_json && colab.documents_json.length > 0 && (
-										<div className="border-t pt-4">
-											<h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-												<FileIcon className="w-4 h-4 text-primary" />
-												Documentos Anexados
-											</h4>
-											<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-												{colab.documents_json.map((doc: any, idx: number) => (
-													<a
-														key={idx}
-														href={doc.url}
-														target="_blank"
-														rel="noopener noreferrer"
-														className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg group hover:bg-white hover:border-primary/30 transition-all"
-													>
-														<div className="flex items-center gap-3 overflow-hidden">
-															<div className="p-2 bg-white rounded-md border border-gray-100 text-gray-500 group-hover:text-primary transition-colors">
-																{doc.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/) ? (
-																	<ImageIcon size={16} />
-																) : (
-																	<FileText size={16} />
-																)}
-															</div>
-															<span className="text-xs font-medium text-gray-700 truncate">
-																{doc.name}
-															</span>
-														</div>
-														<ExternalLink size={14} className="text-gray-400 group-hover:text-primary" />
-													</a>
-												))}
-											</div>
-										</div>
-									)}
+							<FilterPanel
+								isOpen={showFilters}
+								onClose={() => setShowFilters(false)}
+								onClear={() => {
+									setRoleFilter('');
+								}}
+							>
+								<div className="flex flex-col gap-1.5">
+									<label className="text-sm font-medium text-gray-700">
+										Cargo / Função
+									</label>
+									<SearchableSelect
+										options={availableRoles.map((role) => ({
+											value: String(role),
+											label: String(role),
+										}))}
+										value={roleFilter}
+										onChange={setRoleFilter}
+										placeholder="Todos os cargos"
+										className="rounded-[5px] h-10 border-gray-300 bg-white shadow-sm border"
+									/>
 								</div>
-							)}
-							keyExtractor={(item) => item.id}
-							onEdit={(item) => setEditingItem(item)}
-							onDelete={async (item) => {
-								await deleteCollaborator(item.id);
-								setColaboradores((prev) =>
-									prev.filter((c) => c.id !== item.id),
-								);
-							}}
-							onDeleteBulk={async (items) => {
-								const idsToRemove = items.map((i) => i.id);
-								for (const id of idsToRemove) {
-									await deleteCollaborator(id);
-								}
-								setColaboradores((prev) =>
-									prev.filter(
-										(c) => !idsToRemove.includes(c.id),
-									),
-								);
-							}}
-						/>
+							</FilterPanel>
+						</div>
 
-						{totalPages > 1 && (
-							<div className="border-t">
+						<div className="flex flex-col gap-6">
+							<DataTable
+								data={currentData}
+								columns={[
+									{ 
+										header: 'Nome', 
+										accessorKey: 'name',
+										cell: (item) => (
+											<div className="flex flex-col">
+												<span className="font-medium text-gray-900">{item.name}</span>
+												<span className="text-xs text-gray-500">{item.email || 'Sem e-mail'}</span>
+											</div>
+										)
+									},
+									{ header: 'Cargo/Função', accessorKey: 'role' },
+									{ 
+										header: 'Admissão', 
+										cell: (colab) => colab.created_at
+											? new Date(colab.created_at).toLocaleDateString('pt-BR')
+											: 'N/A'
+									},
+								]}
+								onEdit={handleEdit}
+								onDelete={handleDelete}
+								keyExtractor={(item) => item.id}
+								resource="colaboradores"
+							/>
+							{totalPages > 1 && (
 								<Pagination
 									currentPage={currentPage}
 									totalPages={totalPages}
 									onPageChange={setCurrentPage}
 								/>
-							</div>
-						)}
+							)}
+						</div>
 					</div>
-				</div>
-			)}
-
-			{/* Botoes alinhados a direita sem borda arredondada na base */}
-			<div className="flex items-center justify-end gap-3 w-full mt-4">
-				<Button
-					variant="outline"
-					onClick={() => setIsImportModalOpen(true)}
-					className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
-				>
-					<Upload className="h-4 w-4" />
-					<span>Importar</span>
-				</Button>
-
-				{colaboradores.length > 0 && (
-					<Button
-						variant="outline"
-						onClick={() => {}}
-						className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
-					>
-						<Download className="h-4 w-4" />
-						<span>Exportar</span>
-					</Button>
 				)}
-			</div>
 
-			<ImportModal
-				isOpen={isImportModalOpen}
-				onClose={() => setIsImportModalOpen(false)}
-				title="Importar Colaboradores"
-				description="Faça o upload do seu arquivo .txt (formato: Nome;Cargo/Função)"
-				onImportLines={handleImport}
-			/>
-		</div>
+				<div className="flex items-center justify-end gap-3 w-full mt-4">
+					<Can on="colaboradores" perform="create">
+						<Button
+							variant="outline"
+							onClick={() => setIsImportModalOpen(true)}
+							className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
+						>
+							<Upload className="h-4 w-4" />
+							<span>Importar</span>
+						</Button>
+					</Can>
+
+					{colaboradores.length > 0 && (
+						<Button
+							variant="outline"
+							onClick={() => {}}
+							className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
+						>
+							<Download className="h-4 w-4" />
+							<span>Exportar</span>
+						</Button>
+					)}
+				</div>
+
+				<ImportModal
+					isOpen={isImportModalOpen}
+					onClose={() => setIsImportModalOpen(false)}
+					onImport={async (data) => {
+						const companyId = await getActiveCompanyId();
+						await importCollaboratorsAdmin(data, companyId!);
+						loadColaboradores();
+					}}
+					title="Importar Colaboradores"
+					templateUrl="/templates/template_colaboradores.xlsx"
+				/>
+			</div>
+		</ProtectedRoute>
 	);
 }

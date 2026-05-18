@@ -49,7 +49,7 @@ export function SearchableInput({
 					}}
 					onFocus={() => !disabled && setIsOpen(true)}
 					disabled={disabled}
-					className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent/30'}`}
+					className={`flex h-10 w-full rounded-none border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent/30'}`}
 					placeholder={placeholder}
 				/>
 				<div 
@@ -61,12 +61,12 @@ export function SearchableInput({
 			</div>
 
 			{isOpen && !disabled && filteredOptions.length > 0 && (
-				<div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-lg outline-none animate-in fade-in-0 zoom-in-95">
+				<div className="absolute z-50 mt-1 w-full rounded-none border border-border bg-popover text-popover-foreground outline-none animate-in fade-in-0 zoom-in-95">
 					<div className="max-h-60 overflow-y-auto p-1">
 						{filteredOptions.map((opt) => (
 							<div
 								key={opt}
-								className={`relative flex cursor-pointer select-none items-center rounded-[5px] px-2 py-2.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground transition-colors ${value === opt ? 'bg-primary/10 text-primary' : ''}`}
+								className={`relative flex cursor-pointer select-none items-center rounded-none px-2 py-2.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground transition-colors ${value === opt ? 'bg-primary/10 text-primary' : ''}`}
 								onClick={() => {
 									onChange(opt);
 									setIsOpen(false);

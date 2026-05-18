@@ -32,12 +32,41 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Opcional: Proteger as rotas do admin no middleware
-  if (!user && !request.nextUrl.pathname.startsWith('/login')) {
-    // Redireciona para o login se não houver usuário e não estiver na tela de login
+  const isLoginPage = request.nextUrl.pathname.startsWith('/login');
+
+  // Redireciona para o login se não houver usuário e não estiver na tela de login
+  if (!user && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
-    return NextResponse.redirect(url);
+    // Adiciona o parâmetro de redirecionamento para voltar após o login
+    url.searchParams.set('next', request.nextUrl.pathname);
+    
+    const response = NextResponse.redirect(url);
+    
+    // Copiar cookies da supabaseResponse (que podem conter instruções de limpeza de cookies inválidos)
+    supabaseResponse.cookies.getAll().forEach(cookie => {
+      response.cookies.set(cookie.name, cookie.value);
+    });
+    
+    return response;
+  }
+
+  // Se o usuário estiver logado e tentar acessar a tela de login, manda para o dashboard
+  if (user && isLoginPage) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    
+    // Criar a resposta de redirecionamento
+    const response = NextResponse.redirect(url);
+    
+    // IMPORTANTE: Se o getUser renovou o token, precisamos passar os novos cookies para o redirecionamento
+    // Como o supabase-ssr pode ter chamado setAll, a supabaseResponse já tem os cookies.
+    // Vamos copiar os cookies da supabaseResponse para a nossa nova resposta de redirecionamento.
+    supabaseResponse.cookies.getAll().forEach(cookie => {
+      response.cookies.set(cookie.name, cookie.value);
+    });
+    
+    return response;
   }
 
   return supabaseResponse;

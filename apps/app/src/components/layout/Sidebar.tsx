@@ -3,10 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { MaterialIcon } from '../ui/MaterialIcon';
+import { Icon } from '../ui/Icon';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { createClient } from '@/config/supabase';
+import { usePermissions } from '@/context/PermissionsContext';
 
 interface SidebarProps {
 	isOpen: boolean;
@@ -20,20 +21,21 @@ type NavItem = {
 	name: string;
 	icon: string;
 	href?: string;
-	children?: { name: string; href: string }[];
+	resource?: string;
+	children?: { name: string; href: string; resource?: string }[];
 };
 
 const mainNavItems: NavItem[] = [
-	{ name: 'Dashboard', icon: 'dashboard', href: '/dashboard' },
-	{ name: 'Obras', icon: 'apartment', href: '/obras' },
-	{ name: 'Insumos', icon: 'package_2', href: '/insumos' },
-	{ name: 'Colaboradores', icon: 'group', href: '/colaboradores' },
+	{ name: 'Dashboard', icon: 'SquaresFour', href: '/dashboard', resource: 'dashboard' },
+	{ name: 'Obras', icon: 'Buildings', href: '/obras', resource: 'obras' },
+	{ name: 'Insumos', icon: 'Package', href: '/insumos', resource: 'insumos' },
+	{ name: 'Colaboradores', icon: 'Users', href: '/colaboradores', resource: 'colaboradores' },
 	{
 		name: 'Acesso ao Sistema',
-		icon: 'verified_user',
+		icon: 'ShieldCheck',
 		children: [
-			{ name: 'Perfis de Acesso', href: '/acesso/perfis' },
-			{ name: 'Usuários', href: '/acesso/usuarios' },
+			{ name: 'Perfis de Acesso', href: '/acesso/perfis', resource: 'perfis' },
+			{ name: 'Usuários', href: '/acesso/usuarios', resource: 'usuarios' },
 		],
 	},
 ];
@@ -56,6 +58,7 @@ export function Sidebar({
 	const [isObraSelectOpen, setIsObraSelectOpen] = useState(false);
 	const obraSelectRef = React.useRef<HTMLDivElement>(null);
 	const supabase = createClient();
+	const { can, isSuperAdmin, loading: permissionsLoading } = usePermissions();
 
 	const isObraRoute = pathname?.match(/^\/obras\/([^\/]+)(?:\/|$)/);
 	const obraId = isObraRoute ? isObraRoute[1] : null;
@@ -103,28 +106,32 @@ export function Sidebar({
 	};
 
 
-	const navItems: NavItem[] =
+	const rawNavItems: NavItem[] =
 		obraId && !isMobileOpen
 			? [
 					{
 						name: 'Visão Geral',
-						icon: 'dashboard',
+						icon: 'ChartPieSlice',
 						href: `/obras/${obraId}/visao-geral`,
+						resource: 'site_dashboard'
 					},
 					{
 						name: 'Almoxarifado',
-						icon: 'inventory_2',
+						icon: 'Warehouse',
 						href: `/obras/${obraId}/almoxarifado`,
+						resource: 'site_insumos'
 					},
 					{
 						name: 'Colaboradores (Campo)',
-						icon: 'group',
+						icon: 'UsersThree',
 						href: `/obras/${obraId}/colaboradores`,
+						resource: 'site_colaboradores'
 					},
 
 					{
 						name: 'Ferramentas',
-						icon: 'build',
+						icon: 'Wrench',
+						resource: 'site_insumos',
 						children: [
 							{
 								name: 'Disponíveis',
@@ -142,7 +149,8 @@ export function Sidebar({
 					},
 					{
 						name: 'EPIs',
-						icon: 'engineering',
+						icon: 'HardHat',
+						resource: 'site_insumos',
 						children: [
 							{
 								name: 'Disponíveis',
@@ -156,7 +164,8 @@ export function Sidebar({
 					},
 					{
 						name: 'Equip. Alugados',
-						icon: 'local_shipping',
+						icon: 'Truck',
+						resource: 'site_equipamentos',
 						children: [
 							{
 								name: 'Ativos',
@@ -170,11 +179,41 @@ export function Sidebar({
 					},
 					{
 						name: 'Movimentações',
-						icon: 'swap_horiz',
+						icon: 'ArrowsLeftRight',
 						href: `/obras/${obraId}/movimentacoes`,
+						resource: 'site_insumos'
 					},
 				]
 			: mainNavItems;
+
+	// Filtrar itens de navegação com base nas permissões
+	const navItems = permissionsLoading ? [] : rawNavItems.filter(item => {
+		if (isSuperAdmin) return true;
+
+		if (item.children) {
+			const hasAccessToAnyChild = item.children.some(child => 
+				!child.resource || can(child.resource, 'view')
+			);
+			const hasAccessToParent = !item.resource || can(item.resource, 'view');
+			return hasAccessToParent && (item.children.length === 0 || hasAccessToAnyChild);
+		}
+
+		if (item.resource) {
+			return can(item.resource, 'view');
+		}
+
+		return true;
+	}).map(item => {
+		if (item.children) {
+			return {
+				...item,
+				children: item.children.filter(child => 
+					!child.resource || can(child.resource, 'view')
+				)
+			};
+		}
+		return item;
+	});
 
 	return (
 		<>
@@ -215,29 +254,17 @@ export function Sidebar({
 							onClick={onMobileClose}
 							className="absolute right-4 p-2 text-gray-400 hover:text-white md:hidden"
 						>
-							<MaterialIcon icon="close" size={20} />
+							<Icon name="X" size={20} />
 						</button>
 					)}
 
-					{/* Ícone da Empresa */}
-					<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none bg-orange-500/10">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="24"
-							height="24"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="#F29C1F"
-							strokeWidth="2"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-						>
-							<path d="M3 21h18M5 21V7l8-4v18" stroke="#ffffff" />
-							<path
-								d="M11 21L21 6m0 0v5m0-5h-5"
-								stroke="#F29C1F"
-							/>
-						</svg>
+					{/* Logo do Sistema (Imagem) */}
+					<div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-white">
+						<img 
+							src="/assets/brand/logo.png" 
+							alt="ObraLog Logo" 
+							className="h-full w-full object-contain"
+						/>
 					</div>
 
 					{/* Logo do Sistema */}
@@ -282,7 +309,7 @@ export function Sidebar({
 											Obra Ativa
 										</p>
 									</div>
-									<MaterialIcon icon="unfold_more" size={16} className="text-gray-500 group-hover:text-gray-300" />
+									<Icon name="CaretUpDown" size={16} className="text-gray-500 group-hover:text-gray-300" />
 								</>
 							)}
 						</div>
@@ -320,13 +347,13 @@ export function Sidebar({
 										onClick={() => { router.push('/obras?novo=true'); setIsObraSelectOpen(false); }}
 										className="flex items-center px-3 py-2 text-xs font-bold text-blue-400 hover:bg-blue-600/10 rounded-none transition-colors"
 									>
-										<MaterialIcon icon="add" size={14} className="mr-2" /> Adicionar Obra
+										<Icon name="Plus" size={14} className="mr-2" /> Adicionar Obra
 									</button>
 									<button
 										onClick={() => { router.push('/obras'); setIsObraSelectOpen(false); }}
 										className="flex items-center px-3 py-2 text-xs font-bold text-gray-400 hover:bg-gray-700 rounded-none transition-colors"
 									>
-										<MaterialIcon icon="apps" size={14} className="mr-2" /> Ver Tudo
+										<Icon name="SquaresFour" size={14} className="mr-2" /> Ver Tudo
 									</button>
 								</div>
 							</div>
@@ -334,8 +361,11 @@ export function Sidebar({
 					</div>
 				)}
 
-				{/* Navegação - overflow-y-auto para que apenas o menu role */}
-				<nav className="flex-1 flex flex-col space-y-1.5 px-4 py-6 overflow-y-auto custom-scrollbar">
+				{/* Navegação - overflow-y-auto para que apenas o menu role (apenas quando aberto) */}
+				<nav className={cn(
+					"flex-1 flex flex-col space-y-1.5 px-4 py-6 custom-scrollbar",
+					isOpen || isMobileOpen ? "overflow-y-auto" : "overflow-visible"
+				)}>
 					{navItems.map((item) => {
 						const hasChildren =
 							item.children && item.children.length > 0;
@@ -372,11 +402,10 @@ export function Sidebar({
 									)}
 								>
 									<div className="flex items-center justify-center">
-										<MaterialIcon
-											icon={item.icon}
+										<Icon
+											name={item.icon}
 											size={20}
-											fill={isActive}
-											weight={isActive ? 600 : 400}
+											weight={isActive ? 'fill' : 'regular'}
 											className={cn(
 												'shrink-0',
 												isActive
@@ -398,9 +427,9 @@ export function Sidebar({
 
 									{hasChildren &&
 										(isOpen || isMobileOpen) && (
-											<MaterialIcon
-												icon="expand_more"
-												size={18}
+											<Icon
+												name="CaretDown"
+												size={16}
 												className={cn(
 													'shrink-0 text-gray-400 transition-transform duration-200',
 													isExpanded
@@ -517,7 +546,7 @@ export function Sidebar({
 					})}
 				</nav>
 
-				{/* Footer / Configurações */}
+				{/* Footer / Configurações - Overflow visible para o tooltip */}
 				<div className="border-t border-gray-800 p-4 shrink-0 overflow-visible">
 					<div className="relative group">
 						<Link href="/configuracoes" className="block">
@@ -533,11 +562,10 @@ export function Sidebar({
 										: 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
 								)}
 							>
-								<MaterialIcon
-									icon="settings"
+								<Icon
+									name="Gear"
 									size={20}
-									fill={pathname?.startsWith('/configuracoes')}
-									weight={pathname?.startsWith('/configuracoes') ? 600 : 400}
+									weight={pathname?.startsWith('/configuracoes') ? 'fill' : 'regular'}
 									className={cn(
 										'shrink-0',
 										pathname?.startsWith('/configuracoes')

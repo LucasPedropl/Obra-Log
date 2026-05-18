@@ -21,7 +21,7 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="pt-BR" className={cn('font-sans', inter.variable)}>
+		<html lang="pt-BR" className={cn('font-sans', inter.variable)} suppressHydrationWarning>
 			<head>
 				<link
 					rel="stylesheet"
@@ -30,6 +30,7 @@ export default function RootLayout({
 			</head>
 			<body
 				className={`${inter.className} min-h-screen bg-background antialiased`}
+				suppressHydrationWarning
 			>
 				<ToastProvider>{children}</ToastProvider>
 			</body>

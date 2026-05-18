@@ -8,11 +8,36 @@ export interface SaveUserResponse {
 	success: boolean;
 	userId?: string;
 	tempPassword?: string | null;
+	isNewUser?: boolean;
 	error?: string;
 }
 
 /**
- * Salva um usuário vinculado à empresa atual.
+ * Lista as obras da empresa.
+ */
+export async function getCompanySitesAction() {
+	const supabase = await createServerSupabaseClient();
+	try {
+		const cookieStore = await cookies();
+		const companyId = cookieStore.get('selectedCompanyId')?.value;
+		if (!companyId) return { success: false, error: 'Empresa não selecionada' };
+
+		const { data, error } = await supabase
+			.from('construction_sites')
+			.select('id, name')
+			.eq('company_id', companyId)
+			.eq('status', 'ACTIVE')
+			.order('name');
+
+		if (error) throw error;
+		return { success: true, sites: data || [] };
+	} catch (error: any) {
+		return { success: false, error: error.message };
+	}
+}
+
+/**
+ * Salva um usuário vinculado à empresa atual e opcionalmente vincula a obras.
  */
 export async function saveGlobalUserAction(
 	data: {
@@ -20,7 +45,8 @@ export async function saveGlobalUserAction(
 		email: string;
 		fullName: string;
 		isCompanyAdmin: boolean;
-		profileId?: string | null;
+		profileId: string;
+		siteIds?: string[]; // Novos sites vinculados
 	}
 ): Promise<SaveUserResponse> {
 	const supabase = await createServerSupabaseClient();
@@ -31,6 +57,7 @@ export async function saveGlobalUserAction(
 
 		let userId = data.id;
 		let generatedPassword: string | null = null;
+		let isNewUser = false;
 
 		// 1. Criar ou Atualizar Usuário no Auth e Profile
 		if (!userId) {
@@ -49,8 +76,10 @@ export async function saveGlobalUserAction(
 			});
 
 			if (authError) {
-				// Lógica para recuperar usuário se ele já existe no Auth mas não no Profile (usuário órfão)
 				if (authError.message.toLowerCase().includes('already been registered')) {
+					// Se o usuário já existe, a senha gerada NÃO vai funcionar
+					generatedPassword = null; 
+					isNewUser = false;
 					const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
 					const existing = users.find(u => u.email === data.email);
 					if (existing) {
@@ -63,10 +92,11 @@ export async function saveGlobalUserAction(
 				}
 			} else {
 				userId = authUser.user.id;
+				isNewUser = true;
 			}
 
-			// Upsert Profile
-			const { error: profileError } = await supabase.from('profiles').upsert({
+			// Upsert Profile usando supabaseAdmin para evitar erros de RLS
+			const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
 				id: userId,
 				email: data.email,
 				full_name: data.fullName,
@@ -74,8 +104,9 @@ export async function saveGlobalUserAction(
 
 			if (profileError) throw profileError;
 		} else {
-			// Atualizar apenas o nome se já existe
-			await supabase.from('profiles').update({ full_name: data.fullName }).eq('id', userId);
+			// Atualizar usando supabaseAdmin
+			await supabaseAdmin.from('profiles').update({ full_name: data.fullName }).eq('id', userId);
+			isNewUser = false;
 		}
 
 		// 2. Gerenciar Vínculo com a Empresa (company_users)
@@ -85,12 +116,44 @@ export async function saveGlobalUserAction(
 				company_id: companyId,
 				user_id: userId,
 				role: data.isCompanyAdmin ? 'ADMIN' : 'USER',
-				profile_id: data.isCompanyAdmin ? null : (data.profileId || null),
+				profile_id: data.profileId,
 			}, { onConflict: 'company_id,user_id' });
 
 		if (linkError) throw linkError;
 
-		return { success: true, userId, tempPassword: generatedPassword };
+		// 3. Gerenciar Acesso às Obras (user_site_access)
+		// Primeiro, remover acessos antigos daquela empresa
+		if (userId) {
+			const { data: existingSites } = await supabase
+				.from('construction_sites')
+				.select('id')
+				.eq('company_id', companyId);
+			
+			const siteIdsInCompany = (existingSites || []).map(s => s.id);
+
+			if (siteIdsInCompany.length > 0) {
+				await supabase
+					.from('user_site_access')
+					.delete()
+					.eq('user_id', userId)
+					.in('site_id', siteIdsInCompany);
+			}
+
+			// Inserir novos vínculos se houver siteIds
+			if (data.siteIds && data.siteIds.length > 0) {
+				const accessToInsert = data.siteIds.map(siteId => ({
+					user_id: userId,
+					site_id: siteId
+				}));
+				const { error: accessError } = await supabase
+					.from('user_site_access')
+					.insert(accessToInsert);
+				
+				if (accessError) throw accessError;
+			}
+		}
+
+		return { success: true, userId, tempPassword: generatedPassword, isNewUser };
 	} catch (error: any) {
 		console.error('Error saving user:', error);
 		return { success: false, error: error.message || 'Erro ao salvar usuário' };

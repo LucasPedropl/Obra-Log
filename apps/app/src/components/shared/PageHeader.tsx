@@ -1,6 +1,8 @@
+'use client';
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Icon } from '@/components/ui/Icon';
 
 interface PageHeaderProps {
 	title: string;
@@ -32,7 +34,7 @@ export function PageHeader({
 						onClick={onAdd}
 						className="flex items-center gap-2 bg-[#101828] hover:bg-[#1a2333] text-white rounded-none px-4 shadow-sm"
 					>
-						<Plus className="h-4 w-4" />
+						<Icon name="Plus" size={16} weight="bold" />
 						<span>{addLabel}</span>
 					</Button>
 				)}

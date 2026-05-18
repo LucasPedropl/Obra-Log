@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/config/supabaseServer';
 import { supabaseAdmin } from '@/config/supabaseAdmin';
+import { redirect } from 'next/navigation';
 
 /**
  * Verifica se o usuário atual está logado e se é um Super Admin.
@@ -10,7 +11,7 @@ export async function ensureAdmin() {
 	const { data: { user } } = await supabase.auth.getUser();
 
 	if (!user) {
-		throw new Error('Não autenticado. Por favor, faça login.');
+		redirect('/login?error=unauthenticated');
 	}
 
 	// Usamos o supabaseAdmin (Service Role) para evitar erros de RLS (recursão infinita)
@@ -23,7 +24,7 @@ export async function ensureAdmin() {
 
 	if (error || !profile?.is_super_admin) {
 		console.error('ERRO ensureAdmin:', error?.message || 'Não é Super Admin');
-		throw new Error('Acesso negado. Esta operação é restrita a Super-Admins.');
+		redirect('/login?error=unauthorized');
 	}
 
 	return user;

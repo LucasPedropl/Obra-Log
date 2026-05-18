@@ -249,7 +249,7 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 	};
 
 	return (
-		<div className="p-6 bg-card rounded-xl border border-border shadow-xl">
+		<div className="w-full">
 			<h2 className="text-2xl font-bold mb-6">
 				{initialData
 					? 'Editar Insumo do Catálogo'

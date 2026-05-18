@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   LogOut,
   Loader2,
@@ -9,6 +10,8 @@ import {
   ArrowRight,
   Plus,
   CheckCircle2,
+  Building2,
+  FileText,
 } from 'lucide-react';
 import { createClient } from '@/config/supabase';
 import { 
@@ -20,6 +23,7 @@ import {
 import { SetupProfileModal } from '@/features/auth/components/SetupProfileModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 interface Company {
@@ -64,6 +68,16 @@ export function SelectCompanyClient({ initialCompanies, user: initialUser }: Sel
   const [onboardingCompanyName, setOnboardingCompanyName] = useState('');
   const [onboardingCnpj, setOnboardingCnpj] = useState('');
   const [isActivating, setIsActivating] = useState(false);
+ 
+  const maskCNPJ = (value: string) => {
+    return value
+      .replace(/\D/g, '') // Remove tudo o que não é dígito
+      .replace(/^(\d{2})(\d)/, '$1.$2') // Coloca ponto após os dois primeiros dígitos
+      .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3') // Coloca ponto após os cinco primeiros dígitos
+      .replace(/\.(\d{3})(\d)/, '.$1/$2') // Coloca barra após os oito primeiros dígitos
+      .replace(/(\d{4})(\d)/, '$1-$2') // Coloca hífen após os doze primeiros dígitos
+      .slice(0, 18); // Limita a 18 caracteres
+  };
 
   const handleSelectCompany = (companyId: string, remember: boolean = false) => {
     document.cookie = `selectedCompanyId=${companyId}; path=/; max-age=86400; SameSite=Lax`;
@@ -322,36 +336,75 @@ export function SelectCompanyClient({ initialCompanies, user: initialUser }: Sel
 
   if (pendingCompany) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-[#F8F9FA]">
-        <div className="w-full max-w-md bg-white p-8 border border-gray-200 shadow-sm rounded-[5px]">
-          <div className="text-center mb-8 relative">
-            <button 
-              onClick={() => {
-                setPendingCompany(null);
-                // Se o usuário fechar o modal de uma empresa PENDING que acabou de ser criada,
-                // ela continua na lista para ele ativar depois se quiser.
-              }} 
-              className="absolute left-0 top-0 text-gray-400 hover:text-black text-xs font-bold uppercase tracking-tight"
-            >
-              ← Voltar
-            </button>
-            <h1 className="text-2xl font-bold text-[#101828]">Ativar Empresa</h1>
-            <p className="text-gray-500 text-xs mt-2 font-medium uppercase tracking-wider">CONFIGURAÇÃO DE AMBIENTE</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[#F8F9FA] overflow-hidden">
+        {/* Card de Ativação (Estilo Login) */}
+        <div className="w-full max-w-[480px] bg-[#F8F9FA] rounded-[5px] shadow-2xl overflow-hidden border border-white/10 animate-in fade-in zoom-in-95 duration-300">
+          
+          <div className="p-8 md:p-10">
+            <div className="mb-8 text-center">
+              <h2 className="text-xl font-bold text-gray-900">Ativar Organização</h2>
+              <p className="text-gray-500 text-[11px] font-medium mt-1 uppercase tracking-wider">CONFIGURAÇÃO DE AMBIENTE</p>
+            </div>
+
+            {error && (
+              <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-[5px] text-center text-[11px] text-red-600 font-bold uppercase">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleActivate} className="space-y-5">
+              {/* Nome da Empresa */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                  Nome da Empresa
+                </Label>
+                <div className="relative group">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-gray-900 transition-colors">
+                    <Building2 size={18} />
+                  </div>
+                  <Input 
+                    className="pl-10 h-12 bg-white border-gray-300 rounded-[5px] focus-visible:ring-0 focus-visible:border-gray-900 text-gray-900 placeholder:text-gray-400 font-medium" 
+                    value={onboardingCompanyName} 
+                    onChange={e => setOnboardingCompanyName(e.target.value)} 
+                    placeholder="Ex: Alpha Construtora" 
+                    required 
+                  />
+                </div>
+              </div>
+
+              {/* CNPJ */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                  CNPJ (Opcional)
+                </Label>
+                <div className="relative group">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-gray-900 transition-colors">
+                    <FileText size={18} />
+                  </div>
+                  <Input 
+                    className="pl-10 h-12 bg-white border-gray-300 rounded-[5px] focus-visible:ring-0 focus-visible:border-gray-900 text-gray-900 placeholder:text-gray-400 font-medium" 
+                    value={onboardingCnpj} 
+                    onChange={e => setOnboardingCnpj(maskCNPJ(e.target.value))} 
+                    placeholder="00.000.000/0000-00" 
+                  />
+                </div>
+              </div>
+
+              <Button 
+                type="submit"
+                className="w-full h-12 bg-[#101828] hover:bg-[#1b263b] text-white font-black text-sm uppercase tracking-[0.1em] rounded-[5px] transition-all flex items-center justify-center gap-2 border-none shadow-lg shadow-black/20 mt-4"
+                disabled={isActivating}
+              >
+                {isActivating ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    Confirmar e Entrar <ArrowRight size={18} />
+                  </>
+                )}
+              </Button>
+            </form>
           </div>
-          {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-[11px] font-bold border border-red-100 uppercase">{error}</div>}
-          <form onSubmit={handleActivate} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-gray-700 uppercase">Nome da Empresa</label>
-              <Input className="rounded-[5px] h-12 border-gray-300" value={onboardingCompanyName} onChange={e => setOnboardingCompanyName(e.target.value)} placeholder="Ex: Alpha Construtora" required />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-gray-700 uppercase">CNPJ (Opcional)</label>
-              <Input className="rounded-[5px] h-12 border-gray-300" value={onboardingCnpj} onChange={e => setOnboardingCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
-            </div>
-            <Button className="w-full h-12 rounded-[5px] bg-[#101828] hover:bg-black font-bold uppercase tracking-widest text-xs text-white" disabled={isActivating}>
-              {isActivating ? <Loader2 className="animate-spin" /> : 'Confirmar e Entrar'}
-            </Button>
-          </form>
         </div>
       </div>
     );

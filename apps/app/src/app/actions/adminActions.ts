@@ -1,6 +1,5 @@
 'use server';
 
-import { supabaseAdmin } from '@/config/supabaseAdmin';
 import { createServerSupabaseClient } from '@/config/supabaseServer';
 
 /**
@@ -94,31 +93,35 @@ export async function ensureAdminProfileAndFetchUsers(companyId: string) {
 			.maybeSingle();
 
 		if (!adminProfile) {
-			await supabase
-				.from('access_profiles')
-				.insert({
-					company_id: companyId,
-					name: 'Administrador',
-					permissions: { ALL: { view: true, create: true, edit: true, delete: true } },
-				});
+			await supabase.from('access_profiles').insert({
+				company_id: companyId,
+				name: 'Administrador',
+				permissions: {
+					ALL: { view: true, create: true, edit: true, delete: true },
+				},
+			});
 		}
 
 		// 2. Buscar usuários vinculados via company_users
 		const { data: companyUsers, error } = await supabase
 			.from('company_users')
-			.select(`
+			.select(
+				`
 				id,
                 status,
                 role,
                 profile_id,
                 profiles(full_name, email, last_login)
-			`)
+			`,
+			)
 			.eq('company_id', companyId);
 
 		if (error) throw error;
 
 		// 2.1 Buscar nomes dos perfis separadamente
-		const profileIds = (companyUsers || []).map(cu => cu.profile_id).filter(Boolean) as string[];
+		const profileIds = (companyUsers || [])
+			.map((cu) => cu.profile_id)
+			.filter(Boolean) as string[];
 		const profilesMap: Record<string, string> = {};
 
 		if (profileIds.length > 0) {
@@ -126,8 +129,8 @@ export async function ensureAdminProfileAndFetchUsers(companyId: string) {
 				.from('access_profiles')
 				.select('id, name')
 				.in('id', profileIds);
-			
-			profilesData?.forEach(p => {
+
+			profilesData?.forEach((p) => {
 				profilesMap[p.id] = p.name;
 			});
 		}
@@ -139,7 +142,10 @@ export async function ensureAdminProfileAndFetchUsers(companyId: string) {
 			full_name: cu.profiles?.full_name || '',
 			email: cu.profiles?.email || '',
 			last_login: cu.profiles?.last_login || null,
-			profile_name: cu.role === 'ADMIN' ? 'Administrador da Empresa' : (profilesMap[cu.profile_id!] || 'Sem Perfil'),
+			profile_name:
+				cu.role === 'ADMIN'
+					? 'Administrador da Empresa'
+					: profilesMap[cu.profile_id!] || 'Sem Perfil',
 		}));
 	} catch (error: unknown) {
 		console.error('Error fetching users:', error);
@@ -161,10 +167,7 @@ export async function createSupplyItemAdmin(data: any) {
 
 export async function updateSupplyItemAdmin(id: string, data: any) {
 	const supabase = await createServerSupabaseClient();
-	const { error } = await supabase
-		.from('catalogs')
-		.update(data)
-		.eq('id', id);
+	const { error } = await supabase.from('catalogs').update(data).eq('id', id);
 	if (error) throw error;
 	return true;
 }
@@ -210,7 +213,10 @@ export async function importCatalogsAdmin(items: any[]) {
 export async function importCategoriesAdmin(items: any[]) {
 	const supabase = await createServerSupabaseClient();
 	if (!items.length) return { success: true };
-	const { data, error } = await supabase.from('categories').insert(items).select();
+	const { data, error } = await supabase
+		.from('categories')
+		.insert(items)
+		.select();
 	if (error) throw error;
 	return { success: true, data };
 }
@@ -218,7 +224,10 @@ export async function importCategoriesAdmin(items: any[]) {
 export async function importUnitsAdmin(items: any[]) {
 	const supabase = await createServerSupabaseClient();
 	if (!items.length) return { success: true };
-	const { data, error } = await supabase.from('measurement_units').insert(items).select();
+	const { data, error } = await supabase
+		.from('measurement_units')
+		.insert(items)
+		.select();
 	if (error) throw error;
 	return { success: true, data };
 }
@@ -321,7 +330,10 @@ export async function deleteCollaboratorAdmin(id: string, company_id: string) {
 export async function importCollaboratorsAdmin(items: any[]) {
 	const supabase = await createServerSupabaseClient();
 	if (!items.length) return { success: true };
-	const { data, error } = await supabase.from('collaborators').insert(items).select();
+	const { data, error } = await supabase
+		.from('collaborators')
+		.insert(items)
+		.select();
 	if (error) throw error;
 	return { success: true, data };
 }
@@ -339,10 +351,16 @@ export async function getSiteCollaboratorsAdmin(siteId: string) {
 	return data || [];
 }
 
-export async function addSiteCollaboratorsAdmin(siteId: string, collaboratorIds: string[]) {
+export async function addSiteCollaboratorsAdmin(
+	siteId: string,
+	collaboratorIds: string[],
+) {
 	const supabase = await createServerSupabaseClient();
 	if (!collaboratorIds.length) return true;
-	const payload = collaboratorIds.map((id) => ({ site_id: siteId, collaborator_id: id }));
+	const payload = collaboratorIds.map((id) => ({
+		site_id: siteId,
+		collaborator_id: id,
+	}));
 	const { error } = await supabase.from('site_collaborators').insert(payload);
 	if (error) throw error;
 	return true;
@@ -355,7 +373,9 @@ export async function getSiteInventoryAdmin(siteId: string) {
 	const supabase = await createServerSupabaseClient();
 	const { data, error } = await supabase
 		.from('site_inventory')
-		.select('id, catalog_id, quantity, min_threshold, catalogs(name, categories(primary_category, secondary_category), measurement_units(abbreviation))')
+		.select(
+			'id, catalog_id, quantity, min_threshold, catalogs(name, code, categories(primary_category, secondary_category), measurement_units(abbreviation))',
+		)
 		.eq('site_id', siteId);
 	if (error) throw error;
 	return data || [];
@@ -388,75 +408,122 @@ export async function getSiteToolsAdmin(siteId: string) {
 	return data || [];
 }
 
-export async function addSiteToolsAdmin(siteId: string, inventoryIds: string[]) {
+export async function addSiteToolsAdmin(
+	siteId: string,
+	inventoryIds: string[],
+) {
 	const supabase = await createServerSupabaseClient();
 	if (!inventoryIds.length) return true;
-	const payload = inventoryIds.map((id) => ({ site_id: siteId, inventory_id: id }));
+	const payload = inventoryIds.map((id) => ({
+		site_id: siteId,
+		inventory_id: id,
+	}));
 	const { error } = await supabase.from('site_tools').insert(payload);
+	if (error) throw error;
+	return true;
+}
+
+export async function getSiteEpisAdmin(siteId: string) {
+	const supabase = await createServerSupabaseClient();
+	const { data, error } = await supabase
+		.from('site_epis')
+		.select('inventory_id')
+		.eq('site_id', siteId);
+	if (error) throw error;
+	return data || [];
+}
+
+export async function addSiteEpisAdmin(
+	siteId: string,
+	inventoryIds: string[],
+) {
+	const supabase = await createServerSupabaseClient();
+	if (!inventoryIds.length) return true;
+	const payload = inventoryIds.map((id) => ({
+		site_id: siteId,
+		inventory_id: id,
+	}));
+	const { error } = await supabase.from('site_epis').insert(payload);
 	if (error) throw error;
 	return true;
 }
 
 export async function getEPIItemsAdmin(siteId: string) {
 	const supabase = await createServerSupabaseClient();
-	const { data, error } = await supabase
-		.from('site_inventory')
-		.select(`
-			id,
-			catalog_id,
-			quantity,
-			min_threshold,
-			catalogs!inner(
-				name,
-				code,
-				is_epi,
-				categories(primary_category)
-			)
-		`)
-		.eq('site_id', siteId)
-		.eq('catalogs.is_epi', true);
 
-	if (error) throw error;
+	// 1. Buscar site_epis
+	const { data: siteEpisData, error: episErr } = await supabase
+		.from('site_epis')
+		.select('*')
+		.eq('site_id', siteId);
 
-	return (data || []).map((item: any) => ({
-		id: item.id,
-		inventoryId: item.id,
-		catalogId: item.catalog_id,
-		name: item.catalogs.name,
-		category: item.catalogs.categories?.primary_category || 'Sem Categoria',
-		code: item.catalogs.code,
-		totalQuantity: item.quantity,
-		minThreshold: item.min_threshold
-	}));
+	if (episErr) throw episErr;
+
+	// 2. Buscar site_inventory
+	const inventoryData = await getSiteInventoryAdmin(siteId);
+	const inventoryMap = new Map(inventoryData.map((item: any) => [item.id, item]));
+
+	return (siteEpisData || []).map((se: any) => {
+		const inv = inventoryMap.get(se.inventory_id);
+		const cat = inv?.catalogs;
+		return {
+			id: se.id,
+			inventoryId: se.inventory_id,
+			catalogId: inv?.catalog_id,
+			name: cat?.name || 'EPI sem nome',
+			category: cat?.categories?.primary_category || 'Sem Categoria',
+			code: cat?.code || 'S/C',
+			totalQuantity: inv?.quantity || 0,
+			minThreshold: inv?.min_threshold || 0,
+		};
+	});
 }
 
 export async function getToolItemsAdmin(siteId: string) {
 	const supabase = await createServerSupabaseClient();
-	const { data, error } = await supabase
-		.from('site_inventory')
-		.select(`
-			id,
-			catalog_id,
-			quantity,
-			catalogs!inner(
-				name,
-				code,
-				is_tool,
-				categories(primary_category)
-			)
-		`)
+
+	// 1. Buscar site_tools
+	const { data: siteToolsData, error: toolsErr } = await supabase
+		.from('site_tools')
+		.select('*')
+		.eq('site_id', siteId);
+
+	if (toolsErr) throw toolsErr;
+
+	// 2. Buscar site_inventory (usando a função nativa já testada)
+	const inventoryData = await getSiteInventoryAdmin(siteId);
+	const inventoryMap = new Map(inventoryData.map((item: any) => [item.id, item]));
+
+	// 3. Buscar empréstimos ativos
+	const { data: loansData, error: loansErr } = await supabase
+		.from('tool_loans')
+		.select('inventory_id, quantity')
 		.eq('site_id', siteId)
-		.eq('catalogs.is_tool', true);
+		.eq('status', 'OPEN');
 
-	if (error) throw error;
+	if (loansErr) throw loansErr;
 
-	return (data || []).map((item: any) => ({
-		id: item.id,
-		inventoryId: item.id,
-		name: item.catalogs.name,
-		category: item.catalogs.categories?.primary_category || 'Sem Categoria',
-		code: item.catalogs.code,
-		totalQuantity: item.quantity,
-		availableQuantity: item.quantity
-	}));
+	const borrowedMap: Record<string, number> = {};
+	(loansData || []).forEach((loan: any) => {
+		const invId = loan.inventory_id;
+		borrowedMap[invId] = (borrowedMap[invId] || 0) + (loan.quantity || 0);
+	});
+
+	return (siteToolsData || []).map((st: any) => {
+		const inv = inventoryMap.get(st.inventory_id);
+		const cat = inv?.catalogs;
+		const totalQty = inv?.quantity || 0;
+		const borrowedQty = borrowedMap[st.inventory_id] || 0;
+		const availableQty = Math.max(0, totalQty - borrowedQty);
+
+		return {
+			id: st.id,
+			inventoryId: st.inventory_id,
+			name: cat?.name || 'Ferramenta sem nome',
+			category: cat?.categories?.primary_category || 'Sem Categoria',
+			code: cat?.code || 'S/C',
+			totalQuantity: totalQty,
+			availableQuantity: availableQty
+		};
+	});
 }

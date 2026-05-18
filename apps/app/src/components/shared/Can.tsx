@@ -1,30 +1,35 @@
 'use client';
 
 import React from 'react';
-import {
-	usePermissions,
-	PermissionActions,
-} from '@/context/PermissionsContext';
+import { usePermissions, PermissionActions } from '@/context/PermissionsContext';
 
 interface CanProps {
-	resource: string;
-	action: keyof PermissionActions;
+	/** O recurso a ser verificado (ex: 'insumos', 'obras', 'usuarios') */
+	on: string;
+	/** A ação a ser verificada */
+	perform: keyof PermissionActions;
+	/** Conteúdo a ser exibido caso tenha permissão */
 	children: React.ReactNode;
+	/** Conteúdo opcional a ser exibido caso NÃO tenha permissão */
 	fallback?: React.ReactNode;
 }
 
-export function Can({ resource, action, children, fallback = null }: CanProps) {
+/**
+ * Componente utilitário para renderização condicional baseada em permissões.
+ * 
+ * Exemplo de uso:
+ * <Can perform="create" on="insumos">
+ *   <Button>Novo Insumo</Button>
+ * </Can>
+ */
+export function Can({ on, perform, children, fallback = null }: CanProps) {
 	const { can, loading } = usePermissions();
 
-	if (loading) {
-		// Mostrar skeleton/loader caso seja interessante
-		// ou apenas null pra evitar flickers bruscos demais
-		return null;
+	if (loading) return null;
+
+	if (can(on, perform)) {
+		return <>{children}</>;
 	}
 
-	if (!can(resource, action)) {
-		return <>{fallback}</>;
-	}
-
-	return <>{children}</>;
+	return <>{fallback}</>;
 }

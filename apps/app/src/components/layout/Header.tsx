@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { MaterialIcon } from '../ui/MaterialIcon';
+import { Icon } from '../ui/Icon';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/config/supabase';
 import { Button } from '../ui/button';
@@ -161,7 +161,7 @@ export function Header({
 							onClick={onToggleSidebar}
 							className="hidden md:flex p-2 text-gray-500 hover:text-gray-900 rounded-none hover:bg-gray-100 focus:outline-none transition-colors"
 						>
-							<MaterialIcon icon="menu" size={20} />
+							<Icon name="List" size={20} />
 						</button>
 					)}
 
@@ -170,7 +170,7 @@ export function Header({
 							onClick={onMobileMenuToggle}
 							className="md:hidden p-2 text-gray-500 hover:text-gray-900 rounded-none hover:bg-gray-100 focus:outline-none transition-colors"
 						>
-							<MaterialIcon icon="menu" size={20} />
+							<Icon name="List" size={20} />
 						</button>
 					)}
 				</div>
@@ -198,7 +198,7 @@ export function Header({
 									{companyName || 'Obra-Log'}
 								</span>
 								{hasMultipleCompanies && (
-									<MaterialIcon icon="expand_more" size={14} className={cn(
+									<Icon name="CaretDown" size={14} className={cn(
 										"text-gray-400 transition-transform duration-200",
 										isCompanyDropdownOpen ? "rotate-180" : ""
 									)} />
@@ -239,7 +239,7 @@ export function Header({
 												{getInitials(company.name)}
 											</div>
 											<span className="flex-1 truncate font-semibold">{company.name}</span>
-											{isActive && <MaterialIcon icon="check" size={16} />}
+											{isActive && <Icon name="Check" size={16} />}
 										</button>
 									);
 								})}
@@ -255,7 +255,7 @@ export function Header({
 				<div className="max-w-xs hidden md:block">
 					<div className="relative group">
 						<div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-600 transition-colors">
-							<MaterialIcon icon="search" size={20} />
+							<Icon name="MagnifyingGlass" size={20} />
 						</div>
 						<input
 							type="text"
@@ -271,15 +271,15 @@ export function Header({
 				{/* Área de Ícones */}
 				<div className="flex items-center gap-2">
 					<button title="Ajuda" className="p-2 text-gray-500 hover:text-gray-900 rounded-none hover:bg-gray-100 transition-colors">
-						<MaterialIcon icon="help_outline" size={22} />
+						<Icon name="Question" size={22} />
 					</button>
 
 					<button title="Configurações" className="p-2 text-gray-500 hover:text-gray-900 rounded-none hover:bg-gray-100 transition-colors">
-						<MaterialIcon icon="settings" size={22} />
+						<Icon name="Gear" size={22} />
 					</button>
 
 					<button title="Notificações" className="p-2 text-gray-500 hover:text-gray-900 rounded-none hover:bg-gray-100 transition-colors relative mr-2 group">
-						<MaterialIcon icon="notifications" size={22} className="group-hover:shake transition-transform" />
+						<Icon name="Bell" size={22} className="group-hover:shake transition-transform" />
 						<span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-none border-2 border-white shadow-sm"></span>
 					</button>
 
@@ -291,7 +291,7 @@ export function Header({
 						>
 							<div className="flex items-center justify-center h-10 w-10 rounded-none bg-blue-600 text-white font-medium border border-gray-200 shadow-sm overflow-hidden shrink-0">
 								{loading ? (
-									<MaterialIcon icon="autorenew" size={16} className="animate-spin" />
+									<Icon name="ArrowsClockwise" size={16} className="animate-spin" />
 								) : userProfile?.avatar_url ? (
 									<img src={userProfile.avatar_url} alt="Avatar" className="h-full w-full object-cover" />
 								) : (
@@ -317,7 +317,7 @@ export function Header({
 									onClick={handleChangeCompany}
 									className="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600 transition-colors"
 								>
-									<MaterialIcon icon="sync" size={18} className="mr-2 text-gray-400 group-hover:text-blue-500" />
+									<Icon name="ArrowsCounterClockwise" size={18} className="mr-2 text-gray-400 group-hover:text-blue-500" />
 									Trocar Empresa
 								</button>
 								<div className="border-t border-gray-100 my-1"></div>
@@ -325,7 +325,7 @@ export function Header({
 									onClick={handleLogout}
 									className="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors"
 								>
-									<MaterialIcon icon="logout" size={18} className="mr-2 text-gray-400 group-hover:text-red-600" />
+									<Icon name="SignOut" size={18} className="mr-2 text-gray-400 group-hover:text-red-600" />
 									Sair
 								</button>
 							</div>

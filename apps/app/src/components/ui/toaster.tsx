@@ -8,7 +8,7 @@ import React, {
 	MouseEvent,
 } from 'react';
 import { cn } from '@/lib/utils';
-import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
+import { Icon } from './Icon';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -85,7 +85,6 @@ const ToastItem = ({
 						clearInterval(interval);
 						return 100;
 					}
-					// Increase by 1% roughly every 40ms -> Total time ~ 4 seconds
 					return prev + 1;
 				});
 			}, 40);
@@ -100,11 +99,11 @@ const ToastItem = ({
 		info: 'bg-blue-600',
 	}[toast.type];
 
-	const Icon = {
-		success: <CheckCircle className="w-5 h-5 flex-shrink-0" />,
-		error: <AlertCircle className="w-5 h-5 flex-shrink-0" />,
-		warning: <AlertTriangle className="w-5 h-5 flex-shrink-0" />,
-		info: <Info className="w-5 h-5 flex-shrink-0" />,
+	const IconComponent = {
+		success: <Icon name="CheckCircle" size={20} className="flex-shrink-0" />,
+		error: <Icon name="WarningCircle" size={20} className="flex-shrink-0" />,
+		warning: <Icon name="Warning" size={20} className="flex-shrink-0" />,
+		info: <Icon name="Info" size={20} className="flex-shrink-0" />,
 	}[toast.type];
 
 	const handleContextMenu = (e: MouseEvent) => {
@@ -118,19 +117,19 @@ const ToastItem = ({
 			onMouseLeave={() => setIsPaused(false)}
 			onContextMenu={handleContextMenu}
 			className={cn(
-				'relative overflow-hidden rounded-lg shadow-2xl pointer-events-auto flex min-w-[300px] max-w-[400px] items-center gap-3 p-4 text-white animate-in slide-in-from-bottom-5 fade-in-0',
+				'relative overflow-hidden rounded-none shadow-none border border-white/20 pointer-events-auto flex min-w-[300px] max-w-[400px] items-center gap-3 p-4 text-white animate-in slide-in-from-bottom-5 fade-in-0',
 				bgColor,
 			)}
 		>
-			{Icon}
-			<div className="z-10 flex-1 text-sm font-medium leading-snug break-words">
+			{IconComponent}
+			<div className="z-10 flex-1 text-sm font-bold leading-snug break-words uppercase tracking-tight">
 				{toast.message}
 			</div>
 			<button
 				onClick={() => removeToast(toast.id)}
 				className="opacity-70 hover:opacity-100 transition-opacity z-10"
 			>
-				<X className="w-4 h-4" />
+				<Icon name="X" size={16} weight="bold" />
 			</button>
 
 			<div

@@ -1,26 +1,52 @@
 'use client';
 
-import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Shield, Eye, Edit2, Plus, Trash2 } from 'lucide-react';
+import { Icon } from '@/components/ui/Icon';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Edit2, Eye, Plus, Shield, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
 
 const APP_MODULES = [
-	{ id: 'dashboard', label: 'Dashboard Geral', group: 'Global' },
-	{ id: 'insumos', label: 'Catálogo de Insumos', group: 'Global' },
+	{
+		id: 'dashboard',
+		label: 'Dashboard Geral',
+		group: 'Global',
+		icon: 'SquaresFour',
+	},
+	{
+		id: 'insumos',
+		label: 'Catálogo de Insumos',
+		group: 'Global',
+		icon: 'Package',
+	},
 	{
 		id: 'obras',
 		label: 'Gestão de Obras',
 		group: 'Global',
+		icon: 'Buildings',
 		children: [
-			{ id: 'site_dashboard', label: 'Visão Geral (Painel da Obra)' },
-			{ id: 'site_insumos', label: 'Estoque e Materiais' },
-			{ id: 'site_equipamentos', label: 'Ferramentas Alugadas' },
-			{ id: 'site_colaboradores', label: 'Equipe Alocada' },
+			{ id: 'site_dashboard', label: 'Visão Geral (Painel da Obra)', icon: 'ChartPieSlice' },
+			{ id: 'site_insumos', label: 'Estoque e Materiais', icon: 'Warehouse' },
+			{ id: 'site_colaboradores', label: 'Equipe Alocada', icon: 'UsersThree' },
+			{ id: 'site_ferramentas', label: 'Gestão de Ferramentas', icon: 'Wrench' },
+			{ id: 'site_epis', label: 'Gestão de EPIs', icon: 'HardHat' },
+			{ id: 'site_equipamentos', label: 'Equip. Alugados', icon: 'Truck' },
+			{ id: 'site_movimentacoes', label: 'Movimentações', icon: 'ArrowsLeftRight' },
 		],
 	},
-	{ id: 'colaboradores', label: 'Base de Colaboradores', group: 'Global' },
-	{ id: 'usuarios', label: 'Usuários', group: 'Global' },
-	{ id: 'perfis', label: 'Perfis de Acesso', group: 'Global' },
+	{
+		id: 'colaboradores',
+		label: 'Base de Colaboradores',
+		group: 'Global',
+		icon: 'Users',
+	},
+	{ id: 'usuarios', label: 'Usuários', group: 'Global', icon: 'UserCircle' },
+	{
+		id: 'perfis',
+		label: 'Perfis de Acesso',
+		group: 'Global',
+		icon: 'ShieldCheck',
+	},
 ];
 
 interface PermissionAction {
@@ -51,6 +77,46 @@ export function AccessProfileForm({
 		Record<string, PermissionAction>
 	>(initialData?.permissions || {});
 
+	const handleBulkPermissionChange = (modId: string, value: boolean) => {
+		setPermissions((prev) => {
+			const nextState = {
+				...prev,
+				[modId]: {
+					view: value,
+					create: value,
+					edit: value,
+					delete: value,
+				},
+			};
+
+			// Se desativar o pai (obras), desativa todos os filhos
+			if (modId === 'obras' && !value) {
+				const childrenMods =
+					APP_MODULES.find((m) => m.id === 'obras')?.children || [];
+				childrenMods.forEach((child) => {
+					nextState[child.id] = {
+						view: false,
+						create: false,
+						edit: false,
+						delete: false,
+					};
+				});
+			}
+
+			return nextState;
+		});
+	};
+
+	const handleToggleAll = (modId: string) => {
+		const modPerms = permissions[modId];
+		const isAnyActive =
+			modPerms &&
+			(modPerms.view ||
+				modPerms.create ||
+				modPerms.edit ||
+				modPerms.delete);
+		handleBulkPermissionChange(modId, !isAnyActive);
+	};
 	const handlePermissionChange = (
 		modId: string,
 		action: keyof PermissionAction,
@@ -148,85 +214,92 @@ export function AccessProfileForm({
 						/>
 					</div>
 					<div className="flex flex-col gap-2">
-						<label className="text-sm font-medium text-gray-700">
+						<label className="text-xs font-bold text-gray-700 uppercase tracking-wide">
 							Escopo
 						</label>
-						<select
+						<SearchableSelect
 							value={scope}
-							onChange={(e) => setScope(e.target.value as any)}
-							className="h-10 px-3 py-2 rounded-md border border-input focus:ring-2 focus:ring-primary focus:border-transparent outline-none w-full"
-						>
-							<option value="ALL_SITES">
-								Acesso a Todas as Obras da Empresa
-							</option>
-							<option value="SPECIFIC_SITES">
-								Acesso Restrito a Obras Específicas
-							</option>
-						</select>
+							onChange={(val) => setScope(val as any)}
+							options={[
+								{ value: 'ALL_SITES', label: 'Acesso a Todas as Obras da Empresa' },
+								{ value: 'SPECIFIC_SITES', label: 'Acesso Restrito a Obras Específicas' },
+							]}
+							placeholder="Selecione o escopo..."
+						/>
 					</div>
 				</div>
 			</div>
 
 			<div className="border border-border rounded-lg overflow-hidden">
-				<div className="bg-muted/50 p-4 border-b font-medium text-sm flex items-center justify-between">
-					<span>Permissões por Módulo</span>
-				</div>
-				<div className="divide-y divide-border h-[40vh] overflow-y-auto w-full">
-					<table className="w-full text-left text-sm">
+				<div className="divide-y divide-border h-[40vh] overflow-y-auto w-full custom-scrollbar">
+					<table className="w-full text-left text-sm table-fixed">
 						<thead className="bg-muted text-muted-foreground sticky top-0 z-10 shadow-sm">
 							<tr>
-								<th className="font-medium p-3">Módulo</th>
-								<th className="font-medium p-3 text-center">
+								<th className="font-medium p-3 w-[45%]">Módulo</th>
+								<th className="font-medium p-3 text-center w-[13.75%]">
 									<Eye size={16} className="inline mr-1" />{' '}
 									Ver
 								</th>
-								<th className="font-medium p-3 text-center">
+								<th className="font-medium p-3 text-center w-[13.75%]">
 									<Plus size={16} className="inline mr-1" />{' '}
 									Criar
 								</th>
-								<th className="font-medium p-3 text-center">
+								<th className="font-medium p-3 text-center w-[13.75%]">
 									<Edit2 size={16} className="inline mr-1" />{' '}
 									Editar
 								</th>
-								<th className="font-medium p-3 text-center">
+								<th className="font-medium p-3 text-center w-[13.75%]">
 									<Trash2 size={16} className="inline mr-1" />{' '}
 									Excluir
 								</th>
 							</tr>
 						</thead>
 						<tbody className="bg-card divide-y divide-border">
-							{Array.from(
-								new Set(APP_MODULES.map((m) => m.group)),
-							).map((groupName) => {
-								const modulesInGroup = APP_MODULES.filter(
-									(m) => m.group === groupName,
-								);
-
-								return (
-									<React.Fragment key={groupName}>
-										<tr className="bg-muted/30">
-											<td
-												colSpan={5}
-												className="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground bg-gray-50/50 dark:bg-gray-800/20"
-											>
-												{groupName}
-											</td>
-										</tr>
-										{modulesInGroup.map((mod) => {
-											const modPerms = permissions[
-												mod.id
-											] || {
-												view: false,
-												create: false,
-												edit: false,
-												delete: false,
-											};
+							{APP_MODULES.map((mod) => {
+								const modPerms = permissions[
+									mod.id
+								] || {
+									view: false,
+									create: false,
+									edit: false,
+									delete: false,
+								};
 
 											return (
 												<React.Fragment key={mod.id}>
 													<tr className="hover:bg-muted/50 transition-colors">
-														<td className="p-3 font-medium text-foreground pl-6">
-															{mod.label}
+														<td
+															className="p-3 font-medium text-foreground pl-6 cursor-pointer select-none hover:bg-muted/30 transition-colors"
+															onClick={() =>
+																handleToggleAll(
+																	mod.id,
+																)
+															}
+															onContextMenu={(
+																e,
+															) => {
+																e.preventDefault();
+																handleBulkPermissionChange(
+																	mod.id,
+																	false,
+																);
+															}}
+															title="Clique para alternar tudo / Botão direito para desativar tudo"
+														>
+															<div className="flex items-center gap-2">
+																{mod.icon && (
+																	<Icon
+																		name={
+																			mod.icon
+																		}
+																		size={
+																			18
+																		}
+																		className="text-gray-500"
+																	/>
+																)}
+																{mod.label}
+															</div>
 														</td>
 
 														{(
@@ -302,8 +375,35 @@ export function AccessProfileForm({
 																		}
 																		className="hover:bg-muted/50 transition-colors bg-muted/10"
 																	>
-																		<td className="p-3 text-sm font-medium text-foreground pl-12 flex items-center gap-2">
-																			<div className="w-1.5 h-1.5 rounded-full bg-blue-500/50" />
+																		<td
+																			className="p-3 text-sm font-medium text-foreground pl-12 flex items-center gap-2 cursor-pointer select-none hover:bg-muted/30 transition-colors"
+																			onClick={() =>
+																				handleToggleAll(
+																					child.id,
+																				)
+																			}
+																			onContextMenu={(
+																				e,
+																			) => {
+																				e.preventDefault();
+																				handleBulkPermissionChange(
+																					child.id,
+																					false,
+																				);
+																			}}
+																			title="Clique para alternar tudo / Botão direito para desativar tudo"
+																		>
+																			{child.icon && (
+																				<Icon
+																					name={
+																						child.icon
+																					}
+																					size={
+																						16
+																					}
+																					className="text-gray-400"
+																				/>
+																			)}
 																			{
 																				child.label
 																			}
@@ -368,12 +468,9 @@ export function AccessProfileForm({
 																);
 															},
 														)}
-												</React.Fragment>
-											);
-										})}
-									</React.Fragment>
-								);
-							})}
+													</React.Fragment>
+												);
+											})}
 						</tbody>
 					</table>
 				</div>

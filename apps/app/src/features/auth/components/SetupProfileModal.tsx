@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { HardHat, Loader2, Eye, EyeOff } from 'lucide-react';
+import Image from 'next/image';
+import { User, Lock, Loader2, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -60,104 +61,141 @@ export function SetupProfileModal({
 	};
 
 	return (
-		<div className="fixed inset-0 z-[999] flex items-center justify-center p-4 h-[100dvh] w-screen">
-			{/* Backdrop com desfoque e escurecimento garantido em toda a tela */}
+		<div className="fixed inset-0 z-[999] flex items-center justify-center p-4 h-[100dvh] w-screen overflow-hidden">
+			{/* Backdrop com desfoque e imagem de fundo para dar o mesmo clima do login */}
 			<div 
-				className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-500" 
+				className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-500 z-0" 
 				aria-hidden="true"
 			/>
-
-			{/* Conteúdo do Modal */}
-			<div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden p-8 animate-in fade-in zoom-in-95 duration-300">
-				<div className="flex flex-col items-center mb-8 text-center">
-					<div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4">
-						<HardHat size={32} />
+			
+			{/* Conteúdo do Modal (Card Estilo Login) */}
+			<div className="relative z-20 w-full max-w-[480px] bg-[#F8F9FA] rounded-[5px] shadow-2xl overflow-hidden border border-white/10 animate-in fade-in zoom-in-95 duration-300">
+				
+				{/* Cabeçalho do Card (Branding Identico ao Login) */}
+				<div className="pt-8 pb-6 flex flex-col items-center border-b border-gray-200 bg-white">
+					<div className="flex items-center gap-3">
+						<Image 
+							src="/logo.png" 
+							alt="Logo Obra-Log" 
+							width={40} 
+							height={40} 
+							className="object-contain"
+						/>
+						<h1 className="text-3xl font-bold tracking-tight text-[#101828]">
+							Obralog
+						</h1>
 					</div>
-					<h2 className="text-2xl font-bold text-gray-900">
-						Bem-vindo ao ObraLog
-					</h2>
-					<p className="text-gray-500 text-sm mt-1">
-						Para continuar, por favor informe seu nome e crie uma
-						nova senha pessoal.
+					<p className="text-[10px] font-mono font-bold text-gray-500 tracking-[0.2em] mt-1 uppercase">
+						CONSTRUCTION MGMT
 					</p>
 				</div>
 
-				{error && (
-					<div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
-						{error}
-					</div>
-				)}
-
-				<form className="space-y-4" onSubmit={handleSetup}>
-					<div className="space-y-2">
-						<Label className="block text-sm font-medium text-gray-700">
-							Nome Completo
-						</Label>
-						<input
-							type="text"
-							value={fullName}
-							onChange={(e) => setFullName(e.target.value)}
-							required
-							placeholder="Ex: João Silva"
-							className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label className="block text-sm font-medium text-gray-700">
-							Nova Senha
-						</Label>
-						<div className="relative">
-							<input
-								type={showPassword ? 'text' : 'password'}
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
-								required
-								placeholder="••••••••"
-								className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10"
-							/>
-							<button
-								type="button"
-								onClick={() => setShowPassword(!showPassword)}
-								className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-							>
-								{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-							</button>
-						</div>
-					</div>
-					<div className="space-y-2">
-						<Label className="block text-sm font-medium text-gray-700">
-							Confirmar Nova Senha
-						</Label>
-						<div className="relative">
-							<input
-								type={showConfirmPassword ? 'text' : 'password'}
-								value={confirmPassword}
-								onChange={(e) => setConfirmPassword(e.target.value)}
-								required
-								placeholder="••••••••"
-								className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10"
-							/>
-							<button
-								type="button"
-								onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-								className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-							>
-								{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-							</button>
-						</div>
+				<div className="p-8 md:p-10">
+					<div className="mb-8 text-center">
+						<h2 className="text-xl font-bold text-gray-900">
+							Bem-vindo ao ObraLog
+						</h2>
+						<p className="text-gray-500 text-[11px] font-medium mt-1 uppercase tracking-wider">
+							Para continuar, por favor informe seu nome e crie uma nova senha pessoal.
+						</p>
 					</div>
 
-					<Button
-						type="submit"
-						disabled={loading}
-						className="w-full mt-6"
-					>
-						{loading ? (
-							<Loader2 className="animate-spin w-5 h-5 mr-2" />
-						) : null}
-						{loading ? 'Salvando...' : 'Salvar e Continuar'}
-					</Button>
-				</form>
+					{error && (
+						<div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-[5px] text-center text-[11px] text-red-600 font-bold uppercase">
+							{error}
+						</div>
+					)}
+
+					<form className="space-y-5" onSubmit={handleSetup}>
+						{/* Campo de Nome Completo */}
+						<div className="space-y-1.5">
+							<Label className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+								Nome Completo
+							</Label>
+							<div className="relative group">
+								<div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-gray-900 transition-colors">
+									<User size={18} />
+								</div>
+								<Input
+									type="text"
+									value={fullName}
+									onChange={(e) => setFullName(e.target.value)}
+									required
+									placeholder="Ex: João Silva"
+									className="pl-10 h-12 bg-white border-gray-300 rounded-[5px] focus-visible:ring-0 focus-visible:border-gray-900 text-gray-900 placeholder:text-gray-400 font-medium"
+								/>
+							</div>
+						</div>
+
+						{/* Campo de Nova Senha */}
+						<div className="space-y-1.5">
+							<Label className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+								Nova Senha
+							</Label>
+							<div className="relative group">
+								<div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-gray-900 transition-colors">
+									<Lock size={18} />
+								</div>
+								<Input
+									type={showPassword ? 'text' : 'password'}
+									value={password}
+									onChange={(e) => setPassword(e.target.value)}
+									required
+									placeholder="••••••••"
+									className="pl-10 pr-10 h-12 bg-white border-gray-300 rounded-[5px] focus-visible:ring-0 focus-visible:border-gray-900 text-gray-900 placeholder:text-gray-400 font-medium tracking-widest"
+								/>
+								<button
+									type="button"
+									onClick={() => setShowPassword(!showPassword)}
+									className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900 transition-colors"
+								>
+									{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+								</button>
+							</div>
+						</div>
+
+						{/* Campo de Confirmar Senha */}
+						<div className="space-y-1.5">
+							<Label className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+								Confirmar Nova Senha
+							</Label>
+							<div className="relative group">
+								<div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-gray-900 transition-colors">
+									<Lock size={18} />
+								</div>
+								<Input
+									type={showConfirmPassword ? 'text' : 'password'}
+									value={confirmPassword}
+									onChange={(e) => setConfirmPassword(e.target.value)}
+									required
+									placeholder="••••••••"
+									className="pl-10 pr-10 h-12 bg-white border-gray-300 rounded-[5px] focus-visible:ring-0 focus-visible:border-gray-900 text-gray-900 placeholder:text-gray-400 font-medium tracking-widest"
+								/>
+								<button
+									type="button"
+									onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+									className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900 transition-colors"
+								>
+									{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+								</button>
+							</div>
+						</div>
+
+						<Button
+							type="submit"
+							disabled={loading}
+							className="w-full h-12 bg-[#101828] hover:bg-[#1b263b] text-white font-black text-sm uppercase tracking-[0.1em] rounded-[5px] transition-all flex items-center justify-center gap-2 border-none shadow-lg shadow-black/20 mt-4"
+						>
+							{loading ? (
+								<Loader2 className="w-5 h-5 animate-spin" />
+							) : (
+								<>
+									Salvar e Continuar <ArrowRight size={18} />
+								</>
+							)}
+						</Button>
+					</form>
+				</div>
 			</div>
 		</div>
 	);

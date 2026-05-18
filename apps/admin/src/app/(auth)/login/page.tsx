@@ -15,13 +15,26 @@ export default function LoginPage() {
 	const [error, setError] = useState('');
 	const [checkingSession, setCheckingSession] = useState(true);
 
-	const { user, loading: authLoading } = useAuth();
+	const { user, loading: authLoading, signOut } = useAuth();
 	const router = useRouter();
 	const supabase = createClient();
 
 	React.useEffect(() => {
+		// Pega os parâmetros da URL
+		const searchParams = new URLSearchParams(window.location.search);
+		const errorParam = searchParams.get('error');
+		
+		if (errorParam === 'unauthenticated') {
+			setError('Sua sessão expirou. Por favor, faça login novamente.');
+			// Limpa qualquer estado residual do cliente
+			signOut().catch(() => {});
+		} else if (errorParam === 'unauthorized') {
+			setError('Você não tem permissão para acessar esta área.');
+		}
+
 		if (!authLoading && user) {
-			router.push('/dashboard');
+			const next = searchParams.get('next') || '/dashboard';
+			router.push(next);
 		}
 
 		// Carregar email lembrado
@@ -67,7 +80,9 @@ export default function LoginPage() {
 				localStorage.removeItem('obralog_admin_remember_email');
 			}
 
-			router.push('/dashboard');
+			const searchParams = new URLSearchParams(window.location.search);
+			const next = searchParams.get('next') || '/dashboard';
+			router.push(next);
 			router.refresh();
 		} catch (err: unknown) {
 			const message =
