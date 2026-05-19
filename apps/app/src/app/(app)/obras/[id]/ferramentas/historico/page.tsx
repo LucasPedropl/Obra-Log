@@ -97,12 +97,12 @@ export default function FerramentasHistoricoPage({
 		{
 			header: 'Ferramenta',
 			accessorKey: 'toolName',
-			className: 'font-medium text-gray-900 bg-gray-50/50',
+			className: 'font-medium text-gray-900',
 		},
 		{
 			header: 'Colaborador',
 			accessorKey: 'collaboratorName',
-			className: 'text-gray-700',
+			className: 'text-gray-600',
 		},
 		...baseColumns,
 	];
@@ -111,12 +111,12 @@ export default function FerramentasHistoricoPage({
 		{
 			header: 'Colaborador',
 			accessorKey: 'collaboratorName',
-			className: 'font-medium text-gray-900 bg-gray-50/50',
+			className: 'font-medium text-gray-900',
 		},
 		{
 			header: 'Ferramenta',
 			accessorKey: 'toolName',
-			className: 'text-gray-700',
+			className: 'text-gray-600',
 		},
 		...baseColumns,
 	];
@@ -177,13 +177,13 @@ export default function FerramentasHistoricoPage({
 	}
 
 	return (
-		<div className="flex flex-col gap-6 relative">
+		<div className="w-full flex flex-col gap-6 relative">
 			<PageHeader
 				title="Histórico de Ferramentas"
 				description="Histórico completo de empréstimos e devoluções."
 			/>
 
-			<div className="flex flex-col gap-5">
+			<div className="flex flex-col gap-6">
 				{error ? (
 					<div className="p-4 bg-red-50 text-red-700 rounded-md border border-red-200">
 						Erro ao carregar histórico: {error}
@@ -250,16 +250,7 @@ export default function FerramentasHistoricoPage({
 								}
 							/>
 						) : (
-							<div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col gap-4">
-								<div className="p-1 px-[2px] bg-gray-50 border-b border-gray-200">
-									<div className="text-xs font-bold px-4 py-2 text-gray-500 uppercase tracking-wider">
-										Visão de Histórico agrupada{' '}
-										{activeTab === 'tool'
-											? 'por Ferramenta (A-Z)'
-											: 'por Nome do Colaborador (A-Z)'}
-									</div>
-								</div>
-
+							<div className="flex flex-col gap-6">
 								<DataTable
 									data={currentItems}
 									columns={
@@ -285,17 +276,15 @@ export default function FerramentasHistoricoPage({
 									)}
 									keyExtractor={(item) => item.id}
 								/>
-							</div>
-						)}
 
-						{currentItems.length > 0 && (
-							<Pagination
-								currentPage={currentPage}
-								totalPages={totalPages}
-								onPageChange={setCurrentPage}
-								totalItems={sortedHistory.length}
-								itemsPerPage={itemsPerPage}
-							/>
+								{sortedHistory.length > itemsPerPage && (
+									<Pagination
+										currentPage={currentPage}
+										totalPages={totalPages}
+										onPageChange={setCurrentPage}
+									/>
+								)}
+							</div>
 						)}
 					</>
 				)}

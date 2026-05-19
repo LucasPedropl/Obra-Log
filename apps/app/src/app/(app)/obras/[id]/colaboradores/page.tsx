@@ -7,6 +7,7 @@ import { TableSearch } from '@/components/shared/TableSearch';
 import { Pagination } from '@/components/shared/Pagination';
 import { AddSiteCollaboratorForm } from '@/features/colaboradores/components/AddSiteCollaboratorForm';
 import { useSiteCollaborators } from '@/features/colaboradores/hooks/useSiteCollaborators';
+import { DataTable } from '@/components/shared/DataTable';
 
 export default function ColaboradoresObraPage({
 	params,
@@ -60,7 +61,7 @@ export default function ColaboradoresObraPage({
 					icon={<Users className="w-8 h-8 text-gray-400" />}
 				/>
 			) : (
-				<div className="flex flex-col gap-4">
+				<div className="flex flex-col gap-6">
 					<TableSearch
 						value={searchTerm}
 						onChange={(val) => {
@@ -70,54 +71,44 @@ export default function ColaboradoresObraPage({
 						placeholder="Pesquisar por nome ou função..."
 					/>
 
-					<div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
-						<table className="w-full text-sm text-left">
-							<thead className="bg-gray-50 border-b border-gray-200 text-gray-500 font-medium">
-								<tr>
-									<th className="px-4 py-3">Nome</th>
-									<th className="px-4 py-3">Função</th>
-									<th className="px-4 py-3">CPF</th>
-								</tr>
-							</thead>
-							<tbody className="divide-y divide-gray-100">
-								{paginatedItems.map((item) => (
-									<tr
-										key={item.id}
-										className="hover:bg-gray-50/50 transition-colors"
-									>
-										<td className="px-4 py-3 font-medium text-gray-900">
-											{item.name}
-										</td>
-										<td className="px-4 py-3 text-gray-600">
-											<span className="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200 text-xs">
-												{item.role_title}
-											</span>
-										</td>
-										<td className="px-4 py-3 font-mono text-gray-500">
-											{item.cpf}
-										</td>
-									</tr>
-								))}
-								{paginatedItems.length === 0 && (
-									<tr>
-										<td
-											colSpan={3}
-											className="px-4 py-8 text-center text-gray-500"
-										>
-											Nenhum colaborador encontrado para
-											essa pesquisa.
-										</td>
-									</tr>
-								)}
-							</tbody>
-						</table>
-					</div>
-
-					<Pagination
-						currentPage={currentPage}
-						totalPages={totalPages}
-						onPageChange={setCurrentPage}
+					<DataTable
+						data={paginatedItems}
+						columns={[
+							{ 
+								header: 'Nome', 
+								accessorKey: 'name',
+								cell: (item) => (
+									<span className="font-medium text-gray-900">{item.name}</span>
+								)
+							},
+							{ 
+								header: 'Função', 
+								accessorKey: 'role_title',
+								cell: (item) => (
+									<span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md border border-gray-200 text-xs font-medium">
+										{item.role_title}
+									</span>
+								)
+							},
+							{ 
+								header: 'CPF', 
+								accessorKey: 'cpf',
+								cell: (item) => (
+									<span className="font-mono text-gray-500">{item.cpf || 'Sem CPF'}</span>
+								)
+							},
+						]}
+						keyExtractor={(item) => item.id}
+						detailsTitle={(item) => `Colaborador: ${item.name}`}
 					/>
+
+					{totalPages > 1 && (
+						<Pagination
+							currentPage={currentPage}
+							totalPages={totalPages}
+							onPageChange={setCurrentPage}
+						/>
+					)}
 				</div>
 			)}
 

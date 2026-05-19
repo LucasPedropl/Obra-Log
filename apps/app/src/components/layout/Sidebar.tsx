@@ -122,7 +122,7 @@ export function Sidebar({
 						resource: 'site_insumos'
 					},
 					{
-						name: 'Colaboradores (Campo)',
+						name: 'Colaboradores',
 						icon: 'UsersThree',
 						href: `/obras/${obraId}/colaboradores`,
 						resource: 'site_colaboradores'

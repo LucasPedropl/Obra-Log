@@ -122,53 +122,47 @@ export default function MovimentacoesPage({ params }: MovimentacoesPageProps) {
 	}
 
 	return (
-		<div className="flex flex-col gap-6 relative h-full">
+		<div className="w-full flex flex-col gap-6 relative">
 			<PageHeader
 				title="Movimentações da Obra"
 				description="Acompanhe todas as entradas e saídas de estoque (Ferramentas, EPIs, Almoxarifado e Equip. Alugados)."
 			/>
 
-			<div className="flex flex-col flex-1 bg-white rounded-xl border border-gray-200">
-				{allItems.length === 0 ? (
-					<div className="p-12">
-						<EmptyState
-							title="Nenhuma movimentação registrada"
-							description="Nenhuma ação de entrada ou saída foi realizada ainda nesta obra."
-							icon={
-								<Activity className="w-8 h-8 text-gray-400" />
-							}
-						/>
-					</div>
-				) : (
-					<>
-						<DataTable
-							data={currentItems}
-							columns={columns}
-							detailsTitle="Detalhes da Movimentação"
-							renderDetails={(item: Movimentacao) => (
-								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-									<DetailRow label="Ação" value={item.action} />
-									<DetailRow label="Módulo" value={item.module} />
-									<DetailRow label="Item" value={item.item_name} className="sm:col-span-2" />
-									<DetailRow label="Quantidade" value={`${item.type === 'IN' ? '+' : '-'}${Math.abs(item.quantity) || 1} UN`} />
-									<DetailRow label="Colaborador Responsável" value={item.collaborator_name || 'N/A'} />
-									<DetailRow label="Registrado por (Usuário)" value={item.user_name || 'N/A'} />
-									<DetailRow label="Data / Hora" value={item.date ? format(new Date(item.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '-'} />
-								</div>
-							)}
-							keyExtractor={(item: Movimentacao) => item.id}
-						/>
-
-						{allItems.length > 0 && (
-							<Pagination
-								currentPage={currentPage}
-								totalPages={totalPages}
-								onPageChange={setCurrentPage}
-							/>
+			{allItems.length === 0 ? (
+				<EmptyState
+					title="Nenhuma movimentação registrada"
+					description="Nenhuma ação de entrada ou saída foi realizada ainda nesta obra."
+					icon={<Activity className="w-8 h-8 text-gray-400" />}
+				/>
+			) : (
+				<div className="flex flex-col gap-6">
+					<DataTable
+						data={currentItems}
+						columns={columns}
+						detailsTitle="Detalhes da Movimentação"
+						renderDetails={(item: Movimentacao) => (
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<DetailRow label="Ação" value={item.action} />
+								<DetailRow label="Módulo" value={item.module} />
+								<DetailRow label="Item" value={item.item_name} className="sm:col-span-2" />
+								<DetailRow label="Quantidade" value={`${item.type === 'IN' ? '+' : '-'}${Math.abs(item.quantity) || 1} UN`} />
+								<DetailRow label="Colaborador Responsável" value={item.collaborator_name || 'N/A'} />
+								<DetailRow label="Registrado por (Usuário)" value={item.user_name || 'N/A'} />
+								<DetailRow label="Data / Hora" value={item.date ? format(new Date(item.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '-'} />
+							</div>
 						)}
-					</>
-				)}
-			</div>
+						keyExtractor={(item: Movimentacao) => item.id}
+					/>
+
+					{totalPages > 1 && (
+						<Pagination
+							currentPage={currentPage}
+							totalPages={totalPages}
+							onPageChange={setCurrentPage}
+						/>
+					)}
+				</div>
+			)}
 		</div>
 	);
 }

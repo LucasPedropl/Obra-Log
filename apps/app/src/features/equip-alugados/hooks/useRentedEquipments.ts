@@ -49,6 +49,7 @@ export function useRentedEquipments(siteId: string) {
 		quantity: number;
 		entryDate: string;
 		observations: string;
+		entryPhotosUrl?: string;
 	}) => {
 		try {
 			// 1. Obter a unidade de medida padrão (UN)
@@ -119,6 +120,7 @@ export function useRentedEquipments(siteId: string) {
 					status: 'ACTIVE',
 					description: data.observations,
 					inventory_id: inventoryId,
+					entry_photos_url: data.entryPhotosUrl || null,
 				});
 
 			if (rentError) throw new Error(`Aluguel: ${rentError.message}`);
