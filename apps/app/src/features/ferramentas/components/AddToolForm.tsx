@@ -1,21 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Check, PackageOpen, X, Grip } from 'lucide-react';
+import { Search, X } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import {
 	getSiteInventoryAdmin,
 	getSiteToolsAdmin,
 	addSiteToolsAdmin,
 } from '@/app/actions/adminActions';
-
-interface InventoryItem {
-	id: string;
-	name: string;
-	code: string;
-	unit: string;
-	category: string;
-	subcategory: string;
-	quantity: number;
-}
+import { addToolSchema, AddToolFormData } from '../schemas/addToolSchema';
+import { AddToolItemList, ToolInventoryItem } from './AddToolItemList';
 
 interface AddToolFormProps {
 	onCancel: () => void;
@@ -45,17 +39,29 @@ interface RawInventoryItem {
 
 export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 	const [searchTerm, setSearchTerm] = useState('');
-	const [selectedItems, setSelectedItems] = useState<string[]>([]);
-	const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+	const [inventoryItems, setInventoryItems] = useState<ToolInventoryItem[]>(
+		[],
+	);
 	const [isLoading, setIsLoading] = useState(true);
-	const [isSaving, setIsSaving] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+	const [submitError, setSubmitError] = useState<string | null>(null);
+
+	const {
+		watch,
+		setValue,
+		handleSubmit,
+		formState: { errors, isSubmitting },
+	} = useForm<AddToolFormData>({
+		resolver: zodResolver(addToolSchema),
+		defaultValues: { selectedIds: [] },
+	});
+
+	const selectedIds = watch('selectedIds');
 
 	useEffect(() => {
 		const fetchInventory = async () => {
 			try {
 				setIsLoading(true);
-				setError(null);
+				setSubmitError(null);
 
 				const [existingTools, inventoryData] = await Promise.all([
 					getSiteToolsAdmin(siteId),
@@ -63,10 +69,14 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 				]);
 
 				const existingIds = new Set(
-					(existingTools as unknown as RawSiteTool[])?.map((t) => t.inventory_id) || [],
+					(existingTools as unknown as RawSiteTool[])?.map(
+						(t) => t.inventory_id,
+					) || [],
 				);
 
-				const formatted: InventoryItem[] = (inventoryData as unknown as RawInventoryItem[] || [])
+				const formatted: ToolInventoryItem[] = (
+					(inventoryData as unknown as RawInventoryItem[]) || []
+				)
 					.filter((item) => !existingIds.has(item.id))
 					.map((item) => {
 						const catalog = item.catalogs ?? null;
@@ -88,17 +98,18 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 
 				setInventoryItems(formatted);
 			} catch (err: unknown) {
-				const message = err instanceof Error ? err.message : 'Erro ao carregar dados do inventário';
+				const message =
+					err instanceof Error
+						? err.message
+						: 'Erro ao carregar dados do inventário';
 				console.error('Error fetching inventory for tools:', err);
-				setError(message);
+				setSubmitError(message);
 			} finally {
 				setIsLoading(false);
 			}
 		};
 
-		if (siteId) {
-			fetchInventory();
-		}
+		if (siteId) fetchInventory();
 	}, [siteId]);
 
 	const filteredItems = inventoryItems.filter(
@@ -109,37 +120,29 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 	);
 
 	const toggleSelection = (id: string) => {
-		setSelectedItems((prev) => {
-			if (prev.includes(id)) {
-				return prev.filter((i) => i !== id);
-			}
-			return [...prev, id];
-		});
+		const nextIds = selectedIds.includes(id)
+			? selectedIds.filter((i) => i !== id)
+			: [...selectedIds, id];
+		setValue('selectedIds', nextIds, { shouldValidate: true });
 	};
 
-	const handleSave = async () => {
-		if (selectedItems.length === 0) return;
-
+	const onSubmit = async (data: AddToolFormData) => {
 		try {
-			setIsSaving(true);
-			setError(null);
-
-			await addSiteToolsAdmin(siteId, selectedItems);
-
+			setSubmitError(null);
+			await addSiteToolsAdmin(siteId, data.selectedIds);
 			onSaved();
 		} catch (err: unknown) {
-			const message = err instanceof Error ? err.message : 'Erro ao salvar ferramentas';
+			const message =
+				err instanceof Error ? err.message : 'Erro ao salvar ferramentas';
 			console.error('Error saving tools:', err);
-			setError(message);
-		} finally {
-			setIsSaving(false);
+			setSubmitError(message);
 		}
 	};
 
 	if (isLoading) {
 		return (
 			<div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-[800px] h-[650px] max-w-[95vw] max-h-[90vh] flex items-center justify-center">
-				<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#101828]"></div>
+				<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#101828]" />
 			</div>
 		);
 	}
@@ -157,6 +160,7 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 					</p>
 				</div>
 				<button
+					type="button"
 					onClick={onCancel}
 					className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-[5px] transition-colors p-1.5"
 				>
@@ -164,7 +168,11 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 				</button>
 			</div>
 
-			<div className="p-6 flex-1 overflow-hidden flex flex-col bg-gray-50/50">
+			<form
+				id="add-tool-form"
+				onSubmit={handleSubmit(onSubmit)}
+				className="p-6 flex-1 overflow-hidden flex flex-col bg-gray-50/50"
+			>
 				<div className="flex flex-col gap-2 mb-5 shrink-0">
 					<div className="relative">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -178,92 +186,31 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 					</div>
 				</div>
 
-				{error && (
+				{(submitError || errors.selectedIds) && (
 					<div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">
-						{error}
+						{submitError || errors.selectedIds?.message}
 					</div>
 				)}
 
 				<div className="grid grid-cols-1 gap-3 overflow-y-auto pr-2 rounded-[5px] flex-1 pb-4">
-					{filteredItems.map((item) => {
-						const isSelected = selectedItems.includes(item.id);
-						return (
-							<div
-								key={item.id}
-								onClick={() => toggleSelection(item.id)}
-								className={`group flex items-start gap-4 p-4 rounded-lg cursor-pointer border transition-all duration-200 ${
-									isSelected
-										? 'bg-blue-50/50 border-[#101828] shadow-sm'
-										: 'bg-white border-gray-200 hover:border-[#101828]/50 hover:shadow-sm'
-								}`}
-							>
-								<div
-									className={`mt-1 w-5 h-5 shrink-0 rounded-[5px] border flex items-center justify-center transition-all duration-200 ${
-										isSelected
-											? 'bg-[#101828] border-[#101828] text-white'
-											: 'border-gray-300 bg-gray-50 group-hover:border-[#101828]/50'
-									}`}
-								>
-									{isSelected && (
-										<Check size={14} strokeWidth={3} />
-									)}
-								</div>
-								<div className="flex flex-1 flex-col sm:flex-row sm:items-center justify-between gap-3">
-									<div className="flex flex-col gap-1">
-										<div className="font-semibold text-sm text-gray-900 group-hover:text-[#101828] transition-colors">
-											{item.name}
-										</div>
-										<div className="flex items-center gap-2 text-xs font-medium text-gray-500">
-											<div className="flex items-center gap-1.5">
-												<Grip
-													size={12}
-													className="text-gray-400"
-												/>
-												<span className="bg-gray-100 px-2 py-0.5 rounded-[5px]">
-													{item.category}
-												</span>
-											</div>
-										</div>
-									</div>
-									<div className="flex flex-col sm:items-end gap-1.5 mt-2 sm:mt-0">
-										<div className="inline-flex items-center text-xs font-mono font-medium text-gray-600 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-[5px]">
-											Cod: {item.code}
-										</div>
-										<div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-											Qtd Estoque: {item.quantity}
-										</div>
-									</div>
-								</div>
-							</div>
-						);
-					})}
-
-					{filteredItems.length === 0 && (
-						<div className="text-center py-16 flex flex-col items-center justify-center h-full">
-							<div className="w-16 h-16 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center mb-4">
-								<PackageOpen className="w-8 h-8 text-gray-300" />
-							</div>
-							<p className="text-sm font-semibold text-gray-700">
-								Nenhum insumo encontrado
-							</p>
-							<p className="text-xs text-gray-500 mt-1.5 max-w-[250px] leading-relaxed">
-								Não há insumos disponíveis no almoxarifado para
-								adicionar como ferramenta.
-							</p>
-						</div>
-					)}
+					<AddToolItemList
+						items={filteredItems}
+						selectedIds={selectedIds}
+						onToggle={toggleSelection}
+					/>
 				</div>
-			</div>
+			</form>
 
 			<div className="p-5 border-t border-gray-200 flex flex-row items-center justify-between bg-white rounded-b-xl shrink-0">
 				<div className="text-sm font-medium text-gray-600">
 					Selecionados:{' '}
 					<span className="font-bold text-[#101828] bg-blue-50 px-2 py-0.5 rounded-[5px]">
-						{selectedItems.length}
+						{selectedIds.length}
 					</span>
 				</div>
 				<div className="flex items-center gap-3">
 					<Button
+						type="button"
 						variant="ghost"
 						onClick={onCancel}
 						className="text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-semibold rounded-[5px] px-6"
@@ -271,11 +218,12 @@ export function AddToolForm({ onCancel, onSaved, siteId }: AddToolFormProps) {
 						Cancelar
 					</Button>
 					<Button
-						onClick={handleSave}
-						disabled={selectedItems.length === 0 || isSaving}
+						type="submit"
+						form="add-tool-form"
+						disabled={selectedIds.length === 0 || isSubmitting}
 						className="bg-[#101828] hover:bg-[#1b263b] text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md rounded-[5px] px-8 transition-colors"
 					>
-						{isSaving ? 'Salvando...' : 'Salvar como Ferramenta'}
+						{isSubmitting ? 'Salvando...' : 'Salvar como Ferramenta'}
 					</Button>
 				</div>
 			</div>

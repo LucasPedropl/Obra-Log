@@ -8,6 +8,7 @@ import { Pagination } from '@/components/shared/Pagination';
 import { AddSiteCollaboratorForm } from '@/features/colaboradores/components/AddSiteCollaboratorForm';
 import { useSiteCollaborators } from '@/features/colaboradores/hooks/useSiteCollaborators';
 import { DataTable } from '@/components/shared/DataTable';
+import { maskCpfDisplay } from '@/lib/maskUtils';
 
 export default function ColaboradoresObraPage({
 	params,
@@ -94,7 +95,9 @@ export default function ColaboradoresObraPage({
 								header: 'CPF', 
 								accessorKey: 'cpf',
 								cell: (item) => (
-									<span className="font-mono text-gray-500">{item.cpf || 'Sem CPF'}</span>
+									<span className="font-mono text-gray-500">
+										{maskCpfDisplay(item.cpf)}
+									</span>
 								)
 							},
 						]}

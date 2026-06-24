@@ -45,7 +45,7 @@ export function SetupProfileModal({
 		setError('');
 
 		try {
-			const result = await setupInitialProfileAction(user.id, fullName, password);
+			const result = await setupInitialProfileAction(fullName, password);
 			
 			if (!result.success) {
 				throw new Error(result.error);

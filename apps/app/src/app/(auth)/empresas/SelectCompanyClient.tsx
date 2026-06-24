@@ -14,12 +14,17 @@ import {
   FileText,
 } from 'lucide-react';
 import { createClient } from '@/config/supabase';
-import { 
+import {
   getUserCompaniesAction, 
   activateCompanyAction,
   createCompanySelfServiceAction,
   upgradeCompanyPlanAction,
 } from '@/app/actions/authData';
+import {
+  applyRememberedCompanyAction,
+  clearTenantCookiesAction,
+  setSelectedCompanyAction,
+} from '@/app/actions/tenantActions';
 import { SetupProfileModal } from '@/features/auth/components/SetupProfileModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,10 +84,11 @@ export function SelectCompanyClient({ initialCompanies, user: initialUser }: Sel
       .slice(0, 18); // Limita a 18 caracteres
   };
 
-  const handleSelectCompany = (companyId: string, remember: boolean = false) => {
-    document.cookie = `selectedCompanyId=${companyId}; path=/; max-age=86400; SameSite=Lax`;
-    if (remember) {
-      document.cookie = `rememberedCompanyId=${companyId}; path=/; max-age=2592000; SameSite=Lax`;
+  const handleSelectCompany = async (companyId: string, remember: boolean = false) => {
+    const result = await setSelectedCompanyAction(companyId, remember);
+    if (!result.success) {
+      setError(result.error);
+      return;
     }
     router.push('/dashboard');
     router.refresh();
@@ -91,9 +97,10 @@ export function SelectCompanyClient({ initialCompanies, user: initialUser }: Sel
   useEffect(() => {
     const loadData = async () => {
       try {
-        const match = document.cookie.match(/(^| )rememberedCompanyId=([^;]+)/);
-        if (match) {
-          handleSelectCompany(match[2]);
+        const remembered = await applyRememberedCompanyAction();
+        if (remembered.success && remembered.data?.applied) {
+          router.push('/dashboard');
+          router.refresh();
           return;
         }
 
@@ -117,7 +124,7 @@ export function SelectCompanyClient({ initialCompanies, user: initialUser }: Sel
         }
 
         if (currentCompanies.length === 0) {
-          const result = await getUserCompaniesAction(currentUser.id);
+          const result = await getUserCompaniesAction();
           if (!result.success) throw new Error(result.error);
           currentCompanies = (result.companies as Company[]) || [];
           setCompanies(currentCompanies);
@@ -160,7 +167,8 @@ export function SelectCompanyClient({ initialCompanies, user: initialUser }: Sel
       const result = await activateCompanyAction(pendingCompany.id, onboardingCompanyName, onboardingCnpj);
       if (!result.success) throw new Error(result.error);
       
-      document.cookie = `selectedCompanyId=${pendingCompany.id}; path=/; max-age=86400; SameSite=Lax`;
+      const selectResult = await setSelectedCompanyAction(pendingCompany.id);
+      if (!selectResult.success) throw new Error(selectResult.error);
       setPendingCompany(null);
       router.refresh();
       router.push('/dashboard');
@@ -182,10 +190,10 @@ export function SelectCompanyClient({ initialCompanies, user: initialUser }: Sel
     setIsCreating(true);
     setError(null);
     try {
-      const result = await createCompanySelfServiceAction(authUser.id, planName, maxSites);
+      const result = await createCompanySelfServiceAction(planName, maxSites);
       if (!result.success) throw new Error(result.error);
       
-      const updated = await getUserCompaniesAction(authUser.id);
+      const updated = await getUserCompaniesAction();
       if (updated.success) {
         const updatedCompanies = updated.companies as Company[];
         setCompanies(updatedCompanies);
@@ -213,7 +221,7 @@ export function SelectCompanyClient({ initialCompanies, user: initialUser }: Sel
       await upgradeCompanyPlanAction(upgradingCompanyId, planName, maxSites);
       setShowUpgradeModal(false);
       setUpgradingCompanyId(null);
-      const updated = await getUserCompaniesAction(authUser.id);
+      const updated = await getUserCompaniesAction();
       if (updated.success) setCompanies(updated.companies as Company[]);
     } catch (err: any) {
       setError('Falha ao processar upgrade.');
@@ -224,8 +232,7 @@ export function SelectCompanyClient({ initialCompanies, user: initialUser }: Sel
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    document.cookie = 'selectedCompanyId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    document.cookie = 'rememberedCompanyId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    await clearTenantCookiesAction();
     router.push('/auth/login');
     router.refresh();
   };

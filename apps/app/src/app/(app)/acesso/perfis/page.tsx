@@ -14,7 +14,10 @@ import {
 	AccessProfile,
 	accessProfilesService,
 } from '@/features/admin/services/accessProfiles.service';
+import { getCompanySitesAction } from '@/app/actions/globalUsers';
 import { getActiveCompanyId } from '@/lib/utils';
+import { exportToCsv } from '@/lib/exportUtils';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
 import { Download, Loader2, Plus, ShieldCheck, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -28,8 +31,10 @@ export default function PerfisDeAcessoPage() {
 	const [scopeFilter, setScopeFilter] = useState('');
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSaving, setIsSaving] = useState(false);
+	const [sites, setSites] = useState<{ id: string; name: string }[]>([]);
 	const itemsPerPage = 10;
 	const { addToast } = useToast();
+	const confirm = useConfirm();
 
 	const loadData = async () => {
 		try {
@@ -40,8 +45,14 @@ export default function PerfisDeAcessoPage() {
 					'Instância não encontrada. Faça login novamente.',
 				);
 
-			const data = await accessProfilesService.getProfiles(companyId);
+			const [data, sitesRes] = await Promise.all([
+				accessProfilesService.getProfiles(companyId),
+				getCompanySitesAction(),
+			]);
 			setPerfis(data);
+			if (sitesRes.success) {
+				setSites(sitesRes.sites || []);
+			}
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : 'Erro desconhecido ao carregar perfis';
 			addToast('Erro ao carregar perfis: ' + message, 'error');
@@ -102,15 +113,36 @@ export default function PerfisDeAcessoPage() {
 	};
 
 	const handleDelete = async (item: AccessProfile) => {
-		if (confirm(`Deseja realmente excluir o perfil ${item.name}?`)) {
+		const ok = await confirm({
+			title: 'Excluir perfil',
+			description: `Deseja realmente excluir o perfil ${item.name}?`,
+			confirmLabel: 'Excluir',
+			variant: 'destructive',
+		});
+		if (ok) {
 			try {
 				await accessProfilesService.deleteProfile(item.id);
 				addToast('Perfil excluído com sucesso!', 'success');
 				loadData();
-			} catch (error: any) {
-				addToast('Erro ao excluir: ' + error.message, 'error');
+			} catch (error: unknown) {
+				const message = error instanceof Error ? error.message : 'Erro desconhecido';
+				addToast('Erro ao excluir: ' + message, 'error');
 			}
 		}
+	};
+
+	const handleExport = () => {
+		exportToCsv(
+			filteredPerfis.map((p) => ({
+				nome: p.name,
+				escopo: p.scope,
+			})),
+			[
+				{ key: 'nome', label: 'Nome' },
+				{ key: 'escopo', label: 'Escopo de Obras' },
+			],
+			'perfis-acesso',
+		);
 	};
 
 	const handleFormClose = () => {
@@ -156,8 +188,9 @@ export default function PerfisDeAcessoPage() {
 								<X size={20} />
 							</button>
 							<AccessProfileForm
-								initialData={editingItem}
+								initialData={editingItem ?? undefined}
 								companyId={getActiveCompanyId() || ''}
+								sites={sites}
 								onSubmit={handleSave}
 								onCancel={handleFormClose}
 								isLoading={isSaving}
@@ -268,25 +301,14 @@ export default function PerfisDeAcessoPage() {
 
 				<div className="flex items-center justify-end gap-3 w-full mt-4">
 					{perfis.length > 0 && (
-						<>
-							<Button
-								variant="outline"
-								onClick={() => {}}
-								className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
-							>
-								<Upload className="h-4 w-4" />
-								<span>Importar</span>
-							</Button>
-
-							<Button
-								variant="outline"
-								onClick={() => {}}
-								className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
-							>
-								<Download className="h-4 w-4" />
-								<span>Exportar</span>
-							</Button>
-						</>
+						<Button
+							variant="outline"
+							onClick={handleExport}
+							className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
+						>
+							<Download className="h-4 w-4" />
+							<span>Exportar</span>
+						</Button>
 					)}
 				</div>
 			</div>

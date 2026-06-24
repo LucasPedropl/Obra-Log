@@ -14,8 +14,12 @@ import { ProtectedRoute } from '@/components/shared/ProtectedRoute';
 import { CollaboratorForm } from '@/features/colaboradores/components/CollaboratorForm';
 import { useCollaborators } from '@/features/colaboradores/hooks/useCollaborators';
 import { getActiveCompanyId } from '@/lib/utils';
+import { maskCpfDisplay } from '@/lib/maskUtils';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import { Download, ExternalLink, FileIcon, FileText, Image as ImageIcon, Loader2, Upload, Users, X } from 'lucide-react';
+import { exportToCsv } from '@/lib/exportUtils';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
+import { Download, Upload, Users, X } from 'lucide-react';
+import { TablePageSkeleton } from '@/components/shared/TablePageSkeleton';
 import { useEffect, useState } from 'react';
 
 export default function ColaboradoresPage() {
@@ -32,6 +36,7 @@ export default function ColaboradoresPage() {
 
 	const { fetchCollaborators, deleteCollaborator, isLoading } =
 		useCollaborators();
+	const confirm = useConfirm();
 	const itemsPerPage = 10;
 
 	const loadColaboradores = async () => {
@@ -83,10 +88,32 @@ export default function ColaboradoresPage() {
 	};
 
 	const handleDelete = async (item: any) => {
-		if (confirm(`Deseja realmente excluir o colaborador ${item.name}?`)) {
+		const ok = await confirm({
+			title: 'Excluir colaborador',
+			description: `Deseja realmente excluir o colaborador ${item.name}?`,
+			confirmLabel: 'Excluir',
+			variant: 'destructive',
+		});
+		if (ok) {
 			await deleteCollaborator(item.id);
 			loadColaboradores();
 		}
+	};
+
+	const handleExport = () => {
+		exportToCsv(
+			filteredColaboradores.map((c) => ({
+				nome: c.name,
+				email: c.email ?? '',
+				cargo: c.role ?? '',
+			})),
+			[
+				{ key: 'nome', label: 'Nome' },
+				{ key: 'email', label: 'E-mail' },
+				{ key: 'cargo', label: 'Cargo' },
+			],
+			'colaboradores',
+		);
 	};
 
 	const handleFormClose = () => {
@@ -134,9 +161,7 @@ export default function ColaboradoresPage() {
 				)}
 
 				{isLoading && colaboradores.length === 0 ? (
-					<div className="flex justify-center p-12">
-						<Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-					</div>
+					<TablePageSkeleton rows={8} columns={3} />
 				) : colaboradores.length === 0 ? (
 					<EmptyState
 						title="Equipe Vazia"
@@ -192,7 +217,15 @@ export default function ColaboradoresPage() {
 											</div>
 										)
 									},
-									{ header: 'Cargo/Função', accessorKey: 'role' },
+									{ header: 'Cargo/Função', accessorKey: 'role_title' },
+									{
+										header: 'CPF',
+										cell: (item) => (
+											<span className="font-mono text-gray-500">
+												{maskCpfDisplay(item.cpf)}
+											</span>
+										),
+									},
 									{ 
 										header: 'Admissão', 
 										cell: (colab) => colab.created_at
@@ -230,7 +263,7 @@ export default function ColaboradoresPage() {
 					{colaboradores.length > 0 && (
 						<Button
 							variant="outline"
-							onClick={() => {}}
+							onClick={handleExport}
 							className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
 						>
 							<Download className="h-4 w-4" />

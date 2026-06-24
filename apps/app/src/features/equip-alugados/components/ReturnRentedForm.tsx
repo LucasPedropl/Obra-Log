@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
-import { createClient } from '@/config/supabase';
-
+import { useState } from 'react';
 import { X, Upload, Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { returnRentedEquipmentAction } from '@/app/actions/rentedActions';
 import { RentedEquipment } from '../hooks/useRentedEquipments';
-
-interface SimpleUser {
-	id: string;
-	email?: string;
-}
+import {
+	returnRentedSchema,
+	ReturnRentedFormData,
+} from '../schemas/returnRentedSchema';
 
 interface ReturnRentedFormProps {
 	siteId: string;
@@ -22,81 +22,40 @@ export function ReturnRentedForm({
 	onCancel,
 	onSaved,
 }: ReturnRentedFormProps) {
-	const supabase = createClient();
-	const [user, setUser] = useState<SimpleUser | null>(null);
-	useEffect(() => {
-		supabase.auth.getUser().then(({ data }) => {
-			if (data?.user) setUser(data.user as unknown as SimpleUser);
-		});
-	}, [supabase]);
-	const [exitDate, setExitDate] = useState('');
-	const [observations, setObservations] = useState('');
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+	const [submitError, setSubmitError] = useState<string | null>(null);
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!exitDate || !user) {
-			setError('Preencha a data e hora da devolução.');
-			return;
-		}
+	const {
+		register,
+		handleSubmit,
+		formState: { errors, isSubmitting },
+	} = useForm<ReturnRentedFormData>({
+		resolver: zodResolver(returnRentedSchema),
+		defaultValues: {
+			exitDate: '',
+			observations: '',
+		},
+	});
 
-		setIsSubmitting(true);
-		setError(null);
-
+	const onSubmit = async (data: ReturnRentedFormData) => {
 		try {
-			// 1. Update Rented Equipments table
-			const { error: rentError } = await supabase
-				.from('rented_equipments')
-				.update({
-					status: 'RETURNED',
-					exit_date: new Date(exitDate).toISOString(),
-					description: observations
-						? `${equipment.description || ''}\n[Devolução]: ${observations}`
-						: equipment.description,
-				})
-				.eq('id', equipment.id);
+			setSubmitError(null);
+			const result = await returnRentedEquipmentAction({
+				siteId,
+				equipmentId: equipment.id,
+				inventoryId: equipment.inventory_id,
+				quantity: equipment.quantity,
+				exitDate: data.exitDate,
+				observations: data.observations ?? '',
+				currentDescription: equipment.description,
+			});
 
-			if (rentError) throw rentError;
-
-			// 2. Adjust site_inventory (remove quantity)
-			if (equipment.inventory_id && equipment.quantity > 0) {
-				const { data: invData } = await supabase
-					.from('site_inventory')
-					.select('quantity')
-					.eq('id', equipment.inventory_id)
-					.single();
-
-				if (invData) {
-					// Make sure we just zero out the quantity that we added, or simple decrement
-					const newQuantity = Math.max(
-						0,
-						invData.quantity - equipment.quantity,
-					);
-					await supabase
-						.from('site_inventory')
-						.update({ quantity: newQuantity })
-						.eq('id', equipment.inventory_id);
-
-					// 3. Register OUT movement
-					await supabase.from('site_movements').insert({
-						site_id: siteId,
-						inventory_id: equipment.inventory_id,
-						created_by: user.id,
-						type: 'OUT',
-						quantity_delta: equipment.quantity,
-						reason: 'TRANSFER',
-					});
-				}
-			}
-
+			if (!result.success) throw new Error(result.error);
 			onSaved();
 		} catch (err: unknown) {
-			const message = err instanceof Error ? err.message : 'Erro ao registrar devolução';
+			const message =
+				err instanceof Error ? err.message : 'Erro ao registrar devolução';
 			console.error(err);
-			setError(message);
-		} finally {
-			setIsSubmitting(false);
+			setSubmitError(message);
 		}
 	};
 
@@ -112,6 +71,7 @@ export function ReturnRentedForm({
 					</p>
 				</div>
 				<button
+					type="button"
 					onClick={onCancel}
 					className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-colors"
 				>
@@ -120,15 +80,15 @@ export function ReturnRentedForm({
 			</div>
 
 			<div className="flex-1 overflow-y-auto p-6">
-				{error && (
+				{submitError && (
 					<div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
-						{error}
+						{submitError}
 					</div>
 				)}
 
 				<form
 					id="return-rented-form"
-					onSubmit={handleSubmit}
+					onSubmit={handleSubmit(onSubmit)}
 					className="space-y-6"
 				>
 					<div>
@@ -137,11 +97,14 @@ export function ReturnRentedForm({
 						</label>
 						<input
 							type="datetime-local"
-							value={exitDate}
-							onChange={(e) => setExitDate(e.target.value)}
+							{...register('exitDate')}
 							className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#101828]"
-							required
 						/>
+						{errors.exitDate && (
+							<span className="text-destructive text-xs mt-1">
+								{errors.exitDate.message}
+							</span>
+						)}
 					</div>
 
 					<div>
@@ -149,8 +112,7 @@ export function ReturnRentedForm({
 							Observações da Devolução
 						</label>
 						<textarea
-							value={observations}
-							onChange={(e) => setObservations(e.target.value)}
+							{...register('observations')}
 							rows={3}
 							className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#101828]"
 							placeholder="Condição em que foi devolvido..."

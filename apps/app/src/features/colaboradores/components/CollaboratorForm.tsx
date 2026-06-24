@@ -1,9 +1,9 @@
 'use client';
 
 import { createAccessProfileAdmin } from '@/app/actions/adminActions';
+import { deletePrivateDocumentAction, uploadPrivateDocumentAction } from '@/app/actions/documentStorageActions';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useToast } from '@/components/ui/toaster';
-import { createClient } from '@/config/supabase';
 import { AccessProfileForm } from '@/features/admin/components/AccessProfileForm';
 import { maskCEP, maskCPF, maskDate, maskPhone, unmask } from '@/lib/maskUtils';
 import { getActiveCompanyId } from '@/lib/utils';
@@ -70,7 +70,6 @@ export function CollaboratorForm({
 	onCancel,
 	initialData,
 }: CollaboratorFormProps) {
-	const supabase = createClient();
 	const { addToast } = useToast();
 	const [currentStep, setCurrentStep] = useState(1);
 	const [accessProfiles, setAccessProfiles] = useState<any[]>([]);
@@ -191,31 +190,23 @@ export function CollaboratorForm({
 		try {
 			for (let i = 0; i < files.length; i++) {
 				const file = files[i];
-				const fileExt = file.name.split('.').pop();
-				const fileName = `${crypto.randomUUID()}.${fileExt}`;
-				const filePath = `${companyId}/${fileName}`;
+				const formData = new FormData();
+				formData.append('file', file);
+				formData.append('bucket', 'collaborator-documents');
 
-				const { error: uploadError } = await supabase.storage
-					.from('collaborator-documents')
-					.upload(filePath, file);
-
-				if (uploadError) throw uploadError;
-
-				const {
-					data: { publicUrl },
-				} = supabase.storage
-					.from('collaborator-documents')
-					.getPublicUrl(filePath);
+				const result = await uploadPrivateDocumentAction(formData);
+				if (!result.success) throw new Error(result.error);
 
 				setDocuments((prev) => [
 					...prev,
-					{ name: file.name, url: publicUrl, path: filePath },
+					{ name: file.name, url: result.signedUrl, path: result.path },
 				]);
 			}
 			addToast('Arquivo(s) enviado(s) com sucesso!', 'success');
-		} catch (err: any) {
-			console.error('Upload error:', err);
-			addToast(`Erro no upload: ${err.message}`, 'error');
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : 'Erro no upload';
+			console.error('Upload error:', message);
+			addToast(`Erro no upload: ${message}`, 'error');
 		} finally {
 			setIsUploading(false);
 			if (e.target) e.target.value = '';
@@ -225,9 +216,10 @@ export function CollaboratorForm({
 	const removeDocument = async (index: number) => {
 		const doc = documents[index];
 		if (doc.path) {
-			await supabase.storage
-				.from('collaborator-documents')
-				.remove([doc.path]);
+			await deletePrivateDocumentAction({
+				bucket: 'collaborator-documents',
+				path: doc.path,
+			});
 		}
 		setDocuments((prev) => prev.filter((_, i) => i !== index));
 	};

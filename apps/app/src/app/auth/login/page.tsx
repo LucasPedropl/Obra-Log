@@ -43,9 +43,20 @@ export default function LoginPage() {
           </div>
 
           {/* Rodapé do Card */}
-          <div className="py-6 bg-[#F1F3F5] border-t border-gray-200 text-center">
+          <div className="py-6 bg-[#F1F3F5] border-t border-gray-200 text-center space-y-2">
             <p className="text-xs text-gray-600 font-medium">
               Precisa de acesso? <button className="text-[#101828] font-bold hover:underline">Contate o administrador</button>
+            </p>
+            <p className="text-[10px] text-gray-500 px-6 leading-relaxed">
+              Ao entrar, você concorda com nossa{' '}
+              <a href="/privacidade" className="text-[#101828] font-semibold hover:underline">
+                Política de Privacidade
+              </a>{' '}
+              e{' '}
+              <a href="/termos" className="text-[#101828] font-semibold hover:underline">
+                Termos de Uso
+              </a>
+              .
             </p>
           </div>
         </div>

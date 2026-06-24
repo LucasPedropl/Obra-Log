@@ -6,7 +6,10 @@
 		"dev": "start http://localhost:3005 && cross-env CI=true next dev -p 3005",
 		"build": "next build",
 		"start": "next start -p 3005",
-		"lint": "eslint"
+		"lint": "eslint",
+		"test": "vitest run",
+		"test:unit": "vitest run",
+		"test:e2e": "playwright test"
 	},
 	"dependencies": {
 		"@fontsource/inter": "^5.2.8",
@@ -34,12 +37,16 @@
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.61.1",
 		"@types/node": "^20",
+		"@vitejs/plugin-react": "^4.7.0",
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
 		"cross-env": "^10.1.0",
 		"eslint": "^9",
 		"eslint-config-next": "16.2.2",
-		"typescript": "^5"
+		"jsdom": "^26.1.0",
+		"typescript": "^5",
+		"vitest": "^3.2.4"
 	}
 }

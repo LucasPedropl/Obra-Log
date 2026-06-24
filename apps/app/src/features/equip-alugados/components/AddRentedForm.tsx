@@ -1,25 +1,31 @@
 import { useState, useEffect } from 'react';
-import { createClient } from '@/config/supabase';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+	deletePrivateDocumentAction,
+	uploadPrivateDocumentAction,
+} from '@/app/actions/documentStorageActions';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import { SearchableInput } from '@/components/ui/searchable-input';
-
-import { X, Upload, Loader2, Info, Plus } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { getActiveCompanyId } from '@/lib/utils';
-
 import { ManageSelectsModal } from '@/features/insumos/components/ManageSelectsModal';
 import { useToast } from '@/components/ui/toaster';
 import { useSupplyItems } from '@/features/insumos/hooks/useSupplyItems';
 import { useRentedEquipments } from '@/features/equip-alugados/hooks/useRentedEquipments';
+import {
+	addRentedSchema,
+	AddRentedFormData,
+} from '../schemas/addRentedSchema';
+import { AddRentedCategoryModal } from './AddRentedCategoryModal';
+import {
+	AddRentedPhotosSection,
+	RentedPhoto,
+} from './AddRentedPhotosSection';
 
 interface AddRentedFormProps {
 	siteId: string;
 	onCancel: () => void;
 	onSaved: () => void;
-}
-
-interface SimpleUser {
-	id: string;
-	email?: string;
 }
 
 interface CategoryItem {
@@ -34,35 +40,15 @@ export function AddRentedForm({
 	onSaved,
 }: AddRentedFormProps) {
 	const { addToast } = useToast();
-	const supabase = createClient();
 	const { fetchCategories, createCategory } = useSupplyItems();
 	const { registerEquipment } = useRentedEquipments(siteId);
 
-	const [user, setUser] = useState<SimpleUser | null>(null);
-	useEffect(() => {
-		supabase.auth.getUser().then(({ data }) => {
-			if (data?.user) setUser(data.user as unknown as SimpleUser);
-		});
-	}, [supabase]);
-	const [name, setName] = useState('');
-	const [categoryId, setCategoryId] = useState('');
-	const [quantity, setQuantity] = useState<number | ''>('');
-	const [entryDate, setEntryDate] = useState('');
-	const [observations, setObservations] = useState('');
-	const [listType, setListType] = useState<'FERRAMENTA' | 'EPI'>(
-		'FERRAMENTA',
-	);
-
 	const [categories, setCategories] = useState<CategoryItem[]>([]);
 	const [companyId, setCompanyId] = useState<string | null>(null);
-
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-
-	const [photos, setPhotos] = useState<{ name: string; url: string; path: string }[]>([]);
+	const [submitError, setSubmitError] = useState<string | null>(null);
+	const [photos, setPhotos] = useState<RentedPhoto[]>([]);
 	const [isUploading, setIsUploading] = useState(false);
 
-	// Category creation state
 	const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
 	const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 	const [newCategoryData, setNewCategoryData] = useState({
@@ -70,6 +56,23 @@ export function AddRentedForm({
 		secondary: '',
 	});
 	const [isCreatingCat, setIsCreatingCat] = useState(false);
+
+	const {
+		register,
+		handleSubmit,
+		control,
+		setValue,
+		formState: { errors, isSubmitting },
+	} = useForm<AddRentedFormData>({
+		resolver: zodResolver(addRentedSchema),
+		defaultValues: {
+			name: '',
+			categoryId: '',
+			quantity: 1,
+			entryDate: '',
+			observations: '',
+		},
+	});
 
 	useEffect(() => {
 		async function fetchContext() {
@@ -80,10 +83,8 @@ export function AddRentedForm({
 				if (!currentCompanyId) {
 					throw new Error('Nenhuma empresa ativa selecionada.');
 				}
-				
-				setCompanyId(currentCompanyId);
 
-				// Fetch categories using client hook
+				setCompanyId(currentCompanyId);
 				const catData = await fetchCategories();
 
 				if (catData) {
@@ -92,20 +93,23 @@ export function AddRentedForm({
 							id: c.id,
 							primary_category: c.primary_category,
 							secondary_category: c.secondary_category || '',
-						})) as CategoryItem[],
+						})),
 					);
 				}
 			} catch (err: unknown) {
-				const message = err instanceof Error ? err.message : 'Erro ao carregar dados do sistema';
+				const message =
+					err instanceof Error
+						? err.message
+						: 'Erro ao carregar dados do sistema';
 				console.error('Error fetching context:', err);
-				setError(message);
+				setSubmitError(message);
 			}
 		}
 		fetchContext();
-	}, [siteId, supabase]);
+	}, [siteId, fetchCategories]);
 
-	const handleCreateCategory = (newCategoryLabel: string) => {
-		setNewCategoryData({ primary: newCategoryLabel, secondary: '' });
+	const handleCreateCategory = () => {
+		setNewCategoryData({ primary: '', secondary: '' });
 		setIsCategoryModalOpen(true);
 	};
 
@@ -131,7 +135,7 @@ export function AddRentedForm({
 					a.primary_category.localeCompare(b.primary_category),
 				),
 			);
-			setCategoryId(newId);
+			setValue('categoryId', newId, { shouldValidate: true });
 			addToast('Categoria cadastrada com sucesso!', 'success');
 			setIsCategoryModalOpen(false);
 			setNewCategoryData({ primary: '', secondary: '' });
@@ -173,31 +177,24 @@ export function AddRentedForm({
 		try {
 			for (let i = 0; i < files.length; i++) {
 				const file = files[i];
-				const fileExt = file.name.split('.').pop();
-				const fileName = `${crypto.randomUUID()}.${fileExt}`;
-				const filePath = `${companyId}/${fileName}`;
+				const formData = new FormData();
+				formData.append('file', file);
+				formData.append('bucket', 'rented-equipments');
 
-				const { error: uploadError } = await supabase.storage
-					.from('rented-equipments')
-					.upload(filePath, file);
-
-				if (uploadError) throw uploadError;
-
-				const {
-					data: { publicUrl },
-				} = supabase.storage
-					.from('rented-equipments')
-					.getPublicUrl(filePath);
+				const result = await uploadPrivateDocumentAction(formData);
+				if (!result.success) throw new Error(result.error);
 
 				setPhotos((prev) => [
 					...prev,
-					{ name: file.name, url: publicUrl, path: filePath },
+					{ name: file.name, url: result.signedUrl, path: result.path },
 				]);
 			}
 			addToast('Arquivo(s) enviado(s) com sucesso!', 'success');
-		} catch (err: any) {
-			console.error('Upload error:', err);
-			addToast(`Erro no upload: ${err.message}`, 'error');
+		} catch (err: unknown) {
+			const message =
+				err instanceof Error ? err.message : 'Erro no upload';
+			console.error('Upload error:', message);
+			addToast(`Erro no upload: ${message}`, 'error');
 		} finally {
 			setIsUploading(false);
 			if (e.target) e.target.value = '';
@@ -207,62 +204,51 @@ export function AddRentedForm({
 	const removePhoto = async (index: number) => {
 		const photo = photos[index];
 		if (photo.path) {
-			await supabase.storage
-				.from('rented-equipments')
-				.remove([photo.path]);
+			await deletePrivateDocumentAction({
+				bucket: 'rented-equipments',
+				path: photo.path,
+			});
 		}
 		setPhotos((prev) => prev.filter((_, i) => i !== index));
 	};
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (
-			!name ||
-			!categoryId ||
-			!quantity ||
-			!entryDate ||
-			!companyId ||
-			!user
-		) {
-			setError('Preencha todos os campos obrigatórios.');
+	const onSubmit = async (data: AddRentedFormData) => {
+		if (!companyId) {
+			setSubmitError('Nenhuma empresa ativa selecionada.');
 			return;
 		}
 
-		setIsSubmitting(true);
-		setError(null);
+		setSubmitError(null);
 
 		try {
-			// Find category name
 			const selectedCategory = categories.find(
-				(c) => c.id === categoryId,
+				(c) => c.id === data.categoryId,
 			);
 			const categoryName = selectedCategory?.primary_category || 'Geral';
-			const entryPhotosUrl = photos.length > 0 ? photos.map(p => p.url).join(';') : undefined;
+			const entryPhotosUrl =
+				photos.length > 0
+					? photos.map((p) => p.url).join(';')
+					: undefined;
 
-			// Chamar o hook para realizar as inserções
 			const result = await registerEquipment({
-				companyId,
-				userId: user.id,
-				name,
-				categoryId,
+				name: data.name,
+				categoryId: data.categoryId,
 				categoryName,
-				quantity: Number(quantity),
-				entryDate,
-				observations,
+				quantity: data.quantity,
+				entryDate: data.entryDate,
+				observations: data.observations ?? '',
 				entryPhotosUrl,
 			});
 
-			if (!result.success) {
-				throw new Error(result.error);
-			}
-
+			if (!result.success) throw new Error(result.error);
 			onSaved();
 		} catch (err: unknown) {
-			const message = err instanceof Error ? err.message : 'Erro ao salvar equipamento alugado';
+			const message =
+				err instanceof Error
+					? err.message
+					: 'Erro ao salvar equipamento alugado';
 			console.error('ERRO AO CADASTRAR EQUIPAMENTO:', err);
-			setError(message);
-		} finally {
-			setIsSubmitting(false);
+			setSubmitError(message);
 		}
 	};
 
@@ -278,6 +264,7 @@ export function AddRentedForm({
 					</p>
 				</div>
 				<button
+					type="button"
 					onClick={onCancel}
 					className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-colors"
 				>
@@ -286,15 +273,15 @@ export function AddRentedForm({
 			</div>
 
 			<div className="flex-1 overflow-y-auto p-6">
-				{error && (
+				{submitError && (
 					<div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
-						{error}
+						{submitError}
 					</div>
 				)}
 
 				<form
 					id="add-rented-form"
-					onSubmit={handleSubmit}
+					onSubmit={handleSubmit(onSubmit)}
 					className="space-y-6"
 				>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 z-50">
@@ -304,33 +291,47 @@ export function AddRentedForm({
 							</label>
 							<input
 								type="text"
-								value={name}
-								onChange={(e) => setName(e.target.value)}
+								{...register('name')}
 								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#101828]"
 								placeholder="Betoneira 400L"
-								required
 							/>
+							{errors.name && (
+								<span className="text-destructive text-xs mt-1">
+									{errors.name.message}
+								</span>
+							)}
 						</div>
 
 						<div className="col-span-2 sm:col-span-1">
 							<label className="block text-sm font-medium text-gray-700 mb-1">
 								Categoria *
 							</label>
-							<div className="w-full">
-								<SearchableSelect
-									options={categories.map((c) => ({
-										value: c.id,
-									label: c.secondary_category
-										? `${c.primary_category} - ${c.secondary_category}`
-										: c.primary_category,
-								}))}
-								value={categoryId}
-								onChange={(val) => setCategoryId(val)}
-								placeholder="Selecionar categoria..."
-								onManage={() => setIsManageCategoriesOpen(true)}
-								onCreate={() => handleCreateCategory('')}
-								/>
-							</div>
+							<Controller
+								name="categoryId"
+								control={control}
+								render={({ field }) => (
+									<SearchableSelect
+										options={categories.map((c) => ({
+											value: c.id,
+											label: c.secondary_category
+												? `${c.primary_category} - ${c.secondary_category}`
+												: c.primary_category,
+										}))}
+										value={field.value}
+										onChange={field.onChange}
+										placeholder="Selecionar categoria..."
+										onManage={() =>
+											setIsManageCategoriesOpen(true)
+										}
+										onCreate={handleCreateCategory}
+									/>
+								)}
+							/>
+							{errors.categoryId && (
+								<span className="text-destructive text-xs mt-1">
+									{errors.categoryId.message}
+								</span>
+							)}
 						</div>
 
 						<div className="col-span-2 sm:col-span-1">
@@ -339,18 +340,15 @@ export function AddRentedForm({
 							</label>
 							<input
 								type="number"
-								min="1"
-								value={quantity}
-								onChange={(e) =>
-									setQuantity(
-										e.target.value
-											? Number(e.target.value)
-											: '',
-									)
-								}
+								min={1}
+								{...register('quantity', { valueAsNumber: true })}
 								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#101828]"
-								required
 							/>
+							{errors.quantity && (
+								<span className="text-destructive text-xs mt-1">
+									{errors.quantity.message}
+								</span>
+							)}
 						</div>
 
 						<div className="col-span-2 sm:col-span-1">
@@ -359,11 +357,14 @@ export function AddRentedForm({
 							</label>
 							<input
 								type="datetime-local"
-								value={entryDate}
-								onChange={(e) => setEntryDate(e.target.value)}
+								{...register('entryDate')}
 								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#101828]"
-								required
 							/>
+							{errors.entryDate && (
+								<span className="text-destructive text-xs mt-1">
+									{errors.entryDate.message}
+								</span>
+							)}
 						</div>
 
 						<div className="col-span-2">
@@ -371,84 +372,19 @@ export function AddRentedForm({
 								Observações
 							</label>
 							<textarea
-								value={observations}
-								onChange={(e) =>
-									setObservations(e.target.value)
-								}
+								{...register('observations')}
 								rows={3}
 								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#101828]"
 								placeholder="Detalhes ou condições da entrega..."
 							/>
 						</div>
 
-						<div className="col-span-2">
-							<label className="block text-sm font-medium text-gray-700 mb-1">
-								Anexo / Foto (Opcional)
-							</label>
-							<label className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center text-gray-500 hover:text-gray-700 hover:border-gray-400 hover:bg-gray-50 cursor-pointer transition-colors relative">
-								{isUploading ? (
-									<Loader2 className="w-6 h-6 mb-2 text-[#101828] animate-spin" />
-								) : (
-									<Upload className="w-6 h-6 mb-2 text-gray-400" />
-								)}
-								<span className="text-sm font-medium">
-									{isUploading ? 'Enviando arquivos...' : 'Clique ou arraste imagens aqui'}
-								</span>
-								<span className="text-xs mt-1">
-									PNG, JPG ou PDF (Máx. 5MB)
-								</span>
-								<input
-									type="file"
-									className="hidden"
-									accept="image/*,.pdf"
-									multiple
-									onChange={handleFileUpload}
-									disabled={isUploading}
-								/>
-							</label>
-
-							{photos.length > 0 && (
-								<div className="mt-3 space-y-2">
-									<label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">
-										Arquivos Anexados ({photos.length})
-									</label>
-									<div className="grid grid-cols-1 gap-2">
-										{photos.map((photo, idx) => (
-											<div
-												key={idx}
-												className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg group"
-											>
-												<div className="flex items-center gap-3 overflow-hidden">
-													<div className="w-8 h-8 bg-white rounded border border-gray-200 flex items-center justify-center text-gray-600 flex-shrink-0">
-														<Info className="w-4 h-4" />
-													</div>
-													<div className="flex flex-col min-w-0">
-														<a
-															href={photo.url}
-															target="_blank"
-															rel="noopener noreferrer"
-															className="text-xs font-bold text-gray-800 truncate hover:text-black hover:underline"
-														>
-															{photo.name}
-														</a>
-														<span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
-															Ver arquivo
-														</span>
-													</div>
-												</div>
-												<button
-													type="button"
-													onClick={() => removePhoto(idx)}
-													className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
-												>
-													<X className="w-4 h-4" />
-												</button>
-											</div>
-										))}
-									</div>
-								</div>
-							)}
-						</div>
+						<AddRentedPhotosSection
+							photos={photos}
+							isUploading={isUploading}
+							onUpload={handleFileUpload}
+							onRemove={removePhoto}
+						/>
 					</div>
 				</form>
 			</div>
@@ -480,82 +416,14 @@ export function AddRentedForm({
 			</div>
 
 			{isCategoryModalOpen && (
-				<div className="fixed inset-0 z-[999] flex items-center justify-center p-4 h-[100dvh] w-screen">
-					<div 
-						className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300" 
-						onClick={() => setIsCategoryModalOpen(false)}
-					/>
-					<div className="relative bg-white text-gray-900 rounded-xl shadow-2xl border border-gray-200 w-[500px] max-w-[95vw] p-6 animate-in fade-in zoom-in-95 duration-200">
-						<h3 className="text-xl font-bold mb-4">
-							Nova Categoria
-						</h3>
-						<form
-							onSubmit={confirmCreateCategory}
-							className="space-y-4"
-						>
-							<div>
-								<label className="block text-sm font-medium mb-1">
-									Categoria Primária
-								</label>
-								<input
-									type="text"
-									required
-									value={newCategoryData.primary}
-									onChange={(e) =>
-										setNewCategoryData({
-											...newCategoryData,
-											primary: e.target.value,
-										})
-									}
-									className="w-full flex h-10 rounded-[5px] border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#101828]/20 focus:border-[#101828]"
-									placeholder="Ex: Escoras"
-								/>
-							</div>
-							<div>
-								<label className="block text-sm font-medium mb-1">
-									Categoria Secundária (Opcional)
-								</label>
-								<SearchableInput
-									options={Array.from(
-										new Set(
-											categories
-												.map(
-													(c) => c.secondary_category,
-												)
-												.filter(Boolean) as string[],
-										),
-									).sort()}
-									value={newCategoryData.secondary}
-									onChange={(val) =>
-										setNewCategoryData({
-											...newCategoryData,
-											secondary: val,
-										})
-									}
-									placeholder="Ex: Metálicas"
-								/>
-							</div>
-							<div className="flex justify-end gap-3 pt-4">
-								<button
-									type="button"
-									onClick={() =>
-										setIsCategoryModalOpen(false)
-									}
-									className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-[5px]"
-								>
-									Cancelar
-								</button>
-								<button
-									type="submit"
-									disabled={isCreatingCat}
-									className="px-4 py-2 text-sm font-semibold text-white bg-[#101828] hover:bg-[#1b263b] rounded-[5px] shadow-sm disabled:opacity-50"
-								>
-									Salvar Categoria
-								</button>
-							</div>
-						</form>
-					</div>
-				</div>
+				<AddRentedCategoryModal
+					categories={categories}
+					newCategoryData={newCategoryData}
+					isCreating={isCreatingCat}
+					onClose={() => setIsCategoryModalOpen(false)}
+					onChange={setNewCategoryData}
+					onSubmit={confirmCreateCategory}
+				/>
 			)}
 
 			{isManageCategoriesOpen && (

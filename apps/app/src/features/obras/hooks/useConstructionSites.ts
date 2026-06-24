@@ -1,16 +1,17 @@
 import {
 	createConstructionSiteAdmin,
+	deleteConstructionSiteAdmin,
 	getConstructionSitesAdmin,
+	updateConstructionSiteAdmin,
 } from '@/app/actions/adminActions';
 import { getActiveCompanyId } from '@/lib/utils';
 import { useState } from 'react';
-import { z } from 'zod';
+import {
+	constructionSiteSchema,
+	type ConstructionSiteFormData,
+} from '../schemas/constructionSiteSchema';
 
-export const constructionSiteSchema = z.object({
-	name: z.string().min(1, 'O nome da obra é obrigatório'),
-});
-
-export type ConstructionSiteFormData = z.infer<typeof constructionSiteSchema>;
+export { constructionSiteSchema, type ConstructionSiteFormData };
 
 export function useConstructionSites() {
 	const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +44,56 @@ export function useConstructionSites() {
 		}
 	};
 
+	const updateConstructionSite = async (
+		id: string,
+		data: ConstructionSiteFormData,
+	) => {
+		try {
+			setIsLoading(true);
+			setError(null);
+			const companyId = getActiveCompanyId();
+			if (!companyId) {
+				setError('Nenhuma empresa selecionada.');
+				return false;
+			}
+			await updateConstructionSiteAdmin(id, {
+				name: data.name,
+				company_id: companyId,
+			});
+			return true;
+		} catch (err: unknown) {
+			const message =
+				err instanceof Error ? err.message : 'Erro ao atualizar a obra';
+			console.error('Error updating construction site:', err);
+			setError(message);
+			return false;
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const deleteConstructionSite = async (id: string) => {
+		try {
+			setIsLoading(true);
+			setError(null);
+			const companyId = getActiveCompanyId();
+			if (!companyId) {
+				setError('Nenhuma empresa selecionada.');
+				return false;
+			}
+			await deleteConstructionSiteAdmin(id, companyId);
+			return true;
+		} catch (err: unknown) {
+			const message =
+				err instanceof Error ? err.message : 'Erro ao excluir a obra';
+			console.error('Error deleting construction site:', err);
+			setError(message);
+			return false;
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
 	const fetchConstructionSites = async () => {
 		try {
 			setIsLoading(true);
@@ -68,6 +119,8 @@ export function useConstructionSites() {
 
 	return {
 		createConstructionSite,
+		updateConstructionSite,
+		deleteConstructionSite,
 		fetchConstructionSites,
 		isLoading,
 		error,

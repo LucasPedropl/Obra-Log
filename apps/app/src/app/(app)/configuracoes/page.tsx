@@ -5,9 +5,14 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { createClient } from '@/config/supabase';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toaster';
+import {
+	getSettingsDataAction,
+	updateCompanySettingsAction,
+	updateProfileSettingsAction,
+} from '@/app/actions/settingsActions';
+import { SecurityTab } from '@/features/settings/components/SecurityTab';
 
 type Tab = 'profile' | 'company' | 'security';
 
@@ -18,34 +23,18 @@ export default function SettingsPage() {
 	const [saving, setSaving] = useState(false);
 	const [profile, setProfile] = useState({ id: '', full_name: '', email: '', avatar_url: '' });
 	const [company, setCompany] = useState({ id: '', name: '', cnpj: '' });
-	const supabase = createClient();
 
 	useEffect(() => {
 		const loadData = async () => {
 			try {
-				const { data: { user } } = await supabase.auth.getUser();
-				if (!user) return;
-
-				// Perfil
-				const { data: dbProfile } = await supabase
-					.from('profiles')
-					.select('*')
-					.eq('id', user.id)
-					.single();
-
-				if (dbProfile) setProfile(dbProfile);
-
-				// Empresa Atual
-				const companyCookie = document.cookie.match(/(^| )selectedCompanyId=([^;]+)/);
-				const companyId = companyCookie ? companyCookie[2] : null;
-
-				if (companyId) {
-					const { data: dbCompany } = await supabase
-						.from('companies')
-						.select('*')
-						.eq('id', companyId)
-						.maybeSingle();
-					if (dbCompany) setCompany(dbCompany);
+				const result = await getSettingsDataAction();
+				if (!result.success) {
+					console.error('Error loading settings', result.error);
+					return;
+				}
+				if (result.data) {
+					setProfile(result.data.profile);
+					setCompany(result.data.company);
 				}
 			} catch (error) {
 				console.error('Error loading settings', error);
@@ -61,15 +50,16 @@ export default function SettingsPage() {
 		e.preventDefault();
 		setSaving(true);
 		try {
-			const { error } = await supabase
-				.from('profiles')
-				.update({ full_name: profile.full_name })
-				.eq('id', profile.id);
+			const result = await updateProfileSettingsAction({
+				fullName: profile.full_name,
+			});
 
-			if (error) throw error;
+			if (!result.success) throw new Error(result.error);
 			addToast('Perfil atualizado com sucesso!', 'success');
-		} catch (error: any) {
-			addToast('Erro ao salvar perfil: ' + error.message, 'error');
+		} catch (error: unknown) {
+			const message =
+				error instanceof Error ? error.message : 'Erro desconhecido';
+			addToast('Erro ao salvar perfil: ' + message, 'error');
 		} finally {
 			setSaving(false);
 		}
@@ -79,15 +69,17 @@ export default function SettingsPage() {
 		e.preventDefault();
 		setSaving(true);
 		try {
-			const { error } = await supabase
-				.from('companies')
-				.update({ name: company.name, cnpj: company.cnpj })
-				.eq('id', company.id);
+			const result = await updateCompanySettingsAction({
+				name: company.name,
+				cnpj: company.cnpj,
+			});
 
-			if (error) throw error;
+			if (!result.success) throw new Error(result.error);
 			addToast('Dados da empresa atualizados!', 'success');
-		} catch (error: any) {
-			addToast('Erro ao salvar empresa: ' + error.message, 'error');
+		} catch (error: unknown) {
+			const message =
+				error instanceof Error ? error.message : 'Erro desconhecido';
+			addToast('Erro ao salvar empresa: ' + message, 'error');
 		} finally {
 			setSaving(false);
 		}
@@ -264,46 +256,7 @@ export default function SettingsPage() {
 						</form>
 					)}
 
-					{activeTab === 'security' && (
-						<div className="p-6 space-y-6">
-							<div className="border-b border-gray-100 pb-4">
-								<h3 className="text-lg font-bold text-gray-900">Segurança da Conta</h3>
-								<p className="text-sm text-gray-500">Proteja seu acesso e gerencie sua senha.</p>
-							</div>
-
-							<div className="space-y-4">
-								<div className="flex items-center justify-between p-4 border border-gray-100 hover:border-blue-200 transition-colors">
-									<div className="flex gap-4 items-center">
-										<div className="w-10 h-10 bg-blue-50 text-blue-600 flex items-center justify-center">
-											<Icon name="Key" size={20} />
-										</div>
-										<div>
-											<h4 className="text-sm font-bold text-gray-900">Alterar Senha</h4>
-											<p className="text-xs text-gray-500 mt-0.5">Recomendamos uma senha de no mínimo 8 caracteres.</p>
-										</div>
-									</div>
-									<Button variant="outline" className="rounded-none text-[10px] font-bold uppercase tracking-widest px-4 border-gray-200">
-										Redefinir
-									</Button>
-								</div>
-
-								<div className="flex items-center justify-between p-4 border border-gray-100 hover:border-red-200 transition-colors">
-									<div className="flex gap-4 items-center">
-										<div className="w-10 h-10 bg-red-50 text-red-600 flex items-center justify-center">
-											<Icon name="WarningCircle" size={20} />
-										</div>
-										<div>
-											<h4 className="text-sm font-bold text-red-900">Excluir Minha Conta</h4>
-											<p className="text-xs text-red-500 mt-0.5">Esta ação é irreversível e apagará todos os seus dados.</p>
-										</div>
-									</div>
-									<Button variant="ghost" className="rounded-none text-[10px] font-bold uppercase tracking-widest px-4 text-red-600 hover:bg-red-50">
-										Excluir
-									</Button>
-								</div>
-							</div>
-						</div>
-					)}
+					{activeTab === 'security' && <SecurityTab />}
 				</main>
 			</div>
 		</div>

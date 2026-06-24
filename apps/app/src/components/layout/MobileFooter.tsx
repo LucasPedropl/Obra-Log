@@ -5,34 +5,34 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Package, Wrench, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useActiveObra } from '@/context/ActiveObraContext';
 
-interface MobileFooterProps {
-	obraId: string;
-}
-
-export function MobileFooter({ obraId }: MobileFooterProps) {
+export function MobileFooter() {
 	const pathname = usePathname();
+	const { selectedObraId } = useActiveObra();
+
+	if (!selectedObraId) return null;
 
 	const items = [
 		{
 			name: 'Visão Geral',
 			icon: LayoutDashboard,
-			href: `/obras/${obraId}/visao-geral`,
+			href: `/obras/${selectedObraId}/visao-geral`,
 		},
 		{
 			name: 'Almoxarifado',
 			icon: Package,
-			href: `/obras/${obraId}/almoxarifado`,
+			href: `/obras/${selectedObraId}/almoxarifado`,
 		},
 		{
 			name: 'Ferramentas',
 			icon: Wrench,
-			href: `/obras/${obraId}/ferramentas/disponiveis`,
+			href: `/obras/${selectedObraId}/ferramentas/disponiveis`,
 		},
 		{
 			name: 'Menu',
 			icon: Menu,
-			href: `/obras/${obraId}/menu`,
+			href: `/obras/${selectedObraId}/menu`,
 		},
 	];
 
@@ -41,8 +41,7 @@ export function MobileFooter({ obraId }: MobileFooterProps) {
 			{items.map((item) => {
 				const isActive =
 					pathname === item.href ||
-					(item.name === 'Ferramentas' &&
-						pathname?.includes('/ferramentas'));
+					(item.name === 'Ferramentas' && pathname?.includes('/ferramentas'));
 
 				return (
 					<Link
@@ -57,10 +56,7 @@ export function MobileFooter({ obraId }: MobileFooterProps) {
 					>
 						<item.icon
 							size={20}
-							className={cn(
-								'mb-0.5',
-								isActive && 'stroke-[2.5px]',
-							)}
+							className={cn('mb-0.5', isActive && 'stroke-[2.5px]')}
 						/>
 						<span className="text-[10px] font-medium text-center leading-none">
 							{item.name}

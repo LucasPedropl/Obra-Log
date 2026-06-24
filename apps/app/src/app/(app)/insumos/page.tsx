@@ -15,7 +15,10 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { SupplyItemForm } from '@/features/insumos/components/SupplyItemForm';
 import { useSupplyItems } from '@/features/insumos/hooks/useSupplyItems';
 import { getActiveCompanyId } from '@/lib/utils';
-import { Download, Loader2, PackageOpen, Upload, X } from 'lucide-react';
+import { exportToCsv } from '@/lib/exportUtils';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
+import { Download, PackageOpen, Upload, X } from 'lucide-react';
+import { TablePageSkeleton } from '@/components/shared/TablePageSkeleton';
 import { useEffect, useState } from 'react';
 
 export default function InsumosPage() {
@@ -34,6 +37,7 @@ export default function InsumosPage() {
 	const [stockControlFilter, setStockControlFilter] = useState('');
 
 	const { fetchSupplyItems, deleteSupplyItem, isLoading } = useSupplyItems();
+	const confirm = useConfirm();
 	const itemsPerPage = 10;
 
 	const loadInsumos = async () => {
@@ -128,10 +132,34 @@ export default function InsumosPage() {
 	};
 
 	const handleDelete = async (item: any) => {
-		if (confirm(`Deseja realmente excluir o insumo ${item.name}?`)) {
+		const ok = await confirm({
+			title: 'Excluir insumo',
+			description: `Deseja realmente excluir o insumo ${item.name}?`,
+			confirmLabel: 'Excluir',
+			variant: 'destructive',
+		});
+		if (ok) {
 			await deleteSupplyItem(item.id);
 			loadInsumos();
 		}
+	};
+
+	const handleExport = () => {
+		exportToCsv(
+			filteredInsumos.map((item) => ({
+				nome: item.name,
+				unidade: item.measurement_units?.abbreviation ?? '',
+				categoria: item.categories?.primary_category ?? '',
+				estoque_minimo: item.min_threshold ?? 0,
+			})),
+			[
+				{ key: 'nome', label: 'Nome' },
+				{ key: 'unidade', label: 'Unidade' },
+				{ key: 'categoria', label: 'Categoria' },
+				{ key: 'estoque_minimo', label: 'Estoque Mínimo' },
+			],
+			'insumos',
+		);
 	};
 
 	const handleFormClose = () => {
@@ -185,9 +213,7 @@ export default function InsumosPage() {
 				)}
 
 				{isLoading && insumos.length === 0 ? (
-					<div className="flex justify-center p-12">
-						<Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-					</div>
+					<TablePageSkeleton rows={8} columns={4} />
 				) : insumos.length === 0 ? (
 					<EmptyState
 						title="Nenhum Insumo Cadastrado"
@@ -348,7 +374,7 @@ export default function InsumosPage() {
 					{insumos.length > 0 && (
 						<Button
 							variant="outline"
-							onClick={() => {}}
+							onClick={handleExport}
 							className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
 						>
 							<Download className="h-4 w-4" />

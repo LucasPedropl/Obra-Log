@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, X } from 'lucide-react';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/config/supabase';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { createToolLoanAction } from '@/app/actions/toolsActions';
 import { useCollaborators } from '@/features/colaboradores/hooks/useCollaborators';
+import {
+	createLoanToolSchema,
+	LoanToolFormData,
+} from '../schemas/loanToolSchema';
 
 interface LoanToolFormProps {
 	onCancel: () => void;
@@ -18,6 +25,8 @@ interface SimpleCollaborator {
 	name: string;
 }
 
+const defaultLoanDate = () => new Date().toISOString().slice(0, 16);
+
 export function LoanToolForm({
 	onCancel,
 	onSaved,
@@ -27,8 +36,26 @@ export function LoanToolForm({
 	availableQuantity,
 }: LoanToolFormProps) {
 	const { fetchCollaborators } = useCollaborators();
-	const [collaborators, setCollaborators] = useState<SimpleCollaborator[]>([]);
+	const [collaborators, setCollaborators] = useState<SimpleCollaborator[]>(
+		[],
+	);
 	const [loadingCollabs, setLoadingCollabs] = useState(true);
+	const [submitError, setSubmitError] = useState<string | null>(null);
+
+	const {
+		register,
+		handleSubmit,
+		control,
+		formState: { errors, isSubmitting },
+	} = useForm<LoanToolFormData>({
+		resolver: zodResolver(createLoanToolSchema(availableQuantity)),
+		defaultValues: {
+			collaboratorId: '',
+			loanDate: defaultLoanDate(),
+			quantity: 1,
+			observation: '',
+		},
+	});
 
 	useEffect(() => {
 		const load = async () => {
@@ -38,55 +65,28 @@ export function LoanToolForm({
 			setLoadingCollabs(false);
 		};
 		load();
-	}, []);
+	}, [fetchCollaborators]);
 
-	const [selectedCollaborator, setSelectedCollaborator] = useState('');
-	const [loanDate, setLoanDate] = useState(
-		new Date().toISOString().slice(0, 16),
-	);
-	const [quantity, setQuantity] = useState(1);
-	const [observation, setObservation] = useState('');
-
-	const [isSaving, setIsSaving] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const supabase = createClient();
-
-	const handleSave = async () => {
-		if (!selectedCollaborator || quantity <= 0) {
-			setError('Preencha todos os campos obrigatórios corretamente.');
-			return;
-		}
-
-		if (quantity > availableQuantity) {
-			setError(`Quantidade máxima disponível é ${availableQuantity}.`);
-			return;
-		}
-
+	const onSubmit = async (data: LoanToolFormData) => {
 		try {
-			setIsSaving(true);
-			setError(null);
+			setSubmitError(null);
+			const result = await createToolLoanAction({
+				siteId,
+				inventoryId,
+				collaboratorId: data.collaboratorId,
+				quantity: data.quantity,
+				loanDate: data.loanDate,
+				observation: data.observation || null,
+				availableQuantity,
+			});
 
-			const { error: insertError } = await supabase
-				.from('tool_loans')
-				.insert({
-					site_id: siteId,
-					inventory_id: inventoryId,
-					collaborator_id: selectedCollaborator,
-					quantity: quantity,
-					loan_date: new Date(loanDate).toISOString(),
-					notes_on_loan: observation || null,
-					status: 'OPEN',
-				});
-
-			if (insertError) throw insertError;
-
+			if (!result.success) throw new Error(result.error);
 			onSaved();
 		} catch (err: unknown) {
-			const message = err instanceof Error ? err.message : 'Erro ao realizar o empréstimo';
+			const message =
+				err instanceof Error ? err.message : 'Erro ao realizar o empréstimo';
 			console.error('Error creating loan:', err);
-			setError(message);
-		} finally {
-			setIsSaving(false);
+			setSubmitError(message);
 		}
 	};
 
@@ -113,6 +113,7 @@ export function LoanToolForm({
 					</p>
 				</div>
 				<button
+					type="button"
 					onClick={onCancel}
 					className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-[5px] transition-colors p-1.5"
 				>
@@ -120,10 +121,13 @@ export function LoanToolForm({
 				</button>
 			</div>
 
-			<div className="p-6 flex flex-col gap-5 bg-gray-50/50">
-				{error && (
+			<form
+				onSubmit={handleSubmit(onSubmit)}
+				className="p-6 flex flex-col gap-5 bg-gray-50/50"
+			>
+				{submitError && (
 					<div className="p-3 bg-red-50 border border-red-200 rounded-[5px] text-red-700 text-sm">
-						{error}
+						{submitError}
 					</div>
 				)}
 
@@ -131,20 +135,27 @@ export function LoanToolForm({
 					<label className="text-sm font-semibold text-gray-700">
 						Colaborador *
 					</label>
-					<select
-						value={selectedCollaborator}
-						onChange={(e) =>
-							setSelectedCollaborator(e.target.value)
-						}
-						className="w-full bg-white border border-gray-300 rounded-[5px] py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#101828]/20 focus:border-[#101828] shadow-sm transition-all"
-					>
-						<option value="">Selecione um colaborador...</option>
-						{collaborators.map((collab) => (
-							<option key={collab.id} value={collab.id}>
-								{collab.name}
-							</option>
-						))}
-					</select>
+					<Controller
+						name="collaboratorId"
+						control={control}
+						render={({ field }) => (
+							<SearchableSelect
+								options={collaborators.map((collab) => ({
+									value: collab.id,
+									label: collab.name,
+								}))}
+								value={field.value}
+								onChange={field.onChange}
+								placeholder="Selecione um colaborador..."
+								className="rounded-[5px] h-10 border border-gray-300 bg-white shadow-sm"
+							/>
+						)}
+					/>
+					{errors.collaboratorId && (
+						<span className="text-destructive text-xs">
+							{errors.collaboratorId.message}
+						</span>
+					)}
 				</div>
 
 				<div className="flex flex-col gap-2">
@@ -153,10 +164,14 @@ export function LoanToolForm({
 					</label>
 					<input
 						type="datetime-local"
-						value={loanDate}
-						onChange={(e) => setLoanDate(e.target.value)}
+						{...register('loanDate')}
 						className="w-full bg-white border border-gray-300 rounded-[5px] py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#101828]/20 focus:border-[#101828] shadow-sm transition-all"
 					/>
+					{errors.loanDate && (
+						<span className="text-destructive text-xs">
+							{errors.loanDate.message}
+						</span>
+					)}
 				</div>
 
 				<div className="flex flex-col gap-2">
@@ -165,12 +180,16 @@ export function LoanToolForm({
 					</label>
 					<input
 						type="number"
-						min="1"
+						min={1}
 						max={availableQuantity}
-						value={quantity}
-						onChange={(e) => setQuantity(Number(e.target.value))}
+						{...register('quantity', { valueAsNumber: true })}
 						className="w-24 bg-white border border-gray-300 rounded-[5px] py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#101828]/20 focus:border-[#101828] shadow-sm transition-all"
 					/>
+					{errors.quantity && (
+						<span className="text-destructive text-xs">
+							{errors.quantity.message}
+						</span>
+					)}
 				</div>
 
 				<div className="flex flex-col gap-2">
@@ -178,30 +197,30 @@ export function LoanToolForm({
 						Observações (Opcional)
 					</label>
 					<textarea
-						value={observation}
-						onChange={(e) => setObservation(e.target.value)}
+						{...register('observation')}
 						placeholder="Detalhes sobre o estado da ferramenta, etc..."
 						className="w-full bg-white border border-gray-300 rounded-[5px] py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#101828]/20 focus:border-[#101828] shadow-sm transition-all min-h-[80px]"
 					/>
 				</div>
-			</div>
 
-			<div className="p-5 border-t border-gray-200 flex items-center justify-end gap-3 bg-white rounded-b-xl">
-				<Button
-					variant="ghost"
-					onClick={onCancel}
-					className="text-gray-600 hover:bg-gray-100 font-semibold px-6"
-				>
-					Cancelar
-				</Button>
-				<Button
-					onClick={handleSave}
-					disabled={isSaving || !selectedCollaborator || quantity < 1}
-					className="bg-[#101828] hover:bg-[#1b263b] text-white font-semibold px-8"
-				>
-					{isSaving ? 'Salvando...' : 'Emprestar'}
-				</Button>
-			</div>
+				<div className="p-5 border-t border-gray-200 flex items-center justify-end gap-3 bg-white rounded-b-xl -mx-6 -mb-6 mt-2">
+					<Button
+						type="button"
+						variant="ghost"
+						onClick={onCancel}
+						className="text-gray-600 hover:bg-gray-100 font-semibold px-6"
+					>
+						Cancelar
+					</Button>
+					<Button
+						type="submit"
+						disabled={isSubmitting}
+						className="bg-[#101828] hover:bg-[#1b263b] text-white font-semibold px-8"
+					>
+						{isSubmitting ? 'Salvando...' : 'Emprestar'}
+					</Button>
+				</div>
+			</form>
 		</div>
 	);
 }

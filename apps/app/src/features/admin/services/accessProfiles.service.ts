@@ -1,4 +1,9 @@
 import { createClient } from '@/config/supabase';
+import {
+	createAccessProfileAction,
+	deleteAccessProfileAction,
+	updateAccessProfileAction,
+} from '@/app/actions/accessProfilesActions';
 
 export interface AccessProfile {
 	id: string;
@@ -19,10 +24,41 @@ export interface AccessProfile {
 	allowed_sites: string[];
 }
 
+function parseAllowedSites(profile: Record<string, unknown>): string[] {
+	const fromColumn = profile.allowed_sites;
+	if (Array.isArray(fromColumn)) {
+		return fromColumn.filter((id): id is string => typeof id === 'string');
+	}
+
+	const permissions = profile.permissions as
+		| Record<string, unknown>
+		| null
+		| undefined;
+	const fromPermissions = permissions?._allowed_sites;
+	if (Array.isArray(fromPermissions)) {
+		return fromPermissions.filter((id): id is string => typeof id === 'string');
+	}
+
+	return [];
+}
+
+function mapProfileRow(profile: Record<string, unknown>): AccessProfile {
+	const permissions = (profile.permissions || {}) as Record<string, unknown>;
+	const { _allowed_sites: _ignored, ...cleanPermissions } = permissions;
+
+	return {
+		...(profile as Omit<AccessProfile, 'permissions' | 'scope' | 'allowed_sites'>),
+		permissions: cleanPermissions as AccessProfile['permissions'],
+		scope:
+			profile.obra_scope === 'ALL' ? 'ALL_SITES' : 'SPECIFIC_SITES',
+		allowed_sites: parseAllowedSites(profile),
+	};
+}
+
 export const accessProfilesService = {
 	async getProfiles(companyId: string): Promise<AccessProfile[]> {
 		const supabase = createClient();
-		
+
 		const { data: profiles, error: profileError } = await supabase
 			.from('access_profiles')
 			.select('*')
@@ -33,82 +69,49 @@ export const accessProfilesService = {
 
 		if (!profiles || profiles.length === 0) return [];
 
-		return profiles.map(profile => ({
-			...profile,
-			permissions: profile.permissions || {},
-			scope: profile.obra_scope === 'ALL' ? 'ALL_SITES' : 'SPECIFIC_SITES',
-			allowed_sites: [], // Implementar futuramente se houver tabela de vínculo
-		})) as AccessProfile[];
+		return profiles.map((profile) =>
+			mapProfileRow(profile as Record<string, unknown>),
+		);
 	},
 
 	async createProfile(
 		data: Omit<AccessProfile, 'id'>,
 	): Promise<AccessProfile> {
-		const supabase = createClient();
-		
-		const { data: profile, error } = await supabase
-			.from('access_profiles')
-			.insert({
-				company_id: data.company_id,
-				name: data.name,
-				permissions: data.permissions || {},
-				obra_scope: data.scope === 'ALL_SITES' ? 'ALL' : 'SELECTED'
-			})
-			.select()
-			.single();
+		const result = await createAccessProfileAction({
+			company_id: data.company_id,
+			name: data.name,
+			permissions: data.permissions,
+			scope: data.scope,
+			allowed_sites: data.allowed_sites,
+		});
 
-		if (error) throw error;
-
-		return {
-			...profile,
-			permissions: profile.permissions || {},
-			scope: profile.obra_scope === 'ALL' ? 'ALL_SITES' : 'SPECIFIC_SITES',
-			allowed_sites: []
-		} as AccessProfile;
+		if (!result.success) throw new Error(result.error);
+		return result.data as AccessProfile;
 	},
 
 	async updateProfile(
 		id: string,
 		data: Partial<AccessProfile>,
 	): Promise<AccessProfile> {
-		const supabase = createClient();
-		
-		const updateData: any = {};
-		if (data.name) updateData.name = data.name;
-		if (data.permissions) updateData.permissions = data.permissions;
-		if (data.scope) updateData.obra_scope = data.scope === 'ALL_SITES' ? 'ALL' : 'SELECTED';
-		
-		const { data: updatedProfile, error } = await supabase
-			.from('access_profiles')
-			.update(updateData)
-			.eq('id', id)
-			.select()
-			.single();
+		const result = await updateAccessProfileAction(id, {
+			name: data.name,
+			permissions: data.permissions,
+			scope: data.scope,
+			allowed_sites: data.allowed_sites,
+		});
 
-		if (error) throw error;
-
-		return {
-			...updatedProfile,
-			permissions: updatedProfile.permissions || {},
-			scope: updatedProfile.obra_scope === 'ALL' ? 'ALL_SITES' : 'SPECIFIC_SITES',
-			allowed_sites: []
-		} as AccessProfile;
+		if (!result.success) throw new Error(result.error);
+		return result.data as AccessProfile;
 	},
 
 	async deleteProfile(id: string): Promise<void> {
-		const supabase = createClient();
-		
-		const { error } = await supabase
-			.from('access_profiles')
-			.delete()
-			.eq('id', id);
-
-		if (error) throw error;
+		const result = await deleteAccessProfileAction(id);
+		if (!result.success) throw new Error(result.error);
 	},
 
 	async getProfileById(id: string): Promise<AccessProfile | null> {
 		const supabase = createClient();
-		
+
 		const { data, error } = await supabase
 			.from('access_profiles')
 			.select('*')
@@ -117,11 +120,6 @@ export const accessProfilesService = {
 
 		if (error) return null;
 
-		return {
-			...data,
-			permissions: data.permissions || {},
-			scope: data.obra_scope === 'ALL' ? 'ALL_SITES' : 'SPECIFIC_SITES',
-			allowed_sites: [],
-		} as AccessProfile;
+		return mapProfileRow(data as Record<string, unknown>);
 	},
 };

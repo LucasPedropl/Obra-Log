@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { exportToCsv } from '@/lib/exportUtils';
 
 interface ConstructionSite {
 	id: string;
@@ -46,6 +47,21 @@ export default function ObrasPage() {
 		loadObras();
 	};
 
+	const handleExport = () => {
+		exportToCsv(
+			obras.map((o) => ({
+				nome: o.name,
+				colaboradores: o.collaborators_count ?? 0,
+				insumos: o.inventory_count ?? 0,
+			})),
+			[
+				{ key: 'nome', label: 'Nome' },
+				{ key: 'colaboradores', label: 'Colaboradores' },
+				{ key: 'insumos', label: 'Insumos' },
+			],
+			'obras',
+		);
+	};
 	const currentObras = obras.slice(
 		(currentPage - 1) * itemsPerPage,
 		currentPage * itemsPerPage,
@@ -163,19 +179,10 @@ export default function ObrasPage() {
 				)}
 
 				<div className="flex items-center justify-end gap-3 w-full mt-4">
-					<Button
-						variant="outline"
-						onClick={() => {}}
-						className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
-					>
-						<Upload className="h-4 w-4" />
-						<span>Importar</span>
-					</Button>
-
 					{obras.length > 0 && (
 						<Button
 							variant="outline"
-							onClick={() => {}}
+							onClick={handleExport}
 							className="flex items-center gap-2 text-gray-700 bg-white border-gray-300 hover:bg-gray-50 rounded-[5px] shadow-sm"
 						>
 							<Download className="h-4 w-4" />

@@ -120,6 +120,7 @@ export default function FerramentasEmUsoPage({
 				>
 					<div onClick={(e) => e.stopPropagation()}>
 						<ReturnToolForm
+							siteId={siteId}
 							loanId={selectedLoan.id}
 							toolName={selectedLoan.toolName}
 							collaboratorName={selectedLoan.collaboratorName}

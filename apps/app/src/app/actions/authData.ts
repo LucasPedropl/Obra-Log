@@ -1,41 +1,83 @@
 'use server';
-import { createServerSupabaseClient } from '@/config/supabaseServer';
+
+import { z } from 'zod';
 import { supabaseAdmin } from '@/config/supabaseAdmin';
+import { safeLogError } from '@/lib/safeLog';
+import {
+	getAuthenticatedUserId,
+	getValidatedCompanyId,
+} from './_helpers';
+
+const companyIdSchema = z.string().uuid('ID da empresa inválido');
+
+const activateCompanySchema = z.object({
+	companyId: z.string().uuid(),
+	name: z.string().min(1, 'Nome da empresa é obrigatório'),
+	cnpj: z.string(),
+});
+
+const upgradePlanSchema = z.object({
+	companyId: z.string().uuid(),
+	newPlanName: z.string().min(1),
+	newMaxSites: z.number().int().min(1),
+});
+
+const createCompanySchema = z.object({
+	planName: z.string().min(1),
+	maxSites: z.number().int().min(1),
+});
+
+const setupProfileSchema = z.object({
+	fullName: z.string().min(1, 'Nome completo é obrigatório'),
+	newPassword: z.string().min(6).optional(),
+});
+
+type ActionResult<T = undefined> =
+	| { success: true } & (T extends undefined ? object : { [K in keyof T]: T[K] })
+	| { success: false; error: string };
+
+function zodMessage(error: unknown): string {
+	if (error instanceof z.ZodError) {
+		return error.issues[0]?.message ?? 'Dados inválidos';
+	}
+	return error instanceof Error ? error.message : 'Erro desconhecido';
+}
 
 /**
- * Retorna as Empresas (Companies) vinculadas ao usuário.
- * Busca diretamente na tabela company_users.
+ * Retorna as Empresas (Companies) vinculadas ao usuário autenticado.
  */
-export async function getUserCompaniesAction(userId: string) {
+export async function getUserCompaniesAction() {
 	try {
-		// 1. Buscar quais empresas o usuário está vinculado e qual seu papel (role)
+		const userId = await getAuthenticatedUserId();
+
 		const { data: userLinks, error: linkError } = await supabaseAdmin
 			.from('company_users')
 			.select('company_id, role, profile_id')
 			.eq('user_id', userId);
 
 		if (linkError) throw new Error(linkError.message);
-		if (!userLinks || userLinks.length === 0) return { success: true, companies: [] };
+		if (!userLinks || userLinks.length === 0) {
+			return { success: true, companies: [] };
+		}
 
-		// 1.1 Buscar nomes dos perfis separadamente (evita erro de falta de FK no Supabase)
-		const profileIds = userLinks.map(l => l.profile_id).filter(Boolean) as string[];
+		const profileIds = userLinks
+			.map((l) => l.profile_id)
+			.filter((id): id is string => Boolean(id));
 		const profilesMap: Record<string, string> = {};
-		
+
 		if (profileIds.length > 0) {
 			const { data: profilesData } = await supabaseAdmin
 				.from('access_profiles')
 				.select('id, name')
 				.in('id', profileIds);
-			
-			profilesData?.forEach(p => {
+
+			profilesData?.forEach((p) => {
 				profilesMap[p.id] = p.name;
 			});
 		}
 
-		const companyIds = userLinks.map(link => link.company_id);
+		const companyIds = userLinks.map((link) => link.company_id);
 
-		// 2. Buscar os dados das empresas e as contagens separadamente para evitar erro de relacionamento
-		// Buscamos as empresas básicas
 		const { data: companiesData, error: compError } = await supabaseAdmin
 			.from('companies')
 			.select('id, name, status, cnpj')
@@ -43,145 +85,186 @@ export async function getUserCompaniesAction(userId: string) {
 
 		if (compError) throw new Error(compError.message);
 
-		// 3. Buscar contagens para cada empresa de forma paralela e segura
-		const finalCompanies = await Promise.all(companiesData.map(async (company) => {
-			const link = userLinks.find(l => l.company_id === company.id);
+		const companyUserCounts = await Promise.all(
+			companyIds.map(async (id) => {
+				const { count } = await supabaseAdmin
+					.from('company_users')
+					.select('*', { count: 'exact', head: true })
+					.eq('company_id', id);
+				return { id, count: count || 0 };
+			}),
+		);
+
+		const companySiteCounts = await Promise.all(
+			companyIds.map(async (id) => {
+				const { count } = await supabaseAdmin
+					.from('construction_sites')
+					.select('*', { count: 'exact', head: true })
+					.eq('company_id', id);
+				return { id, count: count || 0 };
+			}),
+		);
+
+		const usersCountMap = Object.fromEntries(
+			companyUserCounts.map((c) => [c.id, c.count]),
+		);
+		const sitesCountMap = Object.fromEntries(
+			companySiteCounts.map((c) => [c.id, c.count]),
+		);
+
+		const finalCompanies = companiesData.map((company) => {
+			const link = userLinks.find((l) => l.company_id === company.id);
 			const role = link?.role || 'USER';
-			const profileName = link?.profile_id ? profilesMap[link.profile_id] : null;
-
-			// Contagem de usuários
-			const { count: usersCount } = await supabaseAdmin
-				.from('company_users')
-				.select('*', { count: 'exact', head: true })
-				.eq('company_id', company.id);
-
-			// Contagem de obras
-			const { count: sitesCount } = await supabaseAdmin
-				.from('construction_sites')
-				.select('*', { count: 'exact', head: true })
-				.eq('company_id', company.id);
+			const profileName = link?.profile_id
+				? profilesMap[link.profile_id]
+				: null;
 
 			return {
 				id: company.id,
 				name: company.name,
 				status: company.status,
 				cnpj: company.cnpj,
-				role: role,
+				role,
 				profile_name: profileName,
-				users_count: usersCount || 0,
-				active_sites_count: sitesCount || 0
+				users_count: usersCountMap[company.id] || 0,
+				active_sites_count: sitesCountMap[company.id] || 0,
 			};
-		}));
+		});
 
-		return { 
-			success: true, 
-			companies: finalCompanies 
-		};
+		return { success: true, companies: finalCompanies };
 	} catch (error: unknown) {
-		console.error('Erro em getUserCompaniesAction:', error);
-		const message = error instanceof Error ? error.message : 'Erro ao buscar empresas';
-		return { success: false, error: message };
+		safeLogError('getUserCompaniesAction', error);
+		return { success: false, error: zodMessage(error) };
 	}
 }
 
 /**
  * Ativa uma empresa PENDING preenchendo o nome e cnpj (opcional)
  */
-export async function activateCompanyAction(companyId: string, name: string, cnpj: string) {
+export async function activateCompanyAction(
+	companyId: string,
+	name: string,
+	cnpj: string,
+): Promise<ActionResult> {
 	try {
+		const data = activateCompanySchema.parse({ companyId, name, cnpj });
+		const userId = await getAuthenticatedUserId();
+
+		const { data: member } = await supabaseAdmin
+			.from('company_users')
+			.select('role')
+			.eq('user_id', userId)
+			.eq('company_id', data.companyId)
+			.maybeSingle();
+
+		if (!member || member.role !== 'ADMIN') {
+			throw new Error('Sem permissão para ativar esta empresa');
+		}
+
 		const { error } = await supabaseAdmin
 			.from('companies')
 			.update({
-				name,
-				cnpj: cnpj || null,
-				status: 'ACTIVE'
+				name: data.name,
+				cnpj: data.cnpj || null,
+				status: 'ACTIVE',
 			})
-			.eq('id', companyId);
+			.eq('id', data.companyId);
 
 		if (error) throw new Error(error.message);
-		
+
 		return { success: true };
 	} catch (error: unknown) {
-		console.error('Erro em activateCompanyAction:', error);
-		const message = error instanceof Error ? error.message : 'Erro ao ativar a empresa';
-		return { success: false, error: message };
+		safeLogError('activateCompanyAction', error);
+		return { success: false, error: zodMessage(error) };
 	}
 }
 
-// ───────────────────── Gestão de Planos & Multi-Empresa (Independente) ─────────────────────
-
-/**
- * Retorna os detalhes do plano de uma EMPRESA específica.
- * Atualmente simulado via metadados ou campos da tabela companies se existirem.
- */
 export async function getCompanyPlanDetailsAction(companyId: string) {
 	try {
-		// Buscamos os dados direto da tabela companies
+		const parsedCompanyId = companyIdSchema.parse(companyId);
+		await getValidatedCompanyId(undefined, parsedCompanyId);
+
 		const { data: company, error } = await supabaseAdmin
 			.from('companies')
 			.select('id, current_plan, max_sites')
-			.eq('id', companyId)
+			.eq('id', parsedCompanyId)
 			.single();
 
 		if (error) {
-			// Se os campos ainda não existem fisicamente, retornamos o padrão Starter
 			return { success: true, plan: 'Starter', maxSites: 2 };
 		}
 
-		return { 
-			success: true, 
-			plan: company.current_plan || 'Starter', 
-			maxSites: company.max_sites || 2 
+		return {
+			success: true,
+			plan: company.current_plan || 'Starter',
+			maxSites: company.max_sites || 2,
 		};
 	} catch (error: unknown) {
-		console.error('Erro em getCompanyPlanDetailsAction:', error);
+		safeLogError('getCompanyPlanDetailsAction', error);
 		return { success: false, error: 'Erro ao buscar plano da empresa.' };
 	}
 }
 
-/**
- * Atualiza o plano de uma EMPRESA específica (Upgrade Independente).
- */
-export async function upgradeCompanyPlanAction(companyId: string, newPlanName: string, newMaxSites: number) {
+export async function upgradeCompanyPlanAction(
+	companyId: string,
+	newPlanName: string,
+	newMaxSites: number,
+): Promise<ActionResult> {
 	try {
-		// Tentamos atualizar na tabela companies. 
-		// Nota: Se as colunas não existirem, o Supabase retornará erro e usaremos o metadata como fallback seguro.
+		const data = upgradePlanSchema.parse({
+			companyId,
+			newPlanName,
+			newMaxSites,
+		});
+		const userId = await getAuthenticatedUserId();
+
+		const { data: member } = await supabaseAdmin
+			.from('company_users')
+			.select('role')
+			.eq('user_id', userId)
+			.eq('company_id', data.companyId)
+			.maybeSingle();
+
+		if (!member || member.role !== 'ADMIN') {
+			throw new Error('Sem permissão para alterar o plano');
+		}
+
 		const { error } = await supabaseAdmin
 			.from('companies')
 			.update({
-				current_plan: newPlanName,
-				max_sites: newMaxSites
+				current_plan: data.newPlanName,
+				max_sites: data.newMaxSites,
 			})
-			.eq('id', companyId);
+			.eq('id', data.companyId);
 
 		if (error) throw new Error(error.message);
 		return { success: true };
 	} catch (error: unknown) {
-		console.error('Erro em upgradeCompanyPlanAction:', error);
+		safeLogError('upgradeCompanyPlanAction', error);
 		return { success: false, error: 'Erro ao atualizar plano da empresa.' };
 	}
 }
 
-/**
- * Cria uma nova empresa via auto-cadastro.
- * Agora recebe o plano e limites iniciais.
- */
-export async function createCompanySelfServiceAction(userId: string, planName: string, maxSites: number) {
+export async function createCompanySelfServiceAction(
+	planName: string,
+	maxSites: number,
+): Promise<ActionResult<{ companyId: string }>> {
 	try {
-		// 1. Criar a empresa PENDING com o plano selecionado
+		const data = createCompanySchema.parse({ planName, maxSites });
+		const userId = await getAuthenticatedUserId();
+
 		const { data: company, error: companyError } = await supabaseAdmin
 			.from('companies')
 			.insert({
 				name: 'Pendente: Nova Empresa',
 				status: 'PENDING',
-				current_plan: planName,
-				max_sites: maxSites
+				current_plan: data.planName,
+				max_sites: data.maxSites,
 			})
 			.select('id')
 			.single();
 
 		if (companyError) {
-			// Fallback se as colunas de plano ainda não existirem
 			const { data: companyRetry, error: retryError } = await supabaseAdmin
 				.from('companies')
 				.insert({
@@ -190,10 +273,9 @@ export async function createCompanySelfServiceAction(userId: string, planName: s
 				})
 				.select('id')
 				.single();
-			
+
 			if (retryError) throw new Error(retryError.message);
-			
-			// Vincular usuário
+
 			await supabaseAdmin.from('company_users').insert({
 				company_id: companyRetry.id,
 				user_id: userId,
@@ -203,7 +285,6 @@ export async function createCompanySelfServiceAction(userId: string, planName: s
 			return { success: true, companyId: companyRetry.id };
 		}
 
-		// 2. Vincular o usuário como ADMIN
 		const { error: linkError } = await supabaseAdmin
 			.from('company_users')
 			.insert({
@@ -216,47 +297,51 @@ export async function createCompanySelfServiceAction(userId: string, planName: s
 
 		return { success: true, companyId: company.id };
 	} catch (error: unknown) {
-		console.error('Erro no auto-cadastro:', error);
-		const message = error instanceof Error ? error.message : 'Erro interno';
-		return { success: false, error: message };
+		safeLogError('createCompanySelfServiceAction', error);
+		return { success: false, error: zodMessage(error) };
 	}
 }
 
-/**
- * Configura o perfil inicial do usuário (Nome e Nova Senha)
- * Chamado durante o onboarding (SetupProfileModal)
- */
-export async function setupInitialProfileAction(userId: string, fullName: string, newPassword?: string) {
+export async function setupInitialProfileAction(
+	fullName: string,
+	newPassword?: string,
+): Promise<ActionResult> {
 	try {
-		// 1. Atualizar Metadados do Usuário e Senha no Auth
-		const updatePayload: any = {
+		const data = setupProfileSchema.parse({ fullName, newPassword });
+		const userId = await getAuthenticatedUserId();
+
+		const updatePayload: {
+			user_metadata: Record<string, unknown>;
+			password?: string;
+		} = {
 			user_metadata: {
-				full_name: fullName,
-				require_password_change: false
-			}
+				full_name: data.fullName,
+				require_password_change: false,
+			},
 		};
 
-		if (newPassword) {
-			updatePayload.password = newPassword;
+		if (data.newPassword) {
+			updatePayload.password = data.newPassword;
 		}
 
-		const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, updatePayload);
+		const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+			userId,
+			updatePayload,
+		);
 		if (authError) throw new Error(`Erro Auth: ${authError.message}`);
 
-		// 2. Atualizar tabela pública public.profiles
 		const { error: profileError } = await supabaseAdmin
 			.from('profiles')
-			.update({ full_name: fullName })
+			.update({ full_name: data.fullName })
 			.eq('id', userId);
 
 		if (profileError) {
-			console.error('Erro ao atualizar profiles (não crítico se Auth funcionou):', profileError);
+			safeLogError('setupInitialProfileAction:profiles', profileError);
 		}
 
 		return { success: true };
 	} catch (error: unknown) {
-		console.error('Erro em setupInitialProfileAction:', error);
-		const message = error instanceof Error ? error.message : 'Erro ao configurar perfil';
-		return { success: false, error: message };
+		safeLogError('setupInitialProfileAction', error);
+		return { success: false, error: zodMessage(error) };
 	}
 }

@@ -3,7 +3,8 @@
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import { Edit2, Eye, Plus, Shield, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Building2, Edit2, Eye, Info, Plus, Shield, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 
 const APP_MODULES = [
@@ -56,16 +57,31 @@ interface PermissionAction {
 	delete: boolean;
 }
 
+interface SiteOption {
+	id: string;
+	name: string;
+}
+
+interface AccessProfileFormData {
+	company_id: string;
+	name: string;
+	scope: 'ALL_SITES' | 'SPECIFIC_SITES';
+	permissions: Record<string, PermissionAction>;
+	allowed_sites: string[];
+}
+
 export function AccessProfileForm({
 	initialData,
 	companyId,
+	sites = [],
 	onSubmit,
 	onCancel,
 	isLoading,
 }: {
-	initialData?: any;
+	initialData?: Partial<AccessProfileFormData>;
 	companyId: string;
-	onSubmit: (data: any) => void;
+	sites?: SiteOption[];
+	onSubmit: (data: AccessProfileFormData) => void;
 	onCancel: () => void;
 	isLoading: boolean;
 }) {
@@ -73,9 +89,20 @@ export function AccessProfileForm({
 	const [scope, setScope] = useState<'ALL_SITES' | 'SPECIFIC_SITES'>(
 		initialData?.scope || 'ALL_SITES',
 	);
+	const [allowedSites, setAllowedSites] = useState<string[]>(
+		initialData?.allowed_sites || [],
+	);
 	const [permissions, setPermissions] = useState<
 		Record<string, PermissionAction>
 	>(initialData?.permissions || {});
+
+	const toggleAllowedSite = (siteId: string) => {
+		setAllowedSites((current) =>
+			current.includes(siteId)
+				? current.filter((id) => id !== siteId)
+				: [...current, siteId],
+		);
+	};
 
 	const handleBulkPermissionChange = (modId: string, value: boolean) => {
 		setPermissions((prev) => {
@@ -178,7 +205,7 @@ export function AccessProfileForm({
 			name,
 			scope,
 			permissions,
-			allowed_sites: [],
+			allowed_sites: scope === 'ALL_SITES' ? [] : allowedSites,
 		});
 	};
 
@@ -219,7 +246,13 @@ export function AccessProfileForm({
 						</label>
 						<SearchableSelect
 							value={scope}
-							onChange={(val) => setScope(val as any)}
+							onChange={(val) => {
+								const nextScope = val as 'ALL_SITES' | 'SPECIFIC_SITES';
+								setScope(nextScope);
+								if (nextScope === 'ALL_SITES') {
+									setAllowedSites([]);
+								}
+							}}
 							options={[
 								{ value: 'ALL_SITES', label: 'Acesso a Todas as Obras da Empresa' },
 								{ value: 'SPECIFIC_SITES', label: 'Acesso Restrito a Obras Específicas' },
@@ -228,6 +261,56 @@ export function AccessProfileForm({
 						/>
 					</div>
 				</div>
+
+				{scope === 'SPECIFIC_SITES' && (
+					<div className="rounded-lg border border-amber-100 bg-amber-50/40 p-4 space-y-3">
+						<div className="flex items-center gap-2 text-amber-700">
+							<Building2 size={18} />
+							<h4 className="text-sm font-semibold">Obras permitidas neste perfil</h4>
+						</div>
+						<p className="text-xs text-gray-600">
+							Selecione as obras que usuários com este perfil poderão acessar.
+						</p>
+						{sites.length === 0 ? (
+							<div className="flex gap-3 rounded-lg border border-amber-100 bg-white p-3 text-amber-800">
+								<Info size={18} className="shrink-0" />
+								<p className="text-xs leading-relaxed">
+									Não há obras ativas cadastradas. O perfil poderá ser salvo,
+									mas usuários restritos não terão acesso a nenhuma obra.
+								</p>
+							</div>
+						) : (
+							<div className="grid max-h-48 grid-cols-1 gap-2 overflow-y-auto rounded-md border bg-white p-2 sm:grid-cols-2">
+								{sites.map((site) => (
+									<div
+										key={site.id}
+										onClick={() => toggleAllowedSite(site.id)}
+										className={cn(
+											'flex cursor-pointer items-center gap-2 rounded-md border p-2 transition-all',
+											allowedSites.includes(site.id)
+												? 'border-primary/30 bg-primary/10 font-medium text-primary'
+												: 'border-gray-200 bg-white text-gray-700 hover:border-gray-300',
+										)}
+									>
+										<div
+											className={cn(
+												'flex h-4 w-4 items-center justify-center rounded border transition-colors',
+												allowedSites.includes(site.id)
+													? 'border-primary bg-primary'
+													: 'border-gray-300',
+											)}
+										>
+											{allowedSites.includes(site.id) && (
+												<div className="h-1.5 w-1.5 rounded-full bg-white" />
+											)}
+										</div>
+										<span className="truncate text-xs">{site.name}</span>
+									</div>
+								))}
+							</div>
+						)}
+					</div>
+				)}
 			</div>
 
 			<div className="border border-border rounded-lg overflow-hidden">

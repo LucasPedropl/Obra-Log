@@ -1,41 +1,66 @@
 'use server';
+
+import { z } from 'zod';
 import { createServerSupabaseClient } from '@/config/supabaseServer';
-
 import { supabaseAdmin } from '@/config/supabaseAdmin';
+import {
+	assertInventoryBelongsToSite,
+	assertSiteAccess,
+	getAuthenticatedUserId,
+	getValidatedCompanyId,
+} from './_helpers';
 
-interface RegisterRentedEquipmentData {
-	siteId: string;
-	companyId: string;
-	userId: string;
+const registerRentedSchema = z.object({
+	siteId: z.string().uuid(),
+	name: z.string().min(1),
+	categoryId: z.string().uuid(),
+	categoryName: z.string().min(1),
+	quantity: z.number().int().positive(),
+	entryDate: z.string().min(1),
+	observations: z.string().optional(),
+	entryPhotosUrl: z.string().optional(),
+});
+
+const returnRentedSchema = z.object({
+	siteId: z.string().uuid(),
+	equipmentId: z.string().uuid(),
+	inventoryId: z.string().uuid().nullable().optional(),
+	quantity: z.number().int().positive(),
+	exitDate: z.string().min(1),
+	observations: z.string().optional(),
+	currentDescription: z.string().nullable().optional(),
+});
+
+type ActionResult = { success: true } | { success: false; error: string };
+
+interface RentedEquipment {
+	id: string;
+	site_id: string;
 	name: string;
-	categoryId: string;
-	categoryName: string;
+	category: string;
+	supplier: string | null;
 	quantity: number;
-	entryDate: string;
-	observations: string;
+	entry_date: string;
+	exit_date: string | null;
+	status: 'ACTIVE' | 'RETURNED';
+	description: string | null;
+	inventory_id: string | null;
+	entry_photos_url: string | null;
+	exit_photos_url: string | null;
 }
 
 /**
  * Registra a chegada de um equipamento alugado no servidor (Server Action).
- * Utiliza o supabaseAdmin para ignorar RLS em operações administrativas complexas.
  */
 export async function registerRentedEquipmentAction(
-	data: RegisterRentedEquipmentData,
-) {
-	const {
-		siteId,
-		companyId,
-		userId,
-		name,
-		categoryId,
-		categoryName,
-		quantity,
-		entryDate,
-		observations,
-	} = data;
-
+	input: z.infer<typeof registerRentedSchema>,
+): Promise<ActionResult> {
 	try {
-		// 1. Obter a unidade de medida padrão (UN)
+		const data = registerRentedSchema.parse(input);
+		const userId = await getAuthenticatedUserId();
+		const companyId = await getValidatedCompanyId(userId);
+		await assertSiteAccess(userId, data.siteId);
+
 		const { data: units, error: unitsError } = await supabaseAdmin
 			.from('measurement_units')
 			.select('id')
@@ -49,15 +74,13 @@ export async function registerRentedEquipmentAction(
 
 		const unitId = units?.[0]?.id || null;
 
-		// 2. Criar o item no Catálogo (Catalogs)
-		// Marcamos como is_rented_equipment: true
 		const { data: catalogItem, error: catalogError } = await supabaseAdmin
 			.from('catalogs')
 			.insert({
 				company_id: companyId,
-				category_id: categoryId,
+				category_id: data.categoryId,
 				unit_id: unitId,
-				name: `[ALUGADO] ${name}`,
+				name: `[ALUGADO] ${data.name}`,
 				is_stock_controlled: true,
 				is_rented_equipment: true,
 				is_tool: false,
@@ -66,91 +89,164 @@ export async function registerRentedEquipmentAction(
 			.single();
 
 		if (catalogError) {
-			console.error('Erro ao criar item no catálogo:', catalogError);
 			throw new Error(`Catálogo: ${catalogError.message}`);
 		}
-		const catalogId = catalogItem.id;
 
-		// 3. Adicionar ao Inventário da Obra (Site Inventory)
 		const { data: inventoryItem, error: invError } = await supabaseAdmin
 			.from('site_inventory')
 			.insert({
-				site_id: siteId,
-				catalog_id: catalogId,
-				quantity: quantity,
+				site_id: data.siteId,
+				catalog_id: catalogItem.id,
+				quantity: data.quantity,
 			})
 			.select('id')
 			.single();
 
 		if (invError) {
-			console.error('Erro ao criar item no inventário:', invError);
 			throw new Error(`Inventário: ${invError.message}`);
 		}
-		const inventoryId = inventoryItem.id;
 
-		// 4. Registrar Movimentação de Entrada (Site Movements)
 		const { error: moveError } = await supabaseAdmin
 			.from('site_movements')
 			.insert({
-				site_id: siteId,
-				inventory_id: inventoryId,
+				site_id: data.siteId,
+				inventory_id: inventoryItem.id,
 				created_by: userId,
 				type: 'IN',
-				quantity_delta: quantity,
+				quantity_delta: data.quantity,
 				reason: 'PURCHASE',
 			});
 
 		if (moveError) {
-			console.error('Erro ao registrar movimentação:', moveError);
 			throw new Error(`Movimentação: ${moveError.message}`);
 		}
 
-		// 5. Registrar o Equipamento Alugado (Rented Equipments)
 		const { error: rentError } = await supabaseAdmin
 			.from('rented_equipments')
 			.insert({
-				site_id: siteId,
-				name,
-				category: categoryName,
-				quantity: quantity,
-				entry_date: new Date(entryDate).toISOString(),
+				site_id: data.siteId,
+				name: data.name,
+				category: data.categoryName,
+				quantity: data.quantity,
+				entry_date: new Date(data.entryDate).toISOString(),
 				status: 'ACTIVE',
-				description: observations,
-				inventory_id: inventoryId,
+				description: data.observations ?? null,
+				inventory_id: inventoryItem.id,
+				entry_photos_url: data.entryPhotosUrl ?? null,
 			});
 
 		if (rentError) {
-			console.error('Erro ao registrar equipamento alugado:', rentError);
 			throw new Error(`Aluguel: ${rentError.message}`);
 		}
 
 		return { success: true };
 	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : 'Falha ao registrar equipamento alugado.';
-		console.error('ERRO NA SERVER ACTION (registerRentedEquipment):', error);
-		throw new Error(message);
+		console.error('registerRentedEquipmentAction:', error);
+		const message =
+			error instanceof z.ZodError
+				? error.issues[0]?.message ?? 'Dados inválidos'
+				: error instanceof Error
+					? error.message
+					: 'Falha ao registrar equipamento alugado';
+		return { success: false, error: message };
 	}
 }
 
-interface RentedEquipment {
-	id: string;
-	site_id: string;
-	name: string;
-	category: string;
-	quantity: number;
-	entry_date: string;
-	return_date: string | null;
-	status: 'ACTIVE' | 'RETURNED';
-	description: string | null;
-	inventory_id: string | null;
+/** Registers return of a rented equipment and adjusts inventory. */
+export async function returnRentedEquipmentAction(
+	input: z.infer<typeof returnRentedSchema>,
+): Promise<ActionResult> {
+	try {
+		const data = returnRentedSchema.parse(input);
+		const userId = await getAuthenticatedUserId();
+		await assertSiteAccess(userId, data.siteId);
+
+		const { data: equipment, error: fetchError } = await supabaseAdmin
+			.from('rented_equipments')
+			.select('id, site_id, status, inventory_id')
+			.eq('id', data.equipmentId)
+			.maybeSingle();
+
+		if (fetchError) throw new Error(fetchError.message);
+		if (!equipment || equipment.site_id !== data.siteId) {
+			throw new Error('Equipamento não encontrado');
+		}
+
+		const description = data.observations
+			? `${data.currentDescription || ''}\n[Devolução]: ${data.observations}`
+			: data.currentDescription ?? null;
+
+		const { error: rentError } = await supabaseAdmin
+			.from('rented_equipments')
+			.update({
+				status: 'RETURNED',
+				exit_date: new Date(data.exitDate).toISOString(),
+				description,
+			})
+			.eq('id', data.equipmentId);
+
+		if (rentError) throw new Error(rentError.message);
+
+		const inventoryId = data.inventoryId ?? equipment.inventory_id;
+		if (inventoryId && data.quantity > 0) {
+			await assertInventoryBelongsToSite(inventoryId, data.siteId);
+
+			const { data: invData, error: invFetchError } = await supabaseAdmin
+				.from('site_inventory')
+				.select('quantity')
+				.eq('id', inventoryId)
+				.eq('site_id', data.siteId)
+				.single();
+
+			if (invFetchError) throw new Error(invFetchError.message);
+
+			const newQuantity = Math.max(0, invData.quantity - data.quantity);
+
+			const { error: invUpdateError } = await supabaseAdmin
+				.from('site_inventory')
+				.update({ quantity: newQuantity })
+				.eq('id', inventoryId)
+				.eq('site_id', data.siteId);
+
+			if (invUpdateError) throw new Error(invUpdateError.message);
+
+			const { error: moveError } = await supabaseAdmin
+				.from('site_movements')
+				.insert({
+					site_id: data.siteId,
+					inventory_id: inventoryId,
+					created_by: userId,
+					type: 'OUT',
+					quantity_delta: data.quantity,
+					reason: 'TRANSFER',
+				});
+
+			if (moveError) throw new Error(moveError.message);
+		}
+
+		return { success: true };
+	} catch (error: unknown) {
+		console.error('returnRentedEquipmentAction:', error);
+		const message =
+			error instanceof z.ZodError
+				? error.issues[0]?.message ?? 'Dados inválidos'
+				: error instanceof Error
+					? error.message
+					: 'Erro ao registrar devolução';
+		return { success: false, error: message };
+	}
 }
 
 /**
  * Busca a lista de equipamentos alugados de uma obra.
- * Utiliza o supabaseAdmin para garantir que os dados sejam retornados independente de RLS no browser.
  */
-export async function getRentedEquipmentsAction(siteId: string): Promise<RentedEquipment[]> {
+export async function getRentedEquipmentsAction(
+	siteId: string,
+): Promise<RentedEquipment[]> {
 	try {
+		const userId = await getAuthenticatedUserId();
+		await assertSiteAccess(userId, siteId);
+
 		const supabase = await createServerSupabaseClient();
 		const { data, error } = await supabase
 			.from('rented_equipments')
@@ -165,7 +261,7 @@ export async function getRentedEquipmentsAction(siteId: string): Promise<RentedE
 
 		return (data as unknown as RentedEquipment[]) || [];
 	} catch (error: unknown) {
-		console.error('ERRO NA SERVER ACTION (getRentedEquipments):', error);
+		console.error('getRentedEquipmentsAction:', error);
 		return [];
 	}
 }

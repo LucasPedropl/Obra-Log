@@ -13,7 +13,7 @@ export default async function EmpresasPage() {
 	}
 
 	// Buscamos as empresas no servidor para evitar "flicker" de loading excessivo
-	const result = await getUserCompaniesAction(user.id);
+	const result = await getUserCompaniesAction();
 	
 	if (!result.success) {
 		return (

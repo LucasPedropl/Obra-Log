@@ -16,6 +16,21 @@ import {
 } from '@/app/actions/adminActions';
 import { getActiveCompanyId } from '@/lib/utils';
 import { useToast } from '@/components/ui/toaster';
+import { addSiteCollaboratorsSchema } from '../schemas/addSiteCollaboratorsSchema';
+
+interface GlobalCollaborator {
+	id: string;
+	name?: string;
+	role_title?: string;
+	cpf?: string;
+	email?: string;
+	avatar_url?: string | null;
+	status?: string | null;
+}
+
+interface SiteCollaboratorRow {
+	collaborator_id: string;
+}
 
 interface AddSiteCollaboratorFormProps {
 	onCancel: () => void;
@@ -31,7 +46,7 @@ export function AddSiteCollaboratorForm({
 	const { addToast } = useToast();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [selectedItems, setSelectedItems] = useState<string[]>([]);
-	const [globalItems, setGlobalItems] = useState<any[]>([]);
+	const [globalItems, setGlobalItems] = useState<GlobalCollaborator[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSaving, setIsSaving] = useState(false);
 
@@ -48,10 +63,10 @@ export function AddSiteCollaboratorForm({
 				]);
 
 				const siteCollabIds = siteDb.map(
-					(sc: any) => sc.collaborator_id,
+					(sc: SiteCollaboratorRow) => sc.collaborator_id,
 				);
 				const availableToAssign = globalDb.filter(
-					(g: any) => !siteCollabIds.includes(g.id),
+					(g: GlobalCollaborator) => !siteCollabIds.includes(g.id),
 				);
 
 				setGlobalItems(availableToAssign);
@@ -90,7 +105,14 @@ export function AddSiteCollaboratorForm({
 
 		try {
 			setIsSaving(true);
-			await addSiteCollaboratorsAdmin(siteId, selectedItems);
+			const parsed = addSiteCollaboratorsSchema.parse({
+				siteId,
+				collaboratorIds: selectedItems,
+			});
+			await addSiteCollaboratorsAdmin(
+				parsed.siteId,
+				parsed.collaboratorIds,
+			);
 			addToast('Colaboradores alocados com sucesso', 'success');
 			onSaved();
 		} catch (error) {

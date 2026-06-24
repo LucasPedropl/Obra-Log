@@ -16,7 +16,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 	};
 
 	const isInObraRoute = pathname?.match(/^\/obras\/([^\/]+)(?:\/|$)/);
-	const obraId = isInObraRoute ? isInObraRoute[1] : null;
 
 	// Close mobile menu when route changes
 	useEffect(() => {
@@ -52,7 +51,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 				</main>
 
 				{/* Mobile Footer for Obra */}
-				{isInObraRoute && obraId && <MobileFooter obraId={obraId} />}
+				{isInObraRoute && <MobileFooter />}
 			</div>
 		</div>
 	);

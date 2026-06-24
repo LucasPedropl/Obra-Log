@@ -593,8 +593,12 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 				title="Importar Categorias"
 				description="Formato: Categoria Primária;Secundária (opcional)"
 				onImportLines={async (lines) => {
-					const supabase = createClient();
-					const result: any[] = [];
+					const result: {
+						company_id: string;
+						primary_category: string;
+						secondary_category: string | null;
+						entry_type: string;
+					}[] = [];
 					const companyId = getActiveCompanyId();
 					if (!companyId)
 						throw new Error('Nenhuma empresa selecionada.');
@@ -625,8 +629,11 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 				title="Importar Unidades de Medida"
 				description="Formato: Nome da Unidade;Abreviação"
 				onImportLines={async (lines) => {
-					const supabase = createClient();
-					const result: any[] = [];
+					const result: {
+						company_id: string;
+						name: string;
+						abbreviation: string;
+					}[] = [];
 					const companyId = getActiveCompanyId();
 					if (!companyId)
 						throw new Error('Nenhuma empresa selecionada.');
