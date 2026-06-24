@@ -346,9 +346,19 @@ export async function importCatalogsAdmin(items: ImportCatalogItem[]) {
 				.single();
 
 			if (createUnitError) throw createUnitError;
+			if (!newUnit?.id) {
+				throw new Error(`Falha ao criar unidade "${abbreviation}"`);
+			}
 
 			unitId = newUnit.id;
-			unitMap.set(newUnit.abbreviation.toUpperCase(), unitId);
+			unitMap.set(
+				(newUnit.abbreviation ?? abbreviation).toUpperCase(),
+				newUnit.id,
+			);
+		}
+
+		if (!unitId) {
+			throw new Error(`Unidade "${abbreviation}" não encontrada para o insumo "${name}"`);
 		}
 
 		catalogsToInsert.push({
