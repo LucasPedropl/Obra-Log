@@ -638,7 +638,6 @@ export function SupplyItemForm({ onCancel, initialData }: SupplyItemFormProps) {
 								name: parts[0].trim(),
 								abbreviation: parts[1].trim(),
 								company_id: companyId,
-								entry_type: 'PRODUTO',
 							});
 						}
 					}

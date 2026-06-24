@@ -61,7 +61,11 @@ export function ImportModal({
 			onClose();
 		} catch (error) {
 			console.error('Error importing file:', error);
-			addToast('Não foi possível processar o arquivo.', 'error');
+			const message =
+				error instanceof Error
+					? error.message
+					: 'Não foi possível processar o arquivo.';
+			addToast(message, 'error');
 		} finally {
 			setIsUploading(false);
 			if (fileInputRef.current) fileInputRef.current.value = '';

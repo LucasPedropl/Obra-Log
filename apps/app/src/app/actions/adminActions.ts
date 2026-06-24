@@ -2,6 +2,76 @@
 
 import { createServerSupabaseClient } from '@/config/supabaseServer';
 import { supabaseAdmin } from '@/config/supabaseAdmin';
+import { cookies } from 'next/headers';
+
+type ResourcePermissions = Record<string, { create?: boolean }>;
+
+interface ImportCatalogItem {
+	company_id: string;
+	name: string;
+	unit_abbreviation?: string;
+	min_threshold?: number;
+}
+
+/** Verifica permissão de criação de um recurso na empresa selecionada. */
+async function assertCompanyResourcePermission(
+	userId: string,
+	companyId: string,
+	resourceKey: string,
+): Promise<void> {
+	const { data: profile } = await supabaseAdmin
+		.from('profiles')
+		.select('is_super_admin')
+		.eq('id', userId)
+		.maybeSingle();
+
+	if (profile?.is_super_admin) return;
+
+	const { data: member } = await supabaseAdmin
+		.from('company_users')
+		.select('role, profile_id')
+		.eq('user_id', userId)
+		.eq('company_id', companyId)
+		.maybeSingle();
+
+	if (!member) throw new Error('Sem acesso a esta empresa');
+
+	if (member.role === 'ADMIN') return;
+
+	if (!member.profile_id) {
+		throw new Error('Sem permissão para esta operação');
+	}
+
+	const { data: accessProfile } = await supabaseAdmin
+		.from('access_profiles')
+		.select('permissions')
+		.eq('id', member.profile_id)
+		.maybeSingle();
+
+	const permissions = accessProfile?.permissions as ResourcePermissions | null;
+	if (!permissions?.[resourceKey]?.create) {
+		throw new Error('Sem permissão para esta operação');
+	}
+}
+
+async function getAuthenticatedUserId(): Promise<string> {
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+
+	if (!user) throw new Error('Não autenticado');
+	return user.id;
+}
+
+async function getSelectedCompanyId(fallback?: string): Promise<string> {
+	const cookieStore = await cookies();
+	const companyId =
+		cookieStore.get('selectedCompanyId')?.value ?? fallback ?? null;
+
+	if (!companyId) throw new Error('Empresa não selecionada');
+	return companyId;
+}
 
 /**
  * Cria uma nova obra vinculada diretamente à empresa.
@@ -10,10 +80,14 @@ export async function createConstructionSiteAdmin(data: {
 	name: string;
 	company_id: string;
 }) {
-	const supabase = await createServerSupabaseClient();
-	const { data: result, error } = await supabase
+	const userId = await getAuthenticatedUserId();
+	const companyId = await getSelectedCompanyId(data.company_id);
+
+	await assertCompanyResourcePermission(userId, companyId, 'obras');
+
+	const { data: result, error } = await supabaseAdmin
 		.from('construction_sites')
-		.insert([data])
+		.insert([{ name: data.name, company_id: companyId }])
 		.select()
 		.single();
 
@@ -220,37 +294,143 @@ export async function deleteSupplyItemAdmin(id: string, company_id: string) {
 	return true;
 }
 
-export async function importCatalogsAdmin(items: any[]) {
-	const supabase = await createServerSupabaseClient();
+export async function importCatalogsAdmin(items: ImportCatalogItem[]) {
 	if (!items.length) return { success: true };
 
-	const { data, error } = await supabase
-		.from('catalogs')
-		.insert(items)
-		.select();
+	const userId = await getAuthenticatedUserId();
+	const companyId = await getSelectedCompanyId(items[0]?.company_id);
 
-	if (error) throw error;
-	return { success: true, data };
-}
+	await assertCompanyResourcePermission(userId, companyId, 'insumos');
 
-export async function importCategoriesAdmin(items: any[]) {
-	const supabase = await createServerSupabaseClient();
-	if (!items.length) return { success: true };
-	const { data, error } = await supabase
-		.from('categories')
-		.insert(items)
-		.select();
-	if (error) throw error;
-	return { success: true, data };
-}
-
-export async function importUnitsAdmin(items: any[]) {
-	const supabase = await createServerSupabaseClient();
-	if (!items.length) return { success: true };
-	const { data, error } = await supabase
+	const { data: existingUnits, error: unitsError } = await supabaseAdmin
 		.from('measurement_units')
-		.insert(items)
+		.select('id, abbreviation')
+		.eq('company_id', companyId);
+
+	if (unitsError) throw unitsError;
+
+	const unitMap = new Map<string, string>();
+	for (const unit of existingUnits ?? []) {
+		unitMap.set(unit.abbreviation.trim().toUpperCase(), unit.id);
+	}
+
+	const catalogsToInsert: Array<{
+		company_id: string;
+		name: string;
+		unit_id: string;
+		min_threshold: number;
+		is_stock_controlled: boolean;
+		is_rented_equipment: boolean;
+		is_tool: boolean;
+	}> = [];
+
+	for (const item of items) {
+		const name = item.name?.trim();
+		if (!name) continue;
+
+		const abbreviation = item.unit_abbreviation?.trim().toUpperCase();
+		if (!abbreviation) {
+			throw new Error(`Unidade não informada para o insumo "${name}"`);
+		}
+
+		let unitId = unitMap.get(abbreviation);
+		if (!unitId) {
+			const { data: newUnit, error: createUnitError } = await supabaseAdmin
+				.from('measurement_units')
+				.insert({
+					company_id: companyId,
+					name: abbreviation,
+					abbreviation,
+				})
+				.select('id, abbreviation')
+				.single();
+
+			if (createUnitError) throw createUnitError;
+
+			unitId = newUnit.id;
+			unitMap.set(newUnit.abbreviation.toUpperCase(), unitId);
+		}
+
+		catalogsToInsert.push({
+			company_id: companyId,
+			name,
+			unit_id: unitId,
+			min_threshold: item.min_threshold ?? 0,
+			is_stock_controlled: true,
+			is_rented_equipment: false,
+			is_tool: false,
+		});
+	}
+
+	if (!catalogsToInsert.length) {
+		throw new Error('Nenhum insumo válido encontrado no arquivo');
+	}
+
+	const { data, error } = await supabaseAdmin
+		.from('catalogs')
+		.insert(catalogsToInsert)
 		.select();
+
+	if (error) throw error;
+	return { success: true, data };
+}
+
+export async function importCategoriesAdmin(
+	items: Array<{
+		company_id: string;
+		primary_category: string;
+		secondary_category?: string | null;
+		entry_type?: string;
+	}>,
+) {
+	if (!items.length) return { success: true };
+
+	const userId = await getAuthenticatedUserId();
+	const companyId = await getSelectedCompanyId(items[0]?.company_id);
+
+	await assertCompanyResourcePermission(userId, companyId, 'insumos');
+
+	const payload = items.map((item) => ({
+		company_id: companyId,
+		primary_category: item.primary_category,
+		secondary_category: item.secondary_category ?? null,
+		entry_type: item.entry_type ?? 'PRODUTO',
+	}));
+
+	const { data, error } = await supabaseAdmin
+		.from('categories')
+		.insert(payload)
+		.select();
+
+	if (error) throw error;
+	return { success: true, data };
+}
+
+export async function importUnitsAdmin(
+	items: Array<{
+		company_id: string;
+		name: string;
+		abbreviation: string;
+	}>,
+) {
+	if (!items.length) return { success: true };
+
+	const userId = await getAuthenticatedUserId();
+	const companyId = await getSelectedCompanyId(items[0]?.company_id);
+
+	await assertCompanyResourcePermission(userId, companyId, 'insumos');
+
+	const payload = items.map((item) => ({
+		company_id: companyId,
+		name: item.name.trim(),
+		abbreviation: item.abbreviation.trim(),
+	}));
+
+	const { data, error } = await supabaseAdmin
+		.from('measurement_units')
+		.insert(payload)
+		.select();
+
 	if (error) throw error;
 	return { success: true, data };
 }

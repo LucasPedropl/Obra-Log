@@ -361,12 +361,22 @@ export default function InsumosPage() {
 					isOpen={isImportModalOpen}
 					onClose={() => setIsImportModalOpen(false)}
 					onImportLines={async (lines) => {
-						const companyId = await getActiveCompanyId();
-						// Adaptar as linhas do TXT (separadas por ;) para o formato esperado por importCatalogsAdmin
-						const data = lines.map(line => {
-							const [name, unit_abbreviation, min_threshold] = line.split(';');
-							return { company_id: companyId, name: name?.trim(), unit_abbreviation: unit_abbreviation?.trim(), min_threshold: Number(min_threshold) || 0 };
+						const companyId = getActiveCompanyId();
+						if (!companyId) {
+							throw new Error('Nenhuma empresa selecionada.');
+						}
+
+						const data = lines.map((line) => {
+							const [name, unitAbbreviation, minThreshold] =
+								line.split(';');
+							return {
+								company_id: companyId,
+								name: name?.trim() ?? '',
+								unit_abbreviation: unitAbbreviation?.trim(),
+								min_threshold: Number(minThreshold) || 0,
+							};
 						});
+
 						await importCatalogsAdmin(data);
 						loadInsumos();
 					}}
