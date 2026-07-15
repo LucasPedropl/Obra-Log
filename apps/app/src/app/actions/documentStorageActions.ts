@@ -53,7 +53,7 @@ async function assertUploadPermission(
 		await assertCompanyResourcePermission(
 			userId,
 			companyId,
-			'colaboradores',
+			'mao_de_obra',
 			'create',
 		);
 		return;

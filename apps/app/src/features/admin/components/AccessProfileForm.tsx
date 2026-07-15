@@ -4,10 +4,26 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { cn } from '@/lib/utils';
-import { Building2, Edit2, Eye, Info, Plus, Shield, Trash2 } from 'lucide-react';
+import { AlertTriangle, Building2, Edit2, Eye, Info, Plus, Shield, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 
-const APP_MODULES = [
+interface AppModuleChild {
+	id: string;
+	label: string;
+	icon: string;
+	sensitive?: boolean;
+}
+
+interface AppModule {
+	id: string;
+	label: string;
+	group: string;
+	icon: string;
+	sensitive?: boolean;
+	children?: AppModuleChild[];
+}
+
+const APP_MODULES: AppModule[] = [
 	{
 		id: 'dashboard',
 		label: 'Dashboard Geral',
@@ -28,18 +44,27 @@ const APP_MODULES = [
 		children: [
 			{ id: 'site_dashboard', label: 'Visão Geral (Painel da Obra)', icon: 'ChartPieSlice' },
 			{ id: 'site_insumos', label: 'Estoque e Materiais', icon: 'Warehouse' },
-			{ id: 'site_colaboradores', label: 'Equipe Alocada', icon: 'UsersThree' },
+			{ id: 'site_mao_de_obra', label: 'Mão de Obra', icon: 'UsersThree' },
+			{ id: 'site_ponto', label: 'Registro de Ponto', icon: 'Clock' },
 			{ id: 'site_ferramentas', label: 'Gestão de Ferramentas', icon: 'Wrench' },
 			{ id: 'site_epis', label: 'Gestão de EPIs', icon: 'HardHat' },
 			{ id: 'site_equipamentos', label: 'Equip. Alugados', icon: 'Truck' },
 			{ id: 'site_movimentacoes', label: 'Movimentações', icon: 'ArrowsLeftRight' },
+			{ id: 'site_config', label: 'Configuração da Obra', icon: 'Gear' },
 		],
 	},
 	{
-		id: 'colaboradores',
-		label: 'Base de Colaboradores',
+		id: 'mao_de_obra',
+		label: 'Mão de Obra',
 		group: 'Global',
 		icon: 'Users',
+	},
+	{
+		id: 'folha_pagamento',
+		label: 'Folha de Pagamento',
+		group: 'Global',
+		icon: 'Money',
+		sensitive: true,
 	},
 	{ id: 'usuarios', label: 'Usuários', group: 'Global', icon: 'UserCircle' },
 	{
@@ -49,6 +74,9 @@ const APP_MODULES = [
 		icon: 'ShieldCheck',
 	},
 ];
+
+const isModuleActive = (perms?: PermissionAction) =>
+	!!perms && (perms.view || perms.create || perms.edit || perms.delete);
 
 interface PermissionAction {
 	view: boolean;
@@ -348,9 +376,33 @@ export function AccessProfileForm({
 									delete: false,
 								};
 
+											const sensitiveActive =
+												!!mod.sensitive && isModuleActive(modPerms);
+
 											return (
 												<React.Fragment key={mod.id}>
-													<tr className="hover:bg-muted/50 transition-colors">
+													{sensitiveActive && (
+														<tr>
+															<td colSpan={5} className="p-0">
+																<div className="flex items-start gap-2 bg-red-50 border-y border-red-200 px-6 py-2.5 text-red-700">
+																	<AlertTriangle size={16} className="shrink-0 mt-0.5" />
+																	<p className="text-xs font-semibold leading-relaxed">
+																		Atenção: esta é a área mais sensível do
+																		sistema. Ao liberar a Folha de Pagamento, este
+																		perfil verá diárias, valores e dados financeiros
+																		de todos os colaboradores. Conceda apenas a
+																		usuários de total confiança.
+																	</p>
+																</div>
+															</td>
+														</tr>
+													)}
+													<tr
+														className={cn(
+															'hover:bg-muted/50 transition-colors',
+															sensitiveActive && 'bg-red-50/40',
+														)}
+													>
 														<td
 															className="p-3 font-medium text-foreground pl-6 cursor-pointer select-none hover:bg-muted/30 transition-colors"
 															onClick={() =>
@@ -382,6 +434,15 @@ export function AccessProfileForm({
 																	/>
 																)}
 																{mod.label}
+																{mod.sensitive && (
+																	<span
+																		title="Página sensível: acesso a dados financeiros"
+																		className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700"
+																	>
+																		<AlertTriangle size={11} />
+																		Sensível
+																	</span>
+																)}
 															</div>
 														</td>
 

@@ -38,6 +38,16 @@ function formatZodError(error: unknown): never {
 	throw error;
 }
 
+const DEFAULT_SCHEDULE = {
+	monday: { start: '08:00', end: '17:00', active: true },
+	tuesday: { start: '08:00', end: '17:00', active: true },
+	wednesday: { start: '08:00', end: '17:00', active: true },
+	thursday: { start: '08:00', end: '17:00', active: true },
+	friday: { start: '08:00', end: '17:00', active: true },
+	saturday: { start: '08:00', end: '12:00', active: true },
+	sunday: { start: '', end: '', active: false },
+};
+
 export async function createConstructionSiteAdmin(
 	data: z.infer<typeof createSiteSchema>,
 ) {
@@ -50,7 +60,14 @@ export async function createConstructionSiteAdmin(
 
 		const { data: result, error } = await supabaseAdmin
 			.from('construction_sites')
-			.insert([{ name: payload.name, company_id: companyId }])
+			.insert([
+				{
+					name: payload.name,
+					company_id: companyId,
+					tolerance_minutes: payload.tolerance_minutes,
+					workday_schedule_json: payload.workday_schedule_json || DEFAULT_SCHEDULE,
+				},
+			])
 			.select()
 			.single();
 
@@ -76,7 +93,10 @@ export async function updateConstructionSiteAdmin(
 
 		const { data: result, error } = await supabaseAdmin
 			.from('construction_sites')
-			.update({ name: payload.name })
+			.update({
+				name: payload.name,
+				tolerance_minutes: payload.tolerance_minutes,
+			})
 			.eq('id', siteId)
 			.eq('company_id', companyId)
 			.select()
@@ -86,6 +106,65 @@ export async function updateConstructionSiteAdmin(
 		return result;
 	} catch (error: unknown) {
 		safeLogError('updateConstructionSiteAdmin', error);
+		formatZodError(error);
+	}
+}
+
+const siteConfigSchema = z.object({
+	tolerance_minutes: z.coerce.number().min(0).max(240),
+	workday_schedule_json: z.any().optional(),
+});
+
+/** Fetches a single construction site (used by the configuration page). */
+export async function getConstructionSiteByIdAdmin(siteId: string) {
+	try {
+		const parsedSiteId = siteIdSchema.parse(siteId);
+		const userId = await getAuthenticatedUserId();
+		await assertSiteAccess(userId, parsedSiteId);
+
+		const supabase = await createServerSupabaseClient();
+		const { data, error } = await supabase
+			.from('construction_sites')
+			.select('*')
+			.eq('id', parsedSiteId)
+			.single();
+		if (error) throw error;
+		return data;
+	} catch (error: unknown) {
+		safeLogError('getConstructionSiteByIdAdmin', error);
+		formatZodError(error);
+	}
+}
+
+/** Updates only the operational configuration of a site (workday/tolerance). */
+export async function updateSiteConfigAdmin(
+	siteId: string,
+	config: z.infer<typeof siteConfigSchema>,
+) {
+	try {
+		const parsedSiteId = siteIdSchema.parse(siteId);
+		const payload = siteConfigSchema.parse(config);
+		const userId = await getAuthenticatedUserId();
+		const companyId = await getValidatedCompanyId(userId);
+
+		await assertCompanyResourcePermission(userId, companyId, 'obras', 'edit');
+		await assertSiteAccess(userId, parsedSiteId);
+
+		const { data: result, error } = await supabaseAdmin
+			.from('construction_sites')
+			.update({
+				tolerance_minutes: payload.tolerance_minutes,
+				workday_schedule_json: payload.workday_schedule_json,
+			})
+			.eq('id', parsedSiteId)
+			.eq('company_id', companyId)
+			.select()
+			.single();
+
+		if (error) throw error;
+		return result;
+	} catch (error: unknown) {
+		safeLogError('updateSiteConfigAdmin', error);
 		formatZodError(error);
 	}
 }

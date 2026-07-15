@@ -6,6 +6,7 @@
 		"packages/*"
 	],
 	"scripts": {
+		"dev": "concurrently -k -n erp-next,admin -c blue,magenta \"npm:dev:erp-next\" \"npm:dev:admin\"",
 		"dev:erp-next": "npm run dev --workspace=erp-next",
 		"dev:admin": "npm run dev --workspace=@obralog/admin"
 	},
@@ -14,5 +15,8 @@
 		"hono": "^4.12.14",
 		"picomatch": "^4.0.3",
 		"path-to-regexp": "^0.1.13"
+	},
+	"devDependencies": {
+		"concurrently": "^10.0.3"
 	}
 }

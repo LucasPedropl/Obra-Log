@@ -56,7 +56,7 @@ export default function ObrasPage() {
 			})),
 			[
 				{ key: 'nome', label: 'Nome' },
-				{ key: 'colaboradores', label: 'Colaboradores' },
+				{ key: 'colaboradores', label: 'Mão de Obra' },
 				{ key: 'insumos', label: 'Insumos' },
 			],
 			'obras',
@@ -150,7 +150,7 @@ export default function ObrasPage() {
 									<div className="px-6 py-4 flex items-center justify-between bg-white group-hover:bg-gray-50 transition-colors w-full">
 										<div className="flex items-center gap-8">
 											<div className="flex flex-col">
-												<span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Colaboradores</span>
+												<span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Mão de Obra</span>
 												<span className="text-xl font-black text-[#101828] mt-0.5">{obra.collaborators_count || 0}</span>
 											</div>
 											<div className="flex flex-col">

@@ -5,9 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Icon } from '../ui/Icon';
 import { createClient } from '@/config/supabase';
 import { Breadcrumbs } from '../shared/Breadcrumbs';
-import { HeaderCompanySelector } from './HeaderCompanySelector';
 import { HeaderObraSelector } from './HeaderObraSelector';
-import { HeaderUserMenu } from './HeaderUserMenu';
+import { HeaderAccountMenu } from './HeaderAccountMenu';
 import { clearTenantCookiesAction } from '@/app/actions/tenantActions';
 import { useTenant } from '@/context/TenantContext';
 
@@ -155,14 +154,6 @@ export function Header({
 
 				<div className="h-6 w-px bg-gray-200 mx-1 hidden md:block shrink-0" />
 
-				<HeaderCompanySelector
-					companyName={companyName}
-					myCompanies={myCompanies}
-					getInitials={getInitials}
-				/>
-
-				<div className="h-6 w-px bg-gray-200 mx-2 hidden md:block shrink-0" />
-
 				<HeaderObraSelector />
 
 				<div className="h-6 w-px bg-gray-200 mx-2 hidden lg:block shrink-0" />
@@ -198,9 +189,11 @@ export function Header({
 						<span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-none border-2 border-white shadow-sm" />
 					</button>
 
-					<HeaderUserMenu
+					<HeaderAccountMenu
 						userProfile={userProfile}
 						loading={loading}
+						companyName={companyName}
+						myCompanies={myCompanies}
 						getInitials={getInitials}
 						onChangeCompany={handleChangeCompany}
 						onLogout={handleLogout}

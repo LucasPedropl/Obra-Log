@@ -139,11 +139,11 @@ export default function VisaoGeralObraPage({
 				</Link>
 
 				<StatCard
-					title="Colaboradores na Obra"
+					title="Mão de Obra Alocada"
 					value={stats?.activeCollaborators || 0}
 					description="Trabalhadores alocados no site"
 					icon={<Users className="w-6 h-6" />}
-					href={`/obras/${resolvedParams.id}/colaboradores`}
+					href={`/obras/${resolvedParams.id}/mao-de-obra`}
 				/>
 				<StatCard
 					title="Ferramentas em Uso"

@@ -31,6 +31,8 @@ export function useConstructionSites() {
 			await createConstructionSiteAdmin({
 				name: data.name,
 				company_id: companyId,
+				tolerance_minutes: data.tolerance_minutes,
+				workday_schedule_json: data.workday_schedule_json,
 			});
 
 			return true;
@@ -59,6 +61,8 @@ export function useConstructionSites() {
 			await updateConstructionSiteAdmin(id, {
 				name: data.name,
 				company_id: companyId,
+				tolerance_minutes: data.tolerance_minutes,
+				workday_schedule_json: data.workday_schedule_json,
 			});
 			return true;
 		} catch (err: unknown) {

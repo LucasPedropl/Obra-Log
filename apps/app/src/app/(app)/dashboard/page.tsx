@@ -60,7 +60,7 @@ export default function DashboardPage() {
 						iconClass="bg-blue-50 text-blue-600 border-blue-100"
 					/>
 					<KpiCard
-						label="Colaboradores"
+						label="Mão de Obra"
 						value={kpis.collaborators}
 						icon={<Users className="w-6 h-6" />}
 						iconClass="bg-indigo-50 text-indigo-600 border-indigo-100"

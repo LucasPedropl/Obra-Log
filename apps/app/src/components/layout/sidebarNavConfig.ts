@@ -12,7 +12,15 @@ export const sistemaNavItems: NavItem[] = [
 	{ name: 'Dashboard', icon: 'SquaresFour', href: '/dashboard', resource: 'dashboard' },
 	{ name: 'Obras', icon: 'Buildings', href: '/obras', resource: 'obras' },
 	{ name: 'Insumos', icon: 'Package', href: '/insumos', resource: 'insumos' },
-	{ name: 'Colaboradores', icon: 'Users', href: '/colaboradores', resource: 'colaboradores' },
+	{ name: 'Colaboradores', icon: 'Users', href: '/colaboradores', resource: 'mao_de_obra' },
+	{
+		name: 'Relatórios',
+		icon: 'FileText',
+		children: [
+			{ name: 'Frequência de Obra', href: '/relatorios/frequencia', resource: 'site_ponto' },
+			{ name: 'Folha de Pagamento', href: '/relatorios/folha', resource: 'folha_pagamento' },
+		],
+	},
 	{
 		name: 'Acesso ao Sistema',
 		icon: 'ShieldCheck',
@@ -40,8 +48,14 @@ export function buildObraNavItems(obraId: string): NavItem[] {
 		{
 			name: 'Colaboradores',
 			icon: 'UsersThree',
-			href: `/obras/${obraId}/colaboradores`,
-			resource: 'site_colaboradores',
+			href: `/obras/${obraId}/mao-de-obra`,
+			resource: 'site_mao_de_obra',
+		},
+		{
+			name: 'Registro de Ponto',
+			icon: 'Clock',
+			href: `/obras/${obraId}/ponto`,
+			resource: 'site_ponto',
 		},
 		{
 			name: 'Ferramentas',
@@ -76,6 +90,12 @@ export function buildObraNavItems(obraId: string): NavItem[] {
 			icon: 'ArrowsLeftRight',
 			href: `/obras/${obraId}/movimentacoes`,
 			resource: 'site_insumos',
+		},
+		{
+			name: 'Configurações',
+			icon: 'Gear',
+			href: `/obras/${obraId}/configuracoes`,
+			resource: 'site_config',
 		},
 	];
 }

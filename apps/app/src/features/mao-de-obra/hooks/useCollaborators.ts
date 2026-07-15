@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { getActiveCompanyId } from '@/lib/utils';
-import { unmask } from '@/lib/maskUtils';
+import { unmask, parseCurrencyToNumber } from '@/lib/maskUtils';
 import {
 	createCollaboratorAdmin,
 	updateCollaboratorAdmin,
@@ -43,11 +43,19 @@ export function useCollaborators() {
 				company_id: companyId,
 				name: data.name,
 				role_title: data.role_title,
+				daily_rate: parseCurrencyToNumber(data.daily_rate),
 				cpf: data.cpf ? unmask(data.cpf) : null,
 				rg: data.rg || null,
 				birth_date: formatDate(data.birth_date),
 				cellphone: data.cellphone ? unmask(data.cellphone) : null,
 				email: data.email || null,
+				bank_name: data.bank_name?.trim() || null,
+				pix_key_type: data.pix_key_type || null,
+				pix_key: data.pix_key
+					? data.pix_key_type === 'EMAIL' || data.pix_key_type === 'ALEATORIA'
+						? data.pix_key.trim()
+						: unmask(data.pix_key)
+					: null,
 				cep: data.cep ? unmask(data.cep) : null,
 				street: data.street || null,
 				number: data.number || null,
@@ -93,11 +101,19 @@ export function useCollaborators() {
 				company_id: companyId,
 				name: data.name,
 				role_title: data.role_title,
+				daily_rate: parseCurrencyToNumber(data.daily_rate),
 				cpf: data.cpf ? unmask(data.cpf) : null,
 				rg: data.rg || null,
 				birth_date: formatDate(data.birth_date),
 				cellphone: data.cellphone ? unmask(data.cellphone) : null,
 				email: data.email || null,
+				bank_name: data.bank_name?.trim() || null,
+				pix_key_type: data.pix_key_type || null,
+				pix_key: data.pix_key
+					? data.pix_key_type === 'EMAIL' || data.pix_key_type === 'ALEATORIA'
+						? data.pix_key.trim()
+						: unmask(data.pix_key)
+					: null,
 				cep: data.cep ? unmask(data.cep) : null,
 				street: data.street || null,
 				number: data.number || null,

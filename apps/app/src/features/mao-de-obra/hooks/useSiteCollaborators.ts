@@ -49,6 +49,9 @@ export function useSiteCollaborators(siteId: string) {
 	useEffect(() => {
 		if (siteId) {
 			fetchCollaborators();
+		} else {
+			setIsLoading(false);
+			setCollaborators([]);
 		}
 	}, [siteId]);
 

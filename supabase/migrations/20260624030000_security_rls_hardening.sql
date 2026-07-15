@@ -64,16 +64,16 @@ DROP POLICY IF EXISTS collaborators_write ON public.collaborators;
 
 CREATE POLICY collaborators_insert ON public.collaborators
   FOR INSERT
-  WITH CHECK (check_user_resource_permission(auth.uid(), company_id, 'colaboradores', 'create'));
+  WITH CHECK (check_user_resource_permission(auth.uid(), company_id, 'mao_de_obra', 'create'));
 
 CREATE POLICY collaborators_update ON public.collaborators
   FOR UPDATE
-  USING (check_user_resource_permission(auth.uid(), company_id, 'colaboradores', 'edit'))
-  WITH CHECK (check_user_resource_permission(auth.uid(), company_id, 'colaboradores', 'edit'));
+  USING (check_user_resource_permission(auth.uid(), company_id, 'mao_de_obra', 'edit'))
+  WITH CHECK (check_user_resource_permission(auth.uid(), company_id, 'mao_de_obra', 'edit'));
 
 CREATE POLICY collaborators_delete ON public.collaborators
   FOR DELETE
-  USING (check_user_resource_permission(auth.uid(), company_id, 'colaboradores', 'delete'));
+  USING (check_user_resource_permission(auth.uid(), company_id, 'mao_de_obra', 'delete'));
 
 -- =============================================================================
 -- SEC-08: catalogs — split ALL into INSERT/UPDATE/DELETE

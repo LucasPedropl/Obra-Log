@@ -17,7 +17,7 @@ import {
 	LayoutDashboard,
 	ChevronRight,
 } from 'lucide-react';
-import { AddSiteCollaboratorForm } from '@/features/colaboradores/components/AddSiteCollaboratorForm';
+import { AddSiteCollaboratorForm } from '@/features/mao-de-obra/components/AddSiteCollaboratorForm';
 import { AddInventoryForm } from '@/features/almoxarifado/components/AddInventoryForm';
 import { AddRentedForm } from '@/features/equip-alugados/components/AddRentedForm';
 
@@ -51,7 +51,7 @@ export default function MobileMenuPage({
 		{
 			name: 'Colaboradores',
 			icon: Users,
-			href: `/obras/${obraId}/colaboradores`,
+			href: `/obras/${obraId}/mao-de-obra`,
 			color: 'text-emerald-500',
 			bg: 'bg-emerald-50',
 		},

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
 	useConstructionSites,
@@ -20,7 +20,10 @@ export function ConstructionSiteForm({ onCancel }: ConstructionSiteFormProps) {
 		handleSubmit,
 		formState: { errors },
 	} = useForm<ConstructionSiteFormData>({
-		resolver: zodResolver(constructionSiteSchema),
+		resolver: zodResolver(constructionSiteSchema) as unknown as Resolver<ConstructionSiteFormData>,
+		defaultValues: {
+			tolerance_minutes: 0,
+		},
 	});
 
 	const onSubmit = async (data: ConstructionSiteFormData) => {
@@ -59,6 +62,28 @@ export function ConstructionSiteForm({ onCancel }: ConstructionSiteFormProps) {
 						</span>
 					)}
 				</div>
+
+				<div>
+					<label className="block text-sm font-medium mb-1">
+						Tolerância (minutos)
+					</label>
+					<input
+						type="number"
+						step="1"
+						min="0"
+						{...register('tolerance_minutes')}
+						className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-foreground"
+						placeholder="0"
+					/>
+					{errors.tolerance_minutes && (
+						<span className="text-destructive text-xs mt-1">
+							{errors.tolerance_minutes.message}
+						</span>
+					)}
+				</div>
+				<p className="text-xs text-muted-foreground -mt-1">
+					A margem de tolerância desconsiderada no cálculo do ponto. Os horários semanais da obra podem ser configurados depois na aba Configurações.
+				</p>
 
 				<div className="flex gap-3 pt-4">
 					{onCancel && (

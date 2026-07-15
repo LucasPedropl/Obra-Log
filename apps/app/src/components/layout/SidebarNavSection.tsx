@@ -208,7 +208,7 @@ export function SidebarNavSection({
 							</div>
 						)}
 
-						{!isExpanded && (
+						{!isExpanded && !disabled && (
 							<div
 								className={cn(
 									'absolute left-full top-1/2 -translate-y-1/2 pl-6 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto z-[100] min-w-max invisible group-hover:visible transition-none group-hover:transition-all group-hover:duration-300',

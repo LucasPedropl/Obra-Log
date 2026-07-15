@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { giveEPIAction } from '@/app/actions/episActions';
-import { useCollaborators } from '@/features/colaboradores/hooks/useCollaborators';
+import { useCollaborators } from '@/features/mao-de-obra/hooks/useCollaborators';
 import { useToast } from '@/components/ui/toaster';
 import {
 	createGiveEPISchema,

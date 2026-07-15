@@ -25,7 +25,7 @@ export function Breadcrumbs({ companyName, className }: BreadcrumbsProps) {
 	const items: BreadcrumbItem[] = [];
 
 	if (companyName) {
-		items.push({ label: companyName, href: '/dashboard' });
+		items.push({ label: companyName, href: '/empresas' });
 	}
 
 	if (isObraContext(pathname ?? '') && selectedObraName) {

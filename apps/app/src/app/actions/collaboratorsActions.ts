@@ -89,7 +89,7 @@ export async function exportCollaboratorDataAction(
 		await assertCompanyResourcePermission(
 			userId,
 			companyId,
-			'colaboradores',
+			'mao_de_obra',
 			'view',
 		);
 
@@ -128,7 +128,7 @@ export async function anonymizeCollaboratorAction(
 		await assertCompanyResourcePermission(
 			userId,
 			companyId,
-			'colaboradores',
+			'mao_de_obra',
 			'delete',
 		);
 

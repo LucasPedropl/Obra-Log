@@ -5,8 +5,8 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Users, Loader2 } from 'lucide-react';
 import { TableSearch } from '@/components/shared/TableSearch';
 import { Pagination } from '@/components/shared/Pagination';
-import { AddSiteCollaboratorForm } from '@/features/colaboradores/components/AddSiteCollaboratorForm';
-import { useSiteCollaborators } from '@/features/colaboradores/hooks/useSiteCollaborators';
+import { AddSiteCollaboratorForm } from '@/features/mao-de-obra/components/AddSiteCollaboratorForm';
+import { useSiteCollaborators } from '@/features/mao-de-obra/hooks/useSiteCollaborators';
 import { DataTable } from '@/components/shared/DataTable';
 import { maskCpfDisplay } from '@/lib/maskUtils';
 
@@ -45,7 +45,7 @@ export default function ColaboradoresObraPage({
 	return (
 		<div className="w-full flex flex-col gap-6 relative">
 			<PageHeader
-				title="Colaboradores da Obra"
+				title="Mão de Obra"
 				description="Gestão da equipe de campo, funções e horários da obra"
 				onAdd={() => setIsFormOpen(true)}
 				addLabel="Alojar Colaborador"

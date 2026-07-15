@@ -11,10 +11,10 @@ import { TableSearch } from '@/components/shared/TableSearch';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/components/shared/Can';
 import { ProtectedRoute } from '@/components/shared/ProtectedRoute';
-import { CollaboratorForm } from '@/features/colaboradores/components/CollaboratorForm';
-import { useCollaborators } from '@/features/colaboradores/hooks/useCollaborators';
+import { CollaboratorForm } from '@/features/mao-de-obra/components/CollaboratorForm';
+import { useCollaborators } from '@/features/mao-de-obra/hooks/useCollaborators';
 import { getActiveCompanyId } from '@/lib/utils';
-import { maskCpfDisplay } from '@/lib/maskUtils';
+import { maskCpfDisplay, formatCurrencyDisplay } from '@/lib/maskUtils';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { exportToCsv } from '@/lib/exportUtils';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
@@ -123,20 +123,20 @@ export default function ColaboradoresPage() {
 	};
 
 	return (
-		<ProtectedRoute resource="colaboradores">
+		<ProtectedRoute resource="mao_de_obra">
 			<div className="w-full flex flex-col gap-6 relative">
 				<Can 
-					on="colaboradores" 
+					on="mao_de_obra" 
 					perform="create"
 					fallback={
 						<PageHeader
-							title="Colaboradores"
+							title="Mão de Obra"
 							description="Gestão de equipes, jornada e permissões."
 						/>
 					}
 				>
 					<PageHeader
-						title="Colaboradores"
+						title="Mão de Obra"
 						description="Gestão de equipes, jornada e permissões."
 						onAdd={() => setIsFormOpen(true)}
 						addLabel="Cadastrar Colaborador"
@@ -219,6 +219,16 @@ export default function ColaboradoresPage() {
 									},
 									{ header: 'Cargo/Função', accessorKey: 'role_title' },
 									{
+										header: 'Diária',
+										cell: (item) => (
+											<span className="font-medium text-gray-700">
+												{item.daily_rate != null
+													? formatCurrencyDisplay(Number(item.daily_rate))
+													: '—'}
+											</span>
+										),
+									},
+									{
 										header: 'CPF',
 										cell: (item) => (
 											<span className="font-mono text-gray-500">
@@ -249,7 +259,7 @@ export default function ColaboradoresPage() {
 				)}
 
 				<div className="flex items-center justify-end gap-3 w-full mt-4">
-					<Can on="colaboradores" perform="create">
+					<Can on="mao_de_obra" perform="create">
 						<Button
 							variant="outline"
 							onClick={() => setIsImportModalOpen(true)}

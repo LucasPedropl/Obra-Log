@@ -5,7 +5,7 @@ import { deletePrivateDocumentAction, uploadPrivateDocumentAction } from '@/app/
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useToast } from '@/components/ui/toaster';
 import { AccessProfileForm } from '@/features/admin/components/AccessProfileForm';
-import { maskCEP, maskCPF, maskDate, maskPhone, unmask } from '@/lib/maskUtils';
+import { maskCEP, maskCPF, maskCurrency, maskDate, maskPhone, unmask } from '@/lib/maskUtils';
 import { getActiveCompanyId } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -33,6 +33,11 @@ import {
 	collaboratorSchema,
 	useCollaborators,
 } from '../hooks/useCollaborators';
+import {
+	PIX_KEY_TYPES,
+	PIX_KEY_TYPE_LABELS,
+	type PixKeyType,
+} from '../schemas/collaboratorSchema';
 
 interface CollaboratorFormProps {
 	onCancel?: () => void;
@@ -40,11 +45,15 @@ interface CollaboratorFormProps {
 		id?: string;
 		name?: string;
 		role_title?: string;
+		daily_rate?: number | string | null;
 		cpf?: string;
 		rg?: string;
 		birth_date?: string | Date;
 		cellphone?: string;
 		email?: string;
+		bank_name?: string | null;
+		pix_key?: string | null;
+		pix_key_type?: string | null;
 		cep?: string;
 		street?: string;
 		number?: string;
@@ -65,6 +74,22 @@ const InputLabel = ({ children }: { children: React.ReactNode }) => (
 
 const InputClass =
 	'block w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 px-4 py-3.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all duration-200 hover:border-slate-200 focus:border-slate-900 focus:bg-white focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed';
+
+function formatPixKeyForInput(
+	pixKey: string | null | undefined,
+	pixKeyType: string | null | undefined,
+): string {
+	if (!pixKey) return '';
+	if (pixKeyType === 'CPF') return maskCPF(pixKey);
+	if (pixKeyType === 'CELULAR') return maskPhone(pixKey);
+	return pixKey;
+}
+
+function maskPixKeyInput(value: string, type: string | undefined): string {
+	if (type === 'CPF') return maskCPF(value);
+	if (type === 'CELULAR') return maskPhone(value);
+	return value;
+}
 
 export function CollaboratorForm({
 	onCancel,
@@ -97,6 +122,7 @@ export function CollaboratorForm({
 		handleSubmit,
 		control,
 		setValue,
+		watch,
 		trigger,
 		formState: { errors },
 	} = useForm<CollaboratorFormData>({
@@ -106,6 +132,12 @@ export function CollaboratorForm({
 			? {
 					name: initialData.name || '',
 					role_title: initialData.role_title || '',
+					daily_rate:
+						initialData.daily_rate != null && initialData.daily_rate !== ''
+							? maskCurrency(
+									Math.round(Number(initialData.daily_rate) * 100).toString(),
+								)
+							: '',
 					cpf: initialData.cpf || '',
 					rg: initialData.rg || '',
 					birth_date: initialData.birth_date
@@ -118,6 +150,12 @@ export function CollaboratorForm({
 						: '',
 					cellphone: initialData.cellphone || '',
 					email: initialData.email || '',
+					bank_name: initialData.bank_name || '',
+					pix_key_type: (initialData.pix_key_type as PixKeyType) || '',
+					pix_key: formatPixKeyForInput(
+						initialData.pix_key,
+						initialData.pix_key_type,
+					),
 					cep: initialData.cep || '',
 					street: initialData.street || '',
 					number: initialData.number || '',
@@ -130,6 +168,7 @@ export function CollaboratorForm({
 				}
 			: {
 					documents_json: [],
+					pix_key_type: '',
 				},
 	});
 
@@ -482,6 +521,97 @@ export function CollaboratorForm({
 											{errors.role_title.message}
 										</span>
 									)}
+								</div>
+							</div>
+
+							<div>
+								<InputLabel>Valor da Diária (R$)</InputLabel>
+								<div className="relative group">
+									<div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-slate-900 transition-colors text-sm font-bold">
+										R$
+									</div>
+									<input
+										type="text"
+										inputMode="numeric"
+										{...register('daily_rate')}
+										onChange={(e) =>
+											setValue(
+												'daily_rate',
+												maskCurrency(e.target.value),
+											)
+										}
+										placeholder="0,00"
+										className={`${InputClass} pl-11`}
+									/>
+								</div>
+								<p className="text-[10px] text-slate-400 font-medium mt-1.5 ml-1">
+									Usado no cálculo da folha de frequência por quinzena.
+								</p>
+							</div>
+
+							<div>
+								<InputLabel>Banco</InputLabel>
+								<input
+									type="text"
+									{...register('bank_name')}
+									placeholder="Ex: Caixa Econômica Federal"
+									className={InputClass}
+								/>
+							</div>
+
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+								<div>
+									<InputLabel>Tipo da Chave Pix</InputLabel>
+									<Controller
+										name="pix_key_type"
+										control={control}
+										render={({ field }) => (
+											<SearchableSelect
+												options={PIX_KEY_TYPES.map((t) => ({
+													value: t,
+													label: PIX_KEY_TYPE_LABELS[t],
+												}))}
+												value={field.value || ''}
+												onChange={(val) => {
+													field.onChange(val);
+													const current = watch('pix_key') || '';
+													if (
+														current &&
+														(val === 'CPF' || val === 'CELULAR')
+													) {
+														setValue(
+															'pix_key',
+															maskPixKeyInput(unmask(current), val),
+														);
+													}
+												}}
+												placeholder="Selecione o tipo..."
+											/>
+										)}
+									/>
+								</div>
+								<div>
+									<InputLabel>Chave Pix</InputLabel>
+									<input
+										type="text"
+										{...register('pix_key')}
+										onChange={(e) =>
+											setValue(
+												'pix_key',
+												maskPixKeyInput(e.target.value, watch('pix_key_type')),
+											)
+										}
+										placeholder={
+											watch('pix_key_type') === 'EMAIL'
+												? 'email@exemplo.com'
+												: watch('pix_key_type') === 'CELULAR'
+													? '(00) 00000-0000'
+													: watch('pix_key_type') === 'CPF'
+														? '000.000.000-00'
+														: 'Chave Pix'
+										}
+										className={InputClass}
+									/>
 								</div>
 							</div>
 

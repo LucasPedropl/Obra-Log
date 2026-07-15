@@ -5,10 +5,12 @@ const STATIC_LABELS: Record<string, string> = {
 	obras: 'Obras',
 	insumos: 'Insumos',
 	colaboradores: 'Colaboradores',
+	'mao-de-obra': 'Colaboradores',
 	acesso: 'Acesso ao Sistema',
 	perfis: 'Perfis de Acesso',
 	usuarios: 'Usuários',
 	menu: 'Menu',
+	relatorios: 'Relatórios',
 };
 
 function collectNavLabels(items: { name: string; href?: string; children?: { name: string; href: string }[] }[]) {

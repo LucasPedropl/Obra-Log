@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { createToolLoanAction } from '@/app/actions/toolsActions';
-import { useCollaborators } from '@/features/colaboradores/hooks/useCollaborators';
+import { useCollaborators } from '@/features/mao-de-obra/hooks/useCollaborators';
 import {
 	createLoanToolSchema,
 	LoanToolFormData,
