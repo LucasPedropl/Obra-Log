@@ -12,7 +12,13 @@ type LoginResult = { success: false; error: string };
 
 export async function loginAction(
 	formData: z.infer<typeof loginSchema>,
+	redirectTo?: string,
 ): Promise<LoginResult | void> {
+	// Aceita apenas caminhos internos ("/obras/..."); descarta URLs absolutas
+	// e protocol-relative ("//host") para evitar open redirect.
+	const safeRedirectTo =
+		redirectTo && /^\/(?![/\\])/.test(redirectTo) ? redirectTo : null;
+
 	let email: string;
 	let password: string;
 
@@ -62,7 +68,7 @@ export async function loginAction(
         sameSite: 'lax',
       });
 
-			redirect('/dashboard');
+			redirect(safeRedirectTo ?? '/dashboard');
 		}
 	}
 

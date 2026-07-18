@@ -13,6 +13,7 @@ import {
 export interface ReportDayCell {
 	status: AttendanceStatus;
 	dayFraction: number;
+	hasIncompleteTimes?: boolean;
 }
 
 export interface ReportRow {
@@ -61,11 +62,15 @@ export function buildFrequencyReport(
 			const rec = recordMap.get(cellKey(c.id, day.date));
 			if (rec) {
 				const fraction = Number(rec.day_fraction);
+				const incomplete = Boolean(rec.has_incomplete_times);
 				cells[day.date] = {
 					status: rec.status as AttendanceStatus,
 					dayFraction: fraction,
+					hasIncompleteTimes: incomplete,
 				};
-				totalFraction += fraction;
+				if (!incomplete) {
+					totalFraction += fraction;
+				}
 			} else if (isScheduledDayOff(day.date, schedule)) {
 				cells[day.date] = {
 					status: 'SCHEDULED_DAY_OFF',

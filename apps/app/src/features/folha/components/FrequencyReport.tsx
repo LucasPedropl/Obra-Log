@@ -8,6 +8,7 @@ import { formatCurrencyDisplay } from '@/lib/maskUtils';
 import { STATUS_CONFIG } from '@/features/ponto/lib/attendanceConfig';
 import type { AttendanceStatus } from '@/features/ponto/schemas/attendanceSchema';
 import type { DayColumn } from '@/features/ponto/lib/dateRange';
+import { IncompleteHoursWarning } from '@/features/ponto/components/IncompleteHoursWarning';
 import type { FrequencyReport as ReportModel } from '../lib/buildReport';
 import { printFolhaSection } from '../lib/printFolha';
 import { PaymentSummaryTable } from './PaymentSummaryTable';
@@ -25,12 +26,26 @@ const formatFraction = (value: number) =>
 		maximumFractionDigits: 2,
 	});
 
-function cellContent(status: AttendanceStatus, dayFraction: number) {
+function cellContent(
+	status: AttendanceStatus,
+	dayFraction: number,
+	hasIncompleteTimes?: boolean,
+) {
+	if (status === 'PRESENT' && hasIncompleteTimes) {
+		return <IncompleteHoursWarning compact />;
+	}
 	if (status === 'PRESENT') return formatFraction(dayFraction);
 	return STATUS_CONFIG[status].short;
 }
 
-function cellClassName(status: AttendanceStatus | undefined, isWeekend: boolean) {
+function cellClassName(
+	status: AttendanceStatus | undefined,
+	isWeekend: boolean,
+	hasIncompleteTimes?: boolean,
+) {
+	if (hasIncompleteTimes) {
+		return 'bg-amber-50 text-amber-800';
+	}
 	if (status && status !== 'PRESENT') {
 		return STATUS_CONFIG[status].badgeClass;
 	}
@@ -116,10 +131,20 @@ export function FrequencyReport({
 												key={day.date}
 												className={cn(
 													'border border-slate-300 px-1 py-1.5 text-center align-middle leading-tight',
-													cellClassName(cell?.status, day.isWeekend),
+													cellClassName(
+														cell?.status,
+														day.isWeekend,
+														cell?.hasIncompleteTimes,
+													),
 												)}
 											>
-												{cell ? cellContent(cell.status, cell.dayFraction) : ''}
+												{cell
+													? cellContent(
+															cell.status,
+															cell.dayFraction,
+															cell.hasIncompleteTimes,
+														)
+													: ''}
 											</td>
 										);
 									})}

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { STATUS_CONFIG, STATUS_OPTIONS } from '../lib/attendanceConfig';
 import type { AttendanceRecord, AttendanceStatus } from '../schemas/attendanceSchema';
 import type { GridCollaborator } from './attendanceTypes';
 
@@ -26,12 +25,15 @@ interface DailyAttendanceRowProps {
 	onSave: (data: DailyAttendanceSaveData) => Promise<boolean>;
 }
 
+/**
+ * Daily clock row for /obras/[id]/ponto.
+ * Status is configured only on /relatorios/frequencia — this row always saves PRESENT.
+ */
 export function DailyAttendanceRow({
 	collaborator,
 	record,
 	onSave,
 }: DailyAttendanceRowProps) {
-	const [status, setStatus] = useState<AttendanceStatus>(record?.status || 'PRESENT');
 	const [clockIn, setClockIn] = useState(record?.clock_in?.slice(0, 5) || '');
 	const [clockOut, setClockOut] = useState(record?.clock_out?.slice(0, 5) || '');
 	const [lunchStart, setLunchStart] = useState(record?.lunch_start?.slice(0, 5) || '');
@@ -42,11 +44,12 @@ export function DailyAttendanceRow({
 	const skipNextAutosave = useRef(true);
 	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const onSaveRef = useRef(onSave);
+	const statusRef = useRef<AttendanceStatus>(record?.status || 'PRESENT');
 	onSaveRef.current = onSave;
 
 	useEffect(() => {
 		skipNextAutosave.current = true;
-		setStatus(record?.status || 'PRESENT');
+		statusRef.current = record?.status || 'PRESENT';
 		setClockIn(record?.clock_in?.slice(0, 5) || '');
 		setClockOut(record?.clock_out?.slice(0, 5) || '');
 		setLunchStart(record?.lunch_start?.slice(0, 5) || '');
@@ -61,13 +64,13 @@ export function DailyAttendanceRow({
 			return;
 		}
 
-		const isPresence = STATUS_CONFIG[status]?.isPresence ?? true;
+		// Status is edited only on /relatorios/frequencia — keep existing value.
 		const payload: DailyAttendanceSaveData = {
-			status,
-			clockIn: isPresence ? clockIn || null : null,
-			clockOut: isPresence ? clockOut || null : null,
-			lunchStart: isPresence ? lunchStart || null : null,
-			lunchEnd: isPresence ? lunchEnd || null : null,
+			status: statusRef.current || 'PRESENT',
+			clockIn: clockIn || null,
+			clockOut: clockOut || null,
+			lunchStart: lunchStart || null,
+			lunchEnd: lunchEnd || null,
 			notes: notes || null,
 		};
 
@@ -86,9 +89,7 @@ export function DailyAttendanceRow({
 		return () => {
 			if (timerRef.current) clearTimeout(timerRef.current);
 		};
-	}, [status, clockIn, clockOut, lunchStart, lunchEnd, notes]);
-
-	const isPresence = STATUS_CONFIG[status]?.isPresence ?? true;
+	}, [clockIn, clockOut, lunchStart, lunchEnd, notes]);
 
 	return (
 		<tr className="hover:bg-muted/30">
@@ -106,65 +107,36 @@ export function DailyAttendanceRow({
 				)}
 			</td>
 			<td className="px-3 py-2 border-b border-border">
-				<select
-					value={status}
-					onChange={(e) => setStatus(e.target.value as AttendanceStatus)}
-					className={cn(inputClass, 'min-w-[130px]')}
-				>
-					{STATUS_OPTIONS.map((opt) => (
-						<option key={opt.value} value={opt.value}>
-							{opt.label}
-						</option>
-					))}
-				</select>
+				<input
+					type="time"
+					value={clockIn}
+					onChange={(e) => setClockIn(e.target.value)}
+					className={inputClass}
+				/>
 			</td>
 			<td className="px-3 py-2 border-b border-border">
-				{isPresence ? (
-					<input
-						type="time"
-						value={clockIn}
-						onChange={(e) => setClockIn(e.target.value)}
-						className={inputClass}
-					/>
-				) : (
-					<span className="text-xs text-muted-foreground">—</span>
-				)}
+				<input
+					type="time"
+					value={lunchStart}
+					onChange={(e) => setLunchStart(e.target.value)}
+					className={inputClass}
+				/>
 			</td>
 			<td className="px-3 py-2 border-b border-border">
-				{isPresence ? (
-					<input
-						type="time"
-						value={lunchStart}
-						onChange={(e) => setLunchStart(e.target.value)}
-						className={inputClass}
-					/>
-				) : (
-					<span className="text-xs text-muted-foreground">—</span>
-				)}
+				<input
+					type="time"
+					value={lunchEnd}
+					onChange={(e) => setLunchEnd(e.target.value)}
+					className={inputClass}
+				/>
 			</td>
 			<td className="px-3 py-2 border-b border-border">
-				{isPresence ? (
-					<input
-						type="time"
-						value={lunchEnd}
-						onChange={(e) => setLunchEnd(e.target.value)}
-						className={inputClass}
-					/>
-				) : (
-					<span className="text-xs text-muted-foreground">—</span>
-				)}
-			</td>
-			<td className="px-3 py-2 border-b border-border">
-				{isPresence ? (
-					<input
-						type="time"
-						value={clockOut}
-						onChange={(e) => setClockOut(e.target.value)}
-						className={inputClass}
-					/>
-				) : (
-					<span className="text-xs text-muted-foreground">—</span>
-				)}
+				<input
+					type="time"
+					value={clockOut}
+					onChange={(e) => setClockOut(e.target.value)}
+					className={inputClass}
+				/>
 			</td>
 			<td className="px-3 py-2 border-b border-border">
 				<input

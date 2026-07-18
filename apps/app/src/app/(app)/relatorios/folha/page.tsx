@@ -29,7 +29,11 @@ export default function FolhaPage() {
 	const [endDate, setEndDate] = useState(initial.end);
 
 	const { fetchConstructionSites } = useConstructionSites();
-	const { data, isLoading, error, generate, reset } = useFrequencyReport();
+	const { data, isLoading, error } = useFrequencyReport(
+		siteId,
+		startDate,
+		endDate,
+	);
 
 	useEffect(() => {
 		if (selectedObraId && !siteId) {
@@ -69,12 +73,6 @@ export default function FolhaPage() {
 		.reverse()
 		.join('/')}`;
 
-	const canGenerate = Boolean(siteId) && days.length > 0 && !isLoading;
-
-	const handleGenerate = () => {
-		if (canGenerate) generate(siteId, startDate, endDate);
-	};
-
 	return (
 		<ProtectedRoute resource="folha_pagamento">
 			<div className="w-full flex flex-col gap-6">
@@ -89,10 +87,7 @@ export default function FolhaPage() {
 						<SearchableSelect
 							options={sites.map((s) => ({ value: s.id, label: s.name }))}
 							value={siteId}
-							onChange={(val) => {
-								setSiteId(val);
-								reset();
-							}}
+							onChange={setSiteId}
 							placeholder="Selecione a obra..."
 						/>
 					</div>
@@ -103,10 +98,7 @@ export default function FolhaPage() {
 							type="date"
 							value={startDate}
 							max={endDate || undefined}
-							onChange={(e) => {
-								setStartDate(e.target.value);
-								reset();
-							}}
+							onChange={(e) => setStartDate(e.target.value)}
 							className="h-10 rounded-[5px] border border-gray-300 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 						/>
 					</div>
@@ -117,28 +109,13 @@ export default function FolhaPage() {
 							type="date"
 							value={endDate}
 							min={startDate || undefined}
-							onChange={(e) => {
-								setEndDate(e.target.value);
-								reset();
-							}}
+							onChange={(e) => setEndDate(e.target.value)}
 							className="h-10 rounded-[5px] border border-gray-300 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 						/>
 					</div>
 
-					<div className="flex flex-wrap items-center gap-3">
-						<Button 
-							onClick={handleGenerate} 
-							disabled={!canGenerate}
-							className="h-10 rounded-[5px] bg-blue-600 hover:bg-blue-700 text-white shadow-sm font-semibold border-none"
-						>
-							{isLoading ? (
-								<Loader2 className="w-4 h-4 animate-spin mr-2" />
-							) : (
-								<FileText className="w-4 h-4 mr-2" />
-							)}
-							Gerar Relatório
-						</Button>
-						{report && report.rows.length > 0 && (
+					{report && report.rows.length > 0 && (
+						<div className="flex flex-wrap items-center gap-3">
 							<Button
 								variant="outline"
 								onClick={() => printFolhaSection('all')}
@@ -147,8 +124,8 @@ export default function FolhaPage() {
 								<Printer className="w-4 h-4 mr-2" />
 								Exportar PDF
 							</Button>
-						)}
-					</div>
+						</div>
+					)}
 
 					{error && (
 						<div className="w-full rounded-[5px] border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive mt-2">
@@ -157,7 +134,13 @@ export default function FolhaPage() {
 					)}
 				</div>
 
-				{isLoading ? (
+				{!siteId ? (
+					<EmptyState
+						title="Selecione uma obra"
+						description="Escolha a obra para carregar o relatório de frequência do período."
+						icon={<FileText className="w-8 h-8 text-gray-400" />}
+					/>
+				) : isLoading && !report ? (
 					<div className="flex items-center justify-center p-12">
 						<Loader2 className="h-8 w-8 animate-spin text-gray-400" />
 					</div>
@@ -169,20 +152,16 @@ export default function FolhaPage() {
 							icon={<FileText className="w-8 h-8 text-gray-400" />}
 						/>
 					) : (
-						<FrequencyReport
-							report={report}
-							days={days}
-							siteName={selectedSiteName}
-							periodLabel={periodLabel}
-						/>
+						<div className={isLoading ? 'opacity-60 pointer-events-none' : undefined}>
+							<FrequencyReport
+								report={report}
+								days={days}
+								siteName={selectedSiteName}
+								periodLabel={periodLabel}
+							/>
+						</div>
 					)
-				) : (
-					<EmptyState
-						title="Gere um relatório"
-						description="Selecione a obra e o período da quinzena e clique em Gerar Relatório."
-						icon={<FileText className="w-8 h-8 text-gray-400" />}
-					/>
-				)}
+				) : null}
 			</div>
 		</ProtectedRoute>
 	);

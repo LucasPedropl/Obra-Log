@@ -2,7 +2,13 @@ import React from 'react';
 import Image from 'next/image';
 import { LoginForm } from '@/features/auth/components/LoginForm';
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirectTo?: string }>;
+}) {
+  const { redirectTo } = await searchParams;
+
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden">
       {/* Imagem de Fundo conforme protótipo */}
@@ -39,7 +45,7 @@ export default function LoginPage() {
 
           {/* Área do Formulário */}
           <div className="p-8 md:p-10">
-            <LoginForm />
+            <LoginForm redirectTo={redirectTo} />
           </div>
 
           {/* Rodapé do Card */}

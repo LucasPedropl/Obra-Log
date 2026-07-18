@@ -31,9 +31,6 @@ export function DailyAttendanceTable({
 						<th className="sticky left-0 z-10 bg-muted/60 px-4 py-3 font-semibold text-foreground border-b border-border min-w-[200px]">
 							Colaborador
 						</th>
-						<th className="px-3 py-3 font-semibold border-b border-border min-w-[140px]">
-							Status
-						</th>
 						<th className="px-3 py-3 font-semibold border-b border-border">Entrada</th>
 						<th className="px-3 py-3 font-semibold border-b border-border">S. Almoço</th>
 						<th className="px-3 py-3 font-semibold border-b border-border">V. Almoço</th>

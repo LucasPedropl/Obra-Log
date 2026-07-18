@@ -1,4 +1,5 @@
 import { getDay, parseISO } from 'date-fns';
+import type { AttendanceStatus } from '../schemas/attendanceSchema';
 
 /** Keys used in construction_sites.workday_schedule_json */
 export type WorkdayKey =
@@ -96,4 +97,79 @@ export function isScheduledDayOff(
 	} catch {
 		return false;
 	}
+}
+
+/** Converts "HH:mm" into minutes since midnight. */
+export function timeToMinutes(value: string): number {
+	const [h, m] = value.split(':').map(Number);
+	return h * 60 + m;
+}
+
+function normalizeClockValue(value: string | null | undefined): string {
+	if (typeof value !== 'string') return '';
+	return value.trim().slice(0, 5);
+}
+
+/**
+ * True when some (but not all) of the four day punches are filled.
+ * Incomplete days must not show a worked-hours fraction in the UI.
+ */
+export function hasPartialClockTimes(
+	clockIn: string | null | undefined,
+	clockOut: string | null | undefined,
+	lunchStart: string | null | undefined,
+	lunchEnd: string | null | undefined,
+): boolean {
+	const filled = [clockIn, lunchStart, lunchEnd, clockOut]
+		.map(normalizeClockValue)
+		.filter(Boolean).length;
+	return filled > 0 && filled < 4;
+}
+
+/**
+ * Computes the worked-day fraction for an attendance record. Only PRESENT days
+ * count; the fraction is worked-hours / standard-workday-hours (can exceed 1.0
+ * for overtime). Tolerance snaps near-full days to exactly 1.0.
+ * Partial clock times (1–3 of 4 filled) yield 0 until the day is complete.
+ */
+export function computeDayFraction(
+	status: AttendanceStatus,
+	clockIn: string | null,
+	clockOut: string | null,
+	lunchStart: string | null,
+	lunchEnd: string | null,
+	standardHours: number,
+	toleranceMinutes: number,
+	scheduledStart: string | null,
+): number {
+	if (status !== 'PRESENT') return 0;
+	if (hasPartialClockTimes(clockIn, clockOut, lunchStart, lunchEnd)) return 0;
+	if (!clockIn || !clockOut) return 1;
+
+	let startMin = timeToMinutes(clockIn);
+	const endMin = timeToMinutes(clockOut);
+
+	if (scheduledStart) {
+		const scheduledStartMin = timeToMinutes(scheduledStart);
+		if (startMin < scheduledStartMin) {
+			startMin = scheduledStartMin;
+		}
+	}
+
+	let worked = 0;
+	if (lunchStart && lunchEnd) {
+		const lunchStartMin = timeToMinutes(lunchStart);
+		const lunchEndMin = timeToMinutes(lunchEnd);
+		worked = (lunchStartMin - startMin) + (endMin - lunchEndMin);
+	} else {
+		worked = endMin - startMin;
+	}
+
+	if (worked < 0) worked += 24 * 60; // overnight shift fallback
+	if (worked <= 0) return 0;
+
+	const fullDay = standardHours * 60;
+	if (Math.abs(worked - fullDay) <= toleranceMinutes) return 1;
+
+	return Math.round((worked / fullDay) * 100) / 100;
 }

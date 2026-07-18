@@ -9,6 +9,8 @@ import type {
 	AttendanceStatus,
 	UpsertAttendanceInput,
 } from '../schemas/attendanceSchema';
+import { hasPartialClockTimes } from '../lib/workdaySchedule';
+import { IncompleteHoursWarning } from './IncompleteHoursWarning';
 
 interface AttendanceCellEditorProps {
 	collaboratorName: string;
@@ -40,6 +42,9 @@ export function AttendanceCellEditor({
 	const [isBusy, setIsBusy] = useState(false);
 
 	const isPresence = STATUS_CONFIG[status].isPresence;
+	const incompleteTimes =
+		isPresence &&
+		hasPartialClockTimes(clockIn, clockOut, lunchStart, lunchEnd);
 
 	const handleSave = async () => {
 		setIsBusy(true);
@@ -150,6 +155,8 @@ export function AttendanceCellEditor({
 									/>
 								</div>
 							</div>
+
+							{incompleteTimes && <IncompleteHoursWarning />}
 						</div>
 					)}
 

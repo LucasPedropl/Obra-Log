@@ -9,9 +9,11 @@ import { cellKey } from '../hooks/useSiteAttendance';
 import type { AttendanceRecord, AttendanceStatus } from '../schemas/attendanceSchema';
 import type { GridCollaborator } from './attendanceTypes';
 import {
+	hasPartialClockTimes,
 	isScheduledDayOff,
 	type WorkdaySchedule,
 } from '../lib/workdaySchedule';
+import { IncompleteHoursWarning } from './IncompleteHoursWarning';
 
 export type { GridCollaborator } from './attendanceTypes';
 
@@ -230,9 +232,22 @@ function InlineAttendanceRow({
 			</button>
 
 			{record && record.status === 'PRESENT' && (
-				<span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-[4px] shrink-0">
-					Diária: {record.day_fraction.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-				</span>
+				hasPartialClockTimes(
+					record.clock_in,
+					record.clock_out,
+					record.lunch_start,
+					record.lunch_end,
+				) ? (
+					<IncompleteHoursWarning className="shrink-0 max-w-[220px]" />
+				) : (
+					<span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-[4px] shrink-0">
+						Diária:{' '}
+						{record.day_fraction.toLocaleString('pt-BR', {
+							minimumFractionDigits: 2,
+							maximumFractionDigits: 2,
+						})}
+					</span>
+				)
 			)}
 		</div>
 	);
@@ -296,6 +311,15 @@ export function AttendanceGrid({
 									: scheduledOff
 										? ('SCHEDULED_DAY_OFF' as AttendanceStatus)
 										: null;
+								const incompleteTimes =
+									displayStatus === 'PRESENT' &&
+									!!rec &&
+									hasPartialClockTimes(
+										rec.clock_in,
+										rec.clock_out,
+										rec.lunch_start,
+										rec.lunch_end,
+									);
 
 								return (
 									<td
@@ -319,28 +343,36 @@ export function AttendanceGrid({
 												type="button"
 												onClick={() => onCellClick(c.collaboratorId, day.date)}
 												title={
-													displayStatus
-														? STATUS_CONFIG[displayStatus]?.label
-														: 'Registrar ponto'
+													incompleteTimes
+														? 'Horários incompletos — preencha as 4 horas do dia'
+														: displayStatus
+															? STATUS_CONFIG[displayStatus]?.label
+															: 'Registrar ponto'
 												}
 												className={cn(
-													'w-full min-h-[40px] rounded-md border text-[10px] leading-tight font-semibold px-0.5 py-1 transition-colors',
-													displayStatus === 'PRESENT'
-														? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-														: displayStatus
-															? cn(
-																	STATUS_CONFIG[displayStatus]?.badgeClass ||
-																		'bg-gray-50 text-gray-500',
-																	'border-transparent',
-																)
-															: 'border-dashed border-slate-200 text-slate-300 hover:border-slate-400 hover:text-slate-500',
+													'w-full min-h-[40px] rounded-md border text-[10px] leading-tight font-semibold px-0.5 py-1 transition-colors flex items-center justify-center',
+													incompleteTimes
+														? 'border-amber-300 bg-amber-50 hover:bg-amber-100'
+														: displayStatus === 'PRESENT'
+															? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+															: displayStatus
+																? cn(
+																		STATUS_CONFIG[displayStatus]?.badgeClass ||
+																			'bg-gray-50 text-gray-500',
+																		'border-transparent',
+																	)
+																: 'border-dashed border-slate-200 text-slate-300 hover:border-slate-400 hover:text-slate-500',
 												)}
 											>
-												{displayStatus === 'PRESENT' && rec
-													? formatFraction(Number(rec.day_fraction))
-													: displayStatus
-														? STATUS_CONFIG[displayStatus]?.short || displayStatus
-														: '+'}
+												{incompleteTimes ? (
+													<IncompleteHoursWarning compact className="border-0 bg-transparent px-0" />
+												) : displayStatus === 'PRESENT' && rec ? (
+													formatFraction(Number(rec.day_fraction))
+												) : displayStatus ? (
+													STATUS_CONFIG[displayStatus]?.short || displayStatus
+												) : (
+													'+'
+												)}
 											</button>
 										)}
 									</td>

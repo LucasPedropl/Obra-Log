@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export function LoginForm() {
+export function LoginForm({ redirectTo }: { redirectTo?: string }) {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -25,12 +25,20 @@ export function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     setServerError(null);
     try {
-      const result = await loginAction(data);
+      const result = await loginAction(data, redirectTo);
       if (result && !result.success) {
         setServerError(result.error || 'E-mail ou senha inválidos.');
       }
-    } catch (error: any) {
-      if (error?.message === 'NEXT_REDIRECT') return;
+    } catch (error: unknown) {
+      const digest =
+        error && typeof error === 'object' && 'digest' in error
+          ? String((error as { digest: unknown }).digest)
+          : '';
+      if (
+        (error instanceof Error && error.message === 'NEXT_REDIRECT') ||
+        digest.startsWith('NEXT_REDIRECT')
+      )
+        return;
       setServerError('Ocorreu um erro ao tentar entrar.');
     }
   };

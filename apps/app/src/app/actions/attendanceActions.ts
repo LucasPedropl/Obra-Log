@@ -13,6 +13,9 @@ import {
 import {
 	normalizeWorkdaySchedule,
 	type WorkdaySchedule,
+	type WorkdayKey,
+	timeToMinutes,
+	computeDayFraction,
 } from '@/features/ponto/lib/workdaySchedule';
 
 const siteIdSchema = z.string().uuid('ID da obra inválido');
@@ -23,50 +26,6 @@ function formatZodError(error: unknown): never {
 		throw new Error(error.issues[0]?.message ?? 'Dados inválidos');
 	}
 	throw error;
-}
-
-/** Converts "HH:mm" into minutes since midnight. */
-function timeToMinutes(value: string): number {
-	const [h, m] = value.split(':').map(Number);
-	return h * 60 + m;
-}
-
-/**
- * Computes the worked-day fraction for an attendance record. Only PRESENT days
- * count; the fraction is worked-hours / standard-workday-hours (can exceed 1.0
- * for overtime). Tolerance snaps near-full days to exactly 1.0.
- */
-function computeDayFraction(
-	status: AttendanceStatus,
-	clockIn: string | null,
-	clockOut: string | null,
-	lunchStart: string | null,
-	lunchEnd: string | null,
-	standardHours: number,
-	toleranceMinutes: number,
-): number {
-	if (status !== 'PRESENT') return 0;
-	if (!clockIn || !clockOut) return 1;
-
-	const startMin = timeToMinutes(clockIn);
-	const endMin = timeToMinutes(clockOut);
-	
-	let worked = 0;
-	if (lunchStart && lunchEnd) {
-		const lunchStartMin = timeToMinutes(lunchStart);
-		const lunchEndMin = timeToMinutes(lunchEnd);
-		worked = (lunchStartMin - startMin) + (endMin - lunchEndMin);
-	} else {
-		worked = endMin - startMin;
-	}
-
-	if (worked < 0) worked += 24 * 60; // overnight shift fallback
-	if (worked <= 0) return 0;
-
-	const fullDay = standardHours * 60;
-	if (Math.abs(worked - fullDay) <= toleranceMinutes) return 1;
-
-	return Math.round((worked / fullDay) * 100) / 100;
 }
 
 export async function getSiteAttendance(
@@ -93,16 +52,56 @@ export async function getSiteAttendance(
 				.lte('work_date', end),
 			supabaseAdmin
 				.from('construction_sites')
-				.select('workday_schedule_json')
+				.select('workday_schedule_json, tolerance_minutes')
 				.eq('id', parsedSiteId)
 				.single(),
 		]);
 		if (error) throw error;
 		if (siteError) throw siteError;
 
+		const schedule = normalizeWorkdaySchedule(site?.workday_schedule_json);
+		const tolerance = Number(site?.tolerance_minutes ?? 0);
+
+		const mappedRecords = (data || []).map((rec) => {
+			if (rec.status !== 'PRESENT') return rec;
+
+			let standardHours = 8;
+			let scheduledStart: string | null = null;
+			const dateObj = new Date(rec.work_date + 'T00:00:00');
+			const daysMap: WorkdayKey[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+			const dayOfWeek = daysMap[dateObj.getDay()];
+
+			if (schedule && schedule[dayOfWeek]) {
+				const dayInfo = schedule[dayOfWeek];
+				if (dayInfo.active && dayInfo.start && dayInfo.end) {
+					const scheduleMinutes = timeToMinutes(dayInfo.end) - timeToMinutes(dayInfo.start);
+					if (scheduleMinutes > 0) {
+						standardHours = scheduleMinutes / 60;
+						scheduledStart = dayInfo.start;
+					}
+				}
+			}
+
+			const recalculatedFraction = computeDayFraction(
+				rec.status as AttendanceStatus,
+				rec.clock_in,
+				rec.clock_out,
+				rec.lunch_start,
+				rec.lunch_end,
+				standardHours,
+				tolerance,
+				scheduledStart,
+			);
+
+			return {
+				...rec,
+				day_fraction: recalculatedFraction,
+			};
+		});
+
 		return {
-			records: data || [],
-			workdaySchedule: normalizeWorkdaySchedule(site?.workday_schedule_json),
+			records: mappedRecords,
+			workdaySchedule: schedule,
 		};
 	} catch (error: unknown) {
 		safeLogError('getSiteAttendance', error);
@@ -129,17 +128,19 @@ export async function upsertAttendanceRecord(
 
 		// Calculate standard hours dynamically based on weekly schedule json
 		let standardHours = 8;
+		let scheduledStart: string | null = null;
 		const dateObj = new Date(payload.workDate + 'T00:00:00');
-		const daysMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+		const daysMap: WorkdayKey[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 		const dayOfWeek = daysMap[dateObj.getDay()];
 
-		const schedule = site.workday_schedule_json as any;
+		const schedule = site.workday_schedule_json as WorkdaySchedule | null;
 		if (schedule && schedule[dayOfWeek]) {
 			const dayInfo = schedule[dayOfWeek];
 			if (dayInfo.active && dayInfo.start && dayInfo.end) {
 				const scheduleMinutes = timeToMinutes(dayInfo.end) - timeToMinutes(dayInfo.start);
 				if (scheduleMinutes > 0) {
 					standardHours = scheduleMinutes / 60;
+					scheduledStart = dayInfo.start;
 				}
 			}
 		}
@@ -157,6 +158,7 @@ export async function upsertAttendanceRecord(
 			lunchEnd,
 			standardHours,
 			Number(site.tolerance_minutes ?? 0),
+			scheduledStart,
 		);
 
 		const row = {
